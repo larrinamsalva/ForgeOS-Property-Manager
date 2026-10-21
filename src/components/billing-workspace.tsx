@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Receipt, RefreshCw, Plus, Download } from 'lucide-react';
+import { stateLabel } from '@/lib/collections-domain';
 import type { Snapshot } from '@/lib/domain';
 import { addDays, calendarMonth, canEditProperty, customerName, dateAtProperty, csv } from '@/lib/domain';
 import {
@@ -139,7 +140,7 @@ export function BillingWorkspace({
     const url = URL.createObjectURL(new Blob([csv(rows)], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'forgeos-internal-unissued-ledger.csv';
+    a.download = 'forgeos-charge-ledger.csv';
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -157,6 +158,7 @@ export function BillingWorkspace({
       onSave = (v: Record<string, unknown>) => save(editor.type, v);
     const invoice = data.invoices.find((i) => i.id === editor.id);
     const rev = invoice ? current(invoice) : undefined;
+    const account = data.accounts.find((a) => a.invoice_id === invoice?.id);
     if (editor.type === 'detail' && invoice && rev) {
       const calc = rev.calculation;
       const history = data.revisions
@@ -180,8 +182,9 @@ export function BillingWorkspace({
             Planned due {calc.due_on} · Revision {rev.revision}
           </p>
           <p className="alert">
-            {invoice.status === 'approved' ? 'Approved · Not issued.' : 'Internal review statement.'} Not a
-            payment request.
+            {account?.issued_on
+              ? `${stateLabel(account.state)} · Issued ${account.issued_on} · Due ${account.due_on}`
+              : `${invoice.status === 'approved' ? 'Approved · Not issued.' : 'Internal review statement.'} Not a payment request.`}
           </p>
           <div className="table-wrap" role="region" aria-label="Invoice items" tabIndex={0}>
             <table>
@@ -212,11 +215,17 @@ export function BillingWorkspace({
           <p className="statement-total">Statement total {cents(calc.total_cents)}</p>
           {invoice.status !== 'draft' && (
             <p>
-              Approved / unissued internal balance{' '}
-              <strong>{cents(ledgerBalance(entries, invoice.id))}</strong>
+              {account?.issued_on ? 'Current outstanding balance' : 'Approved / unissued internal balance'}{' '}
+              <strong>{cents(account?.outstanding_cents ?? ledgerBalance(entries, invoice.id))}</strong>
             </p>
           )}
           <div className="action-group billing-actions">
+            <Link
+              className="button secondary"
+              href={`/collections?organization=${snapshot.organizationId}&property=${selectedProperty}`}
+            >
+              Payments & collections
+            </Link>
             <button className="button secondary" disabled={downloading} onClick={() => download(invoice)}>
               <Download size={16} />
               {downloading ? 'Preparing PDF…' : 'Download PDF'}
@@ -606,7 +615,7 @@ export function BillingWorkspace({
           <h2>Every charge has a source.</h2>
           <p>
             Calculate, review and approve statements. Approval records an internal balance; customer issuance
-            is not enabled.
+            and payments are managed in Payments & collections.
           </p>
         </div>
       </div>
@@ -674,7 +683,8 @@ export function BillingWorkspace({
                 <div>
                   <h2>Itemized invoices</h2>
                   <p className="muted">
-                    Draft → approved (unissued). Service periods use exclusive end dates.
+                    Draft → approved → explicitly issued in Collections. Service periods use exclusive end
+                    dates.
                   </p>
                 </div>
                 {prepare && (
@@ -730,7 +740,10 @@ export function BillingWorkspace({
                             </td>
                             <td>
                               <span className="billing-status">
-                                {invoice.status === 'approved' ? 'approved · unissued' : invoice.status}
+                                {stateLabel(
+                                  data.accounts.find((a) => a.invoice_id === invoice.id)?.state ??
+                                    invoice.status
+                                )}
                               </span>
                             </td>
                             <td>{revision ? cents(revision.total_cents) : 'Reload needed'}</td>
@@ -866,8 +879,8 @@ export function BillingWorkspace({
                 <div>
                   <h2>Customer account ledger</h2>
                   <p className="muted">
-                    Approved / unissued amounts. Payments and customer invoice issuance arrive in later
-                    milestones.
+                    Charges, credits and reversals. Payments, deposits and outstanding balances appear in
+                    Payments & collections.
                   </p>
                 </div>
                 <button className="button secondary" disabled={!ledger.length} onClick={exportLedger}>
@@ -888,7 +901,7 @@ export function BillingWorkspace({
                     ))}
                 </select>
               </label>
-              <p className="statement-total">Internal balance {cents(ledgerBalance(ledger))}</p>
+              <p className="statement-total">Charges after credits {cents(ledgerBalance(ledger))}</p>
               {!ledger.length ? (
                 <Empty title="No ledger events">
                   Approve an invoice to post its internal debit. Credits and reversing entries preserve the

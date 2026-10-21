@@ -4,15 +4,15 @@ All-in-one RV park, apartment, and property management operating system.
 
 **One System. Every Site. Total Control.**
 
-This repository contains the Milestones 1–4 property workspace, tablet meter reader and supervised billing: a Next.js property workspace backed by a dedicated Supabase PostgreSQL database. It supports organization onboarding, scoped staff roles, property/site/unit directories, customers, reservations, availability and calendars, lease-term history and renewals, move-in/out handovers, planned departures, atomic site transfers, an operational dashboard, a coordinate-backed site map, CSV export, and safe archive/restore, dated meter assignments, assigned reading routes, encrypted offline capture and photos, idempotent sync, supervisor corrections, a conflict inbox, effective-dated utility rates, exact consumption/rent calculations, versioned draft invoices, supervisor approval, PDF/print statements, and an internal customer ledger with credits and reversals.
+This repository contains the Milestones 1–5 property workspace, tablet meter reader and supervised billing: a Next.js property workspace backed by a dedicated Supabase PostgreSQL database. It supports organization onboarding, scoped staff roles, property/site/unit directories, customers, reservations, availability and calendars, lease-term history and renewals, move-in/out handovers, planned departures, atomic site transfers, an operational dashboard, a coordinate-backed site map, CSV export, and safe archive/restore, dated meter assignments, assigned reading routes, encrypted offline capture and photos, idempotent sync, supervisor corrections, a conflict inbox, effective-dated utility rates, exact consumption/rent calculations, versioned draft invoices, supervisor approval, PDF/print statements, an internal customer ledger with credits and reversals, and manual payments, immutable receipts, separate deposit liabilities, issued invoice balances/aging, reviewed late fees/waivers, arrangements, manual follow-ups and statement reconciliation.
 
 The full brief is [MASTER-BUILD-PROMPT.md](MASTER-BUILD-PROMPT.md). The repository remains private and the existing MIT license is unchanged. Development uses feature branches and pull requests; do not merge automatically.
 
 ## Current status
 
-Implementation and verification are described in [docs/phase-4-report.md](docs/phase-4-report.md). Earlier milestone reports remain in `docs/`. A dedicated live Supabase project is not configured by this change, and no hosted website or live customer data is created. Without environment variables the app opens an explicit setup screen. It never substitutes browser-local sample records for a working database.
+Implementation and verification are described in [docs/phase-5-report.md](docs/phase-5-report.md). Earlier milestone reports remain in `docs/`. A dedicated live Supabase project is not configured by this change, and no hosted website or live customer data is created. Without environment variables the app opens an explicit setup screen. It never substitutes browser-local sample records for a working database.
 
-Payments, receipts, aging, maintenance, and communications remain upcoming. No live payment collection, late fees, customer notices, or invoice issuance is enabled.
+Maintenance, inventory/operations and communications remain upcoming. No hosted system or live processor is active. Manual issuance and reviewed fee/deposit deduction actions require explicit owner configuration; automated fees and outbound notices remain disabled.
 
 ## Run locally
 
@@ -33,7 +33,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 Only the publishable key is used. Do not add a service-role key to this app. Never commit `.env.local`, real passwords, tokens, or tenant records.
 
-Apply all four migrations as described below, then run:
+Apply all five migrations as described below, then run:
 
 ```bash
 npm run dev
@@ -67,7 +67,13 @@ In **Invoices**, select a customer stay and an exclusive-end billing period. Ren
 
 Office staff may prepare drafts. Supervisors approve, credit, reverse credits or void invoices. Approval verifies the saved calculation against current sources and posts an **approved / unissued internal balance**. Refreshing a stale draft appends a revision. Every earlier revision and ledger event remains. Download an itemized PDF, open the printable statement or export the internal ledger. PDFs embed licensed Noto Sans Latin fonts; unsupported characters produce a clear printable-statement fallback instead of changed customer names.
 
-No customer invoice issuance, email delivery, payment request, payment collection, late fee automation or notices are activated. The exact rounding conventions, supported workflows and staging acceptance steps are in [Milestone 4 report](docs/phase-4-report.md).
+Approval alone remains unissued. Explicit manual issuance and manually recorded funds are available in Payments & collections after the owner configures policy. Email delivery, online processing, automated fees and notices are disabled. The exact rounding conventions, supported workflows and staging acceptance steps are in [Milestone 4 report](docs/phase-4-report.md).
+
+### Payments, deposits and collections
+
+Open **Payments & collections** for manual payment receipts/allocations, refunds and linked corrections, separate held deposit accounts, current aging, reviewed late fee drafts/waivers, arrangements, dated manual follow-ups, and selected-cash statement reconciliation. The owner must authorize issuance and any late fee or deposit deduction rules first. Record funds already received/refunded through your existing process; ForgeOS does not move money. Receipts retain frozen original details and append correction history. Reconciliation provides a preview before recording and keeps nonzero owner-acknowledged variances visible.
+
+The complete workflow, financial rules and hosted acceptance limits are in [Milestone 5 report](docs/phase-5-report.md). There is no active tenant payment or ForgeOS subscription processor.
 
 ## Database setup
 
@@ -88,11 +94,11 @@ For a new, dedicated hosted Supabase project:
    npx supabase db push --linked --skip-vault
    ```
 
-4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-4-report.md](docs/phase-4-report.md). The local PGlite tests do not replace this hosted check.
+4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-5-report.md](docs/phase-5-report.md). The local PGlite tests do not replace this hosted check.
 
 Alternatively, use a local Supabase stack with Docker. The checked-in `supabase/config.toml` and empty `supabase/seed.sql` are ready for it. Inspect `npx supabase start --help`, start the stack, and use that stack's URL/publishable credentials. Apply pending migrations using the CLI's current migration command. This environment did not have Docker, so the complete local Supabase stack was not exercised.
 
-Apply all four checked-in migrations in order. The foundation migration remains unchanged; the additive planning migration retains existing records, adds reservations and lease terms, extends stay handover fields, and backfills existing stays into a private availability-allocation table. The tablet migration adds meter/routes/readings/reviews, conflicts, private occupant attribution and a private photo bucket. The billing migration adds property policies, rates, register events, immutable invoice revisions and ledger entries, with private retry IDs, number counters and overlapping billing claims. All 25 public application tables and seven private tables have RLS; authenticated grants are explicit. `btree_gist` supplies UUID/date-range overlap protection. The private schema must **not** be added to the exposed Data API schemas. Do not run these migrations against a shared or unrelated database.
+Apply all five checked-in migrations in order. The foundation migration remains unchanged; the additive planning migration retains existing records, adds reservations and lease terms, extends stay handover fields, and backfills existing stays into a private availability-allocation table. The tablet migration adds meter/routes/readings/reviews, conflicts, private occupant attribution and a private photo bucket. The billing migration adds property policies, rates, register events, immutable invoice revisions and ledger entries, with private retry IDs, number counters and overlapping billing claims. The collections migration adds manual issuance, payments/allocations, deposit liabilities, receipts, policy versions, fees/waivers, notes and reconciliation with exact retries and private source claims. All 37 public application tables and 11 private tables have RLS; authenticated grants are explicit. `btree_gist` supplies UUID/date-range overlap protection. The private schema must **not** be added to the exposed Data API schemas. Do not run these migrations against a shared or unrelated database.
 
 ### Auth configuration
 
@@ -122,7 +128,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
-Unit tests cover exact money, dates/DST/leap days, calendar boundaries, status derivation, validation, and safe CSV. Database integration tests apply the actual migrations to embedded PostgreSQL with `btree_gist`, switch authenticated roles, and exercise RLS, reservation/stay/lease conflicts, archives, history, transfers, renewals, revocation, audit restrictions, meter assignment/history conflicts, idempotent captures, review corrections, private photo policies and conflict reconciliation. Browser tests run desktop, tablet, and phone viewports, both themes, accessible dialogs, and offline reload, encrypted recovery, photo retries source-backed billing/approval/credit/PDF workflows, and the complete UI → API → PostgreSQL path through a test-only HTTP fixture. They create fictional records only. Browser Auth responses are deterministic; they are not evidence of hosted Supabase Auth or production deployment.
+Unit tests cover exact money, dates/DST/leap days, calendar boundaries, status derivation, validation, and safe CSV. Database integration tests apply the actual migrations to embedded PostgreSQL with `btree_gist`, switch authenticated roles, and exercise RLS, reservation/stay/lease conflicts, archives, history, transfers, renewals, revocation, audit restrictions, meter assignment/history conflicts, idempotent captures, review corrections, private photo policies and conflict reconciliation. Browser tests run desktop, tablet, and phone viewports, both themes, accessible dialogs, and offline reload, encrypted recovery, photo retries, source-backed billing/approval/credit/PDF workflows, payments/deposits/aging/receipts and manual reconciliation, and the complete UI → API → PostgreSQL path through a test-only HTTP fixture. They create fictional records only. Browser Auth responses are deterministic; they are not evidence of hosted Supabase Auth or production deployment.
 
 The fixture binds to loopback and is never imported by application routes. The browser test process supplies its own public test environment values. Do not deploy `tests/support/fixture.mjs`. Optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and JSON-array `PLAYWRIGHT_CHROMIUM_ARGS` environment values support a preinstalled local test browser.
 
@@ -142,5 +148,5 @@ Apply reviewed database migrations to the matching environment before releasing 
 - Contact edits are auditable. Completed stays, agreed rent, and row ownership cannot be silently rewritten.
 - No customer data goes into browser localStorage. The theme preference is the only app data saved there.
 - Before real use, configure database backups/retention and rehearse a restore in staging. Archive is not a backup. Retain migration files alongside periodic authorized data exports, and limit access to audit snapshots containing private details.
-- This foundation does not yet offer full database export/restore UX, general document uploads, resident accounts, billing, or payment processing. Meter photographs and protected offline reading are included. The CSV export is a site-directory export only.
-- Review [docs/architecture.md](docs/architecture.md) for roles, data boundaries, and scale limits. Follow [docs/roadmap.md](docs/roadmap.md) for Milestone 4 utilities and billing work.
+- The workspace does not yet offer full database export/restore UX, general document uploads, resident accounts or active online payment processing. Meter photographs and protected offline reading are included. CSV exports cover sites, billing charge history, aging and unmatched cash.
+- Review [docs/architecture.md](docs/architecture.md) for roles, data boundaries, and scale limits. Follow [docs/roadmap.md](docs/roadmap.md) for the remaining operations and communications milestones.

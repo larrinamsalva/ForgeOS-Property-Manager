@@ -32,6 +32,18 @@ const tableNames = [
   'invoices',
   'invoice_revisions',
   'billing_ledger_entries',
+  'collection_policies',
+  'invoice_issues',
+  'manual_payments',
+  'payment_events',
+  'deposit_accounts',
+  'deposit_events',
+  'collection_receipts',
+  'late_fee_assessments',
+  'late_fee_waivers',
+  'account_notes',
+  'reconciliations',
+  'reconciliation_voids',
 ];
 const columns = new Map();
 for (const table of tableNames)
@@ -141,6 +153,12 @@ async function seed() {
   });
   return {
     ...a,
+    customerId: (
+      await db.query('select id from customers where property_id=$1 order by id limit 1', [a.property])
+    ).rows[0].id,
+    stayId: (
+      await db.query('select id from occupancy_stays where property_id=$1 order by id limit 1', [a.property])
+    ).rows[0].id,
     siteIds: (
       await db.query('select id from sites_units where property_id=$1 order by label limit 2', [a.property])
     ).rows.map((r) => r.id),
@@ -262,7 +280,18 @@ const server = createServer(async (request, response) => {
     response.writeHead(status, { 'Content-Type': 'application/json', ...headers });
     response.end(
       JSON.stringify(data, (key, value) =>
-        ['starts_on', 'ends_on', 'planned_ends_on', 'due_on'].includes(key) && typeof value === 'string'
+        [
+          'starts_on',
+          'ends_on',
+          'planned_ends_on',
+          'due_on',
+          'issued_on',
+          'received_on',
+          'effective_on',
+          'assessed_on',
+          'follow_up_on',
+          'promised_on',
+        ].includes(key) && typeof value === 'string'
           ? value.slice(0, 10)
           : value
       )
@@ -415,6 +444,10 @@ const server = createServer(async (request, response) => {
           billing_command: ['command', 'payload'],
           billing_sources: ['org'],
           billing_statement: ['invoice_id'],
+          collections_command: ['command', 'payload'],
+          collection_accounts: ['org'],
+          collection_summary: ['org'],
+          collection_receipt: ['receipt_id'],
           submit_meter_reading: ['payload'],
           complete_meter_photo: ['photo'],
           meter_occupancy: ['org'],
@@ -437,6 +470,10 @@ const server = createServer(async (request, response) => {
             'billing_command',
             'billing_sources',
             'billing_statement',
+            'collections_command',
+            'collection_accounts',
+            'collection_summary',
+            'collection_receipt',
             'submit_meter_reading',
             'meter_occupancy',
             'report_meter_conflict',

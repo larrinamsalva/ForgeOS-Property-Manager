@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BillingSnapshot } from './billing-domain';
-async function rows(client: SupabaseClient, table: string, org: string) {
+export async function rows(client: SupabaseClient, table: string, org: string) {
   const result: Record<string, unknown>[] = [];
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await client
@@ -25,7 +25,11 @@ export async function loadBillingSnapshot(client: SupabaseClient, org: string): 
     'billing_ledger_entries',
   ];
   const all = await Promise.all(names.map((name) => rows(client, name, org)));
-  const { data: sources, error } = await client.rpc('billing_sources', { org });
+  const [{ data: sources, error }, { data: accounts, error: accountError }] = await Promise.all([
+    client.rpc('billing_sources', { org }),
+    client.rpc('collection_accounts', { org }),
+  ]);
+  if (accountError) throw new Error('Account balances unavailable.');
   if (error) throw new Error('Register evidence unavailable.');
   // API bigint values are safe within schema limits; financial consumers use strings/BigInt.
   for (const i of [1, 4, 5])
@@ -40,6 +44,7 @@ export async function loadBillingSnapshot(client: SupabaseClient, org: string): 
     revisions: all[4],
     ledger: all[5],
     sources,
+    accounts,
   } as unknown as BillingSnapshot;
 }
 

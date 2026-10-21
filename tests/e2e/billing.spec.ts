@@ -189,7 +189,7 @@ test('approved meter captures become a traceable invoice, PDF, credit, reversal 
   );
   const ledgerDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export ledger', exact: true }).click();
-  expect((await ledgerDownload).suggestedFilename()).toContain('internal-unissued');
+  expect((await ledgerDownload).suggestedFilename()).toContain('charge-ledger');
   await page.getByRole('button', { name: 'Invoices', exact: true }).click();
   await page.getByRole('button', { name: 'INV-000001', exact: true }).click();
   await page.getByRole('button', { name: 'Void invoice', exact: true }).click();
@@ -198,7 +198,7 @@ test('approved meter captures become a traceable invoice, PDF, credit, reversal 
     .fill('Fictional invoice replaced after review');
   await submit(page, 'Void invoice');
   await page.getByRole('button', { name: 'Customer ledger', exact: true }).click();
-  await expect(page.getByText('Internal balance $0.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('Charges after credits $0.00', { exact: true })).toBeVisible();
   const final = (await (
     await page.request.get(`/api/billing?organization=${seed.scope.organization_id}`)
   ).json()) as BillingSnapshot;

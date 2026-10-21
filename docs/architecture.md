@@ -1,4 +1,4 @@
-# ForgeOS architecture — Milestones 1–2
+# ForgeOS architecture — Milestones 1–5
 
 ForgeOS stores property records in a dedicated Supabase PostgreSQL database. Next.js App Router supplies the authenticated UI and JSON mutation endpoint. The app uses React, strict TypeScript, Tailwind, explicit accessible CSS components, Lucide icons, Zod validation, and the Supabase SSR package. Dependencies and the lockfile are pinned. TypeScript uses the supported 6.x API because the current Next.js lint integration does not support TypeScript 7.
 
@@ -11,7 +11,7 @@ ForgeOS stores property records in a dedicated Supabase PostgreSQL database. Nex
 5. PostgreSQL policies, composite foreign keys, triggers, and exclusion constraints enforce authorization and integrity. No service-role key is used.
 6. A successful mutation refreshes the server data. Failures preserve the form and show a safe error.
 
-Personal data is never written to localStorage; only the light/dark theme preference is stored there. Offline meter entry is not part of this milestone. Authenticated responses are private and not cached. Database failures produce an error screen rather than misleading zero totals.
+Personal data is never written to localStorage; only the light/dark theme preference is stored there. Offline meter entry is isolated in the encrypted tablet reader; financial screens remain online only. Authenticated responses are private and not cached. Database failures produce an error screen rather than misleading zero totals.
 
 ## Current entities
 
@@ -28,7 +28,7 @@ Personal data is never written to localStorage; only the light/dark theme prefer
 | lease_terms              | Immutable reviewed agreement terms, renewals and void corrections                            |
 | audit_events             | Append-only actor, timestamp, and before/after record history                                |
 
-All 25 public application tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
+All 37 public application tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
 
 Customers are property-scoped in this release to keep staff access explicit. A later cross-property customer identity model should add an effective-dated customer/property relationship and a reviewed migration, rather than moving or rewriting historical records. Separate vehicle/occupant entities, general document uploads and payment processing remain later work. Supervised billing is implemented in Milestone 4. Meter collection and private photographs are implemented in Milestone 3.
 
@@ -100,3 +100,15 @@ Calculation requires complete effective rates and continuous dated meter assignm
 Property-first row locks serialize policy/rate/event changes, meter reviews and billing. A client operation UUID plus exact actor/payload comparison makes successful retries idempotent. Exclusion constraints reserve rent dates and actual meter intervals even for drafts. Refreshing appends a revision and atomically re-reserves claims. Approval rebuilds the deterministic calculation and compares the full JSON value; changed sources force an explicit refreshed review. Approval preserves that snapshot and blocks further reviews/register-event changes for readings used by an approved invoice. Voiding releases claims and appends a reversal of the remaining internal balance. Credits are bounded by that balance; a credit reversal is an exact, unique inverse. No existing ledger entry or revision is updated/deleted by the application.
 
 PDF and printable routes verify the ordinary session and RLS, then read header/revision/ledger in one database statement snapshot to avoid mixing concurrent versions; responses are private/no-store. PDF generation runs only on the server using pdf-lib/fontkit and pinned Noto Sans Latin font files from the licensed dependency. Unsupported characters return a printable-statement fallback. No finance data enters the tablet worker, IndexedDB or a public asset cache. Statements clearly distinguish draft, approved/unissued and voided states. Current balances are internal approvals and credits, not issued customer receivables or payment history; payments/deposits/aging remain Milestone 5. See the [Milestone 4 report](phase-4-report.md) for limits and acceptance evidence.
+
+## Milestone 5 financial boundaries
+
+Manual payment headers and append-only events produce available customer funds and invoice allocations. Deposit accounts/events produce a separate held liability. Approved invoice charges/credits minus payment/deposit allocations produce the current outstanding amount. `invoice_issues` retains explicit issue/due/grace policy snapshots while the original billing status remains approved to protect its source records. Derived collection statuses include paid, partial and overdue; only issued outstanding balances enter current aging.
+
+`/api/collections` and the PDF/print receipt routes use the ordinary verified session and RLS. Twelve new public tables grant select only to authorized financial roles; transaction functions implement writes with property-first locks, exact actor/payload retry IDs and current membership checks. Four additional private tables hold retries, receipt counters and active fee/reconciliation source claims. There are 37 public and 11 private tables in total. The private schema remains unexposed.
+
+Receipt creation freezes the customer/property/source snapshot. Reversals and voids append records and update derived state without rewriting originals. A credit cannot consume amounts already allocated, and a paid invoice cannot be voided until its allocations are reversed. Late fees are separate manually approved/issued drafts, bounded by owner policy, with stale-source checks and retained waiver credits. No automatic billing/late-fee/reminder process runs.
+
+Reconciliation snapshots select immutable cash sources rather than treating allocations as cash. Unique active claims prevent double matching; overlapping periods are refused and adjacent same-method balances carry forward. Older unmatched entries can be carried into later reviews. Variances remain explicit discrepancies; no balancing money is invented. Void records release claims while retaining the old review.
+
+Optional tenant and SaaS processor contracts are separate and disabled. No payment SDK, merchant account, card fields, checkout endpoint or webhook has been provisioned. Detailed workflows, permissions, limits and pending hosted acceptance: [phase-5-report.md](phase-5-report.md).
