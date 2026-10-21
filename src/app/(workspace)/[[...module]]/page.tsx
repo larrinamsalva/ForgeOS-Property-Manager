@@ -16,7 +16,17 @@ export default async function Page({
   const section = module[0] ?? 'overview';
   if (
     module.length > 1 ||
-    !['overview', 'properties', 'sites', 'customers', 'occupancy', 'map', 'access'].includes(section)
+    ![
+      'overview',
+      'properties',
+      'sites',
+      'customers',
+      'occupancy',
+      'map',
+      'access',
+      'reservations',
+      'leases',
+    ].includes(section)
   )
     notFound();
   const client = await serverClient();

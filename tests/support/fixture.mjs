@@ -12,6 +12,8 @@ const tableNames = [
   'sites_units',
   'customers',
   'occupancy_stays',
+  'reservations',
+  'lease_terms',
   'audit_events',
 ];
 const columns = new Map();
@@ -126,7 +128,9 @@ const server = createServer(async (request, response) => {
     response.writeHead(status, { 'Content-Type': 'application/json', ...headers });
     response.end(
       JSON.stringify(data, (key, value) =>
-        ['starts_on', 'ends_on'].includes(key) && typeof value === 'string' ? value.slice(0, 10) : value
+        ['starts_on', 'ends_on', 'planned_ends_on'].includes(key) && typeof value === 'string'
+          ? value.slice(0, 10)
+          : value
       )
     );
   }
@@ -196,13 +200,24 @@ const server = createServer(async (request, response) => {
           grant_property_access: ['organization', 'property', 'member', 'member_role'],
           revoke_property_access: ['organization', 'property', 'member'],
           complete_stay: ['stay', 'departure'],
+          check_in_reservation: ['booking', 'arrival', 'details'],
+          complete_stay_checklist: ['stay', 'departure', 'details'],
+          change_stay_plan: ['stay', 'departure', 'reason'],
+          transfer_stay: ['stay', 'destination', 'transfer_on', 'rate_cents', 'reason'],
         }[name];
         if (!args) throw new Error('Unknown RPC');
         const result = await tx.query(
           `select public.${name}(${args.map((_, i) => `$${i + 1}`).join(',')}) as result`,
-          args.map((k) => body[k])
+          args.map((k) =>
+            body[k] !== null && typeof body[k] === 'object' ? JSON.stringify(body[k]) : body[k]
+          )
         );
-        return { rpc: true, value: name === 'create_organization' ? result.rows[0].result : null };
+        return {
+          rpc: true,
+          value: ['create_organization', 'check_in_reservation', 'transfer_stay'].includes(name)
+            ? result.rows[0].result
+            : null,
+        };
       }
       const table = parts[2];
       const valid = columns.get(table);
@@ -240,8 +255,15 @@ const server = createServer(async (request, response) => {
           params
         );
       }
-      const [orderColumn, direction] = (url.searchParams.get('order') ?? 'id.asc').split('.');
-      const order = ` order by ${quote(orderColumn)} ${direction === 'desc' ? 'desc' : 'asc'}`;
+      const order =
+        ' order by ' +
+        (url.searchParams.get('order') ?? 'id.asc')
+          .split(',')
+          .map((value) => {
+            const [column, direction] = value.split('.');
+            return `${quote(column)} ${direction === 'desc' ? 'desc' : 'asc'}`;
+          })
+          .join(',');
       const limit = Math.max(0, Math.min(1000, Number(url.searchParams.get('limit') ?? 1000) || 1000));
       const offset = Math.max(0, Math.min(100000, Number(url.searchParams.get('offset') ?? 0) || 0));
       return tx.query(

@@ -9,6 +9,8 @@ import type {
   Site,
   Snapshot,
   Stay,
+  Reservation,
+  LeaseTerm,
 } from './domain';
 async function allRows<T>(client: SupabaseClient, table: string, organizationId?: string): Promise<T[]> {
   const rows: T[] = [];
@@ -44,17 +46,22 @@ export async function loadSnapshot(
       sites: [],
       customers: [],
       stays: [],
+      reservations: [],
+      leaseTerms: [],
       userId: user.id,
       email: user.email ?? '',
     };
-  const [memberships, propertyMemberships, properties, sites, customers, stays] = await Promise.all([
-    allRows<Membership>(client, 'organization_memberships', organizationId),
-    allRows<PropertyMembership>(client, 'property_memberships', organizationId),
-    allRows<Property>(client, 'properties', organizationId),
-    allRows<Site>(client, 'sites_units', organizationId),
-    allRows<Customer>(client, 'customers', organizationId),
-    allRows<Stay>(client, 'occupancy_stays', organizationId),
-  ]);
+  const [memberships, propertyMemberships, properties, sites, customers, stays, reservations, leaseTerms] =
+    await Promise.all([
+      allRows<Membership>(client, 'organization_memberships', organizationId),
+      allRows<PropertyMembership>(client, 'property_memberships', organizationId),
+      allRows<Property>(client, 'properties', organizationId),
+      allRows<Site>(client, 'sites_units', organizationId),
+      allRows<Customer>(client, 'customers', organizationId),
+      allRows<Stay>(client, 'occupancy_stays', organizationId),
+      allRows<Reservation>(client, 'reservations', organizationId),
+      allRows<LeaseTerm>(client, 'lease_terms', organizationId),
+    ]);
   return {
     organizations,
     organizationId,
@@ -64,6 +71,8 @@ export async function loadSnapshot(
     sites,
     customers,
     stays,
+    reservations,
+    leaseTerms,
     userId: user.id,
     email: user.email ?? '',
   };

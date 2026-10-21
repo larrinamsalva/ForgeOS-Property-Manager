@@ -1,6 +1,6 @@
 'use client';
 import { useState, type FormEvent } from 'react';
-import type { Property, Snapshot } from '@/lib/domain';
+import type { Property, Snapshot, Stay } from '@/lib/domain';
 import { customerName, dateAtProperty, money } from '@/lib/domain';
 import { useHydrated } from '@/lib/use-hydrated';
 export interface Field {
@@ -158,6 +158,53 @@ export const customerFields = (properties: Property[]): Field[] => [
   },
   { name: 'notes', label: 'Authorized staff notes', type: 'textarea' },
 ];
+export const billingOptions = ['nightly', 'weekly', 'monthly', 'custom'].map((value) => ({
+  value,
+  label: value[0].toUpperCase() + value.slice(1),
+}));
+export const arrivalChecklistFields: Field[] = [
+  {
+    name: 'occupants',
+    label: 'Occupants',
+    type: 'textarea',
+    help: 'Names or an authorized occupant reference.',
+  },
+  { name: 'arrival_condition', label: 'Move-in condition', type: 'textarea' },
+  {
+    name: 'initial_meter_notes',
+    label: 'Initial meter handover notes',
+    type: 'textarea',
+    help: 'Reference notes for your current process. Verified meter readings arrive in the tablet milestone.',
+  },
+  {
+    name: 'document_reference',
+    label: 'Agreement or document reference',
+    help: 'Reference an authorized document in your existing document system.',
+  },
+];
+export function moveOutFields(stay: Stay, timezone: string): Field[] {
+  return [
+    {
+      name: 'ends_on',
+      label: 'Departure date',
+      type: 'date',
+      required: true,
+      min: stay.starts_on,
+      max: dateAtProperty(timezone),
+      default: dateAtProperty(timezone),
+    },
+    { name: 'departure_condition', label: 'Move-out condition', type: 'textarea' },
+    { name: 'maintenance_needed', label: 'Maintenance follow-up needed', type: 'checkbox' },
+    { name: 'final_meter_notes', label: 'Final meter handover notes', type: 'textarea' },
+    {
+      name: 'deposit_notes',
+      label: 'Billing and deposit handover notes',
+      type: 'textarea',
+      help: 'Record your invoice/deposit review in your current billing system; these notes are retained with this stay.',
+    },
+    { name: 'handover_notes', label: 'Other departure notes', type: 'textarea' },
+  ];
+}
 export function stayFields(snapshot: Snapshot, propertyId: string): Field[] {
   const property = snapshot.properties.find((p) => p.id === propertyId);
   return [
@@ -196,11 +243,39 @@ export function stayFields(snapshot: Snapshot, propertyId: string): Field[] {
     },
     {
       name: 'agreed_rate',
-      label: 'Agreed monthly rent ($)',
+      label: 'Agreed rate ($)',
       required: true,
       default: '0.00',
       help: 'Stored in cents. Billing is a later milestone.',
     },
+    {
+      name: 'billing_period',
+      label: 'Billing period',
+      type: 'select',
+      options: billingOptions,
+      default: 'monthly',
+      required: true,
+    },
+    {
+      name: 'planned_ends_on',
+      label: 'Planned departure',
+      type: 'date',
+      min: dateAtProperty(property?.timezone ?? 'America/Los_Angeles'),
+      help: 'An open-ended stay blocks future bookings until you set a departure plan.',
+    },
+    { name: 'deposit_required', label: 'Deposit requirement ($)', default: '0.00', required: true },
+    {
+      name: 'guest_count',
+      label: 'Guest count',
+      type: 'number',
+      min: '1',
+      max: '99',
+      step: '1',
+      default: '1',
+      required: true,
+    },
+    { name: 'vehicle_details', label: 'Vehicle / RV details', type: 'textarea' },
+    ...arrivalChecklistFields,
     { name: 'notes', label: 'Stay notes', type: 'textarea' },
   ];
 }
@@ -296,6 +371,7 @@ export function RecordForm({
                       id={fieldId}
                       name={field.name}
                       rows={3}
+                      required={field.required}
                       defaultValue={String(value)}
                       maxLength={4000}
                     />

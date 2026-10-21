@@ -113,7 +113,7 @@ test('owner creates a persistent property portfolio, moves a customer in and out
     .getByRole('combobox', { name: 'Site / unit', exact: true })
     .selectOption({ label: 'RV-01 · $650.10 / month' });
   await page.getByRole('combobox', { name: 'Customer', exact: true }).selectOption({ label: 'River Sample' });
-  await page.getByLabel('Agreed monthly rent ($)').fill('650.10');
+  await page.getByLabel('Agreed rate ($)').fill('650.10');
   const responsePromise = page.waitForResponse(
     (r) => r.url().endsWith('/api/records') && r.request().method() === 'POST'
   );
@@ -212,6 +212,10 @@ test('restricted staff cannot read private records or forge a property write, an
   await expect(page.getByRole('heading', { name: 'Your role has limited access' })).toBeVisible();
   await nav(page, 'Customers & tenants');
   await expect(page.locator('body')).not.toContainText('river@example.com');
+  await nav(page, 'Reservations');
+  await expect(page.getByRole('heading', { name: 'Your role has limited access' })).toBeVisible();
+  await nav(page, 'Leases & renewals');
+  await expect(page.getByRole('heading', { name: 'Your role has limited access' })).toBeVisible();
   const data = {
     entity: 'property',
     action: 'create',

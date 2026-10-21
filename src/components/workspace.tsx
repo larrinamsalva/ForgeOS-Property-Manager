@@ -18,6 +18,7 @@ import {
   LogOut,
   ArrowUpRight,
   CalendarDays,
+  FileText,
   Gauge,
   Receipt,
   Wrench,
@@ -46,9 +47,11 @@ import {
   siteFields,
   customerFields,
   stayFields,
+  moveOutFields,
   type Field,
 } from './record-form';
 import { Badge, Empty, Overview, SiteMap, StayHistory } from './workspace-parts';
+import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'properties', label: 'Properties', icon: Building2 },
@@ -56,9 +59,10 @@ const navigation = [
   { id: 'sites', label: 'Sites & units', icon: Caravan },
   { id: 'customers', label: 'Customers & tenants', icon: Users },
   { id: 'occupancy', label: 'Occupancy & history', icon: KeyRound },
+  { id: 'reservations', label: 'Reservations', icon: CalendarDays },
+  { id: 'leases', label: 'Leases & renewals', icon: FileText },
 ];
 const upcoming = [
-  { label: 'Reservations & leases', icon: CalendarDays, milestone: 2 },
   { label: 'Tablet meter reader', icon: Gauge, milestone: 3 },
   { label: 'Utilities & billing', icon: Receipt, milestone: 4 },
   { label: 'Payments & receipts', icon: Receipt, milestone: 5 },
@@ -71,6 +75,7 @@ type Editor =
   | { type: Entity; id?: string }
   | { type: 'stay'; property: string; site?: string }
   | { type: 'moveout'; id: string }
+  | { type: 'plan' | 'transfer'; id: string }
   | { type: 'archive'; entity: Entity; id: string; restore?: boolean }
   | { type: 'detail'; entity: Entity; id: string }
   | { type: 'access' }
@@ -131,7 +136,8 @@ export function Workspace({
       snapshot.stays,
       dateAtProperty(
         snapshot.properties.find((p) => p.id === site.property_id)?.timezone ?? 'America/Los_Angeles'
-      )
+      ),
+      snapshot.reservations
     );
   const match = (value: string) => value.toLowerCase().includes(search.toLowerCase().trim());
   const visibleSites = sites
@@ -307,8 +313,8 @@ export function Workspace({
       return (
         <Modal title="Assign a customer to a site" onClose={close}>
           <p className="muted">
-            Choose an existing customer at this property. Future reservations and lease documents arrive in
-            Milestone 2.
+            Choose an existing customer at this property and record the move-in handover. Use Reservations to
+            plan future arrivals.
           </p>
           <RecordForm
             fields={stayFields(snapshot, editor.property)}
@@ -335,20 +341,91 @@ export function Workspace({
             history will be retained and the site will be marked in preparation.
           </p>
           <RecordForm
-            fields={[
-              {
-                name: 'ends_on',
-                label: 'Departure date',
-                type: 'date',
-                required: true,
-                min: stay.starts_on,
-                max: dateAtProperty(property?.timezone ?? 'America/Los_Angeles'),
-                default: dateAtProperty(property?.timezone ?? 'America/Los_Angeles'),
-              },
-            ]}
+            fields={moveOutFields(stay, property?.timezone ?? 'America/Los_Angeles')}
             submit="Confirm move-out"
             onCancel={close}
             onSave={(v) => save('stay', 'moveout', v, stay.id).then(() => {})}
+          />
+        </Modal>
+      );
+    }
+    if (editor.type === 'plan' || editor.type === 'transfer') {
+      const stay = snapshot.stays.find((s) => s.id === editor.id)!;
+      const property = snapshot.properties.find((p) => p.id === stay.property_id)!;
+      const currentSite = snapshot.sites.find((s) => s.id === stay.site_id)!;
+      const today = dateAtProperty(property.timezone);
+      const fields: Field[] =
+        editor.type === 'plan'
+          ? [
+              {
+                name: 'planned_ends_on',
+                label: 'Planned departure',
+                type: 'date',
+                min: today,
+                default: stay.planned_ends_on ?? '',
+                help: 'Leaving this empty makes the stay open-ended and blocks later bookings.',
+              },
+              { name: 'reason', label: 'Reason for departure change', type: 'textarea', required: true },
+            ]
+          : [
+              {
+                name: 'destination',
+                label: 'Destination site / unit',
+                type: 'select',
+                required: true,
+                options: snapshot.sites
+                  .filter(
+                    (s) =>
+                      s.property_id === stay.property_id &&
+                      s.id !== stay.site_id &&
+                      s.kind === currentSite.kind &&
+                      !s.archived_at &&
+                      s.physical_status === 'ready' &&
+                      !snapshot.stays.some((o) => o.site_id === s.id && !o.ends_on)
+                  )
+                  .map((s) => ({ value: s.id, label: s.label })),
+              },
+              {
+                name: 'transfer_on',
+                label: 'Transfer date',
+                type: 'date',
+                required: true,
+                min: stay.starts_on,
+                max: today,
+                default: today,
+              },
+              {
+                name: 'agreed_rate',
+                label: 'New agreed rate ($)',
+                required: true,
+                default: moneyInput(stay.agreed_rate_cents),
+                help: `Rate per ${stay.billing_period}.`,
+              },
+              {
+                name: 'reason',
+                label: 'Transfer reason and condition notes',
+                type: 'textarea',
+                required: true,
+              },
+            ];
+      return (
+        <Modal
+          title={editor.type === 'plan' ? 'Update departure plan' : 'Transfer to another site'}
+          onClose={close}
+        >
+          <p>
+            {customerName(snapshot.customers.find((c) => c.id === stay.customer_id))} · {currentSite.label}
+          </p>
+          <p className="muted">
+            {editor.type === 'plan'
+              ? 'Confirmed bookings and other stays are checked before extending this stay.'
+              : 'The earlier stay will close and remain in history. The new stay starts on the transfer date after availability is checked.'}
+          </p>
+          <RecordForm
+            fields={fields}
+            submit={editor.type === 'plan' ? 'Save departure plan' : 'Confirm transfer'}
+            onCancel={close}
+            onSave={(v) => save('stay', editor.type, v, stay.id).then(() => {})}
           />
         </Modal>
       );
@@ -505,6 +582,12 @@ export function Workspace({
         </div>
         <h3>Occupancy history</h3>
         <StayHistory stays={history} snapshot={snapshot} />
+        {(editor.entity === 'site' || editor.entity === 'customer') && (
+          <PlanningHistory
+            snapshot={snapshot}
+            {...(editor.entity === 'customer' ? { customerId: record.id } : { siteId: record.id })}
+          />
+        )}
         <p className="future-caption">
           Meters, invoices, documents, and maintenance connect in later milestones.
         </p>
@@ -571,7 +654,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Foundation release<small>Milestone 1 of 7</small>
+              Planning release<small>Milestone 2 of 7</small>
             </div>
           </div>
         </div>
@@ -623,9 +706,13 @@ export function Workspace({
                         ? 'Track who is here. Preserve every stay.'
                         : section === 'map'
                           ? 'A practical view of your property, site by site.'
-                          : section === 'access'
-                            ? 'Clear roles. The right access for every person.'
-                            : 'One place for all of your locations.'}
+                          : section === 'reservations'
+                            ? 'Know what is booked. Keep every arrival organized.'
+                            : section === 'leases'
+                              ? 'Clear agreement terms and a lasting renewal history.'
+                              : section === 'access'
+                                ? 'Clear roles. The right access for every person.'
+                                : 'One place for all of your locations.'}
               </p>
             </div>
             <fieldset className="page-actions" disabled={isPending}>
@@ -745,6 +832,13 @@ export function Workspace({
               addProperty={manageOrg ? () => setEditor({ type: 'property' }) : undefined}
               viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
             />
+          ) : section === 'reservations' || section === 'leases' ? (
+            <PlanningWorkspace
+              snapshot={snapshot}
+              propertyId={propertyId}
+              section={section}
+              navigationPending={isPending}
+            />
           ) : section === 'properties' ? (
             <section className="panel">
               {tools('Search properties')}
@@ -802,13 +896,19 @@ export function Workspace({
                   Status
                   <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
                     <option value="all">All statuses</option>
-                    {['available', 'occupied', 'out_of_service', 'blocked', 'in_preparation', 'archived'].map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {s.replaceAll('_', ' ')}
-                        </option>
-                      )
-                    )}
+                    {[
+                      'available',
+                      'reserved',
+                      'occupied',
+                      'out_of_service',
+                      'blocked',
+                      'in_preparation',
+                      'archived',
+                    ].map((s) => (
+                      <option key={s} value={s}>
+                        {s.replaceAll('_', ' ')}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label>
@@ -985,6 +1085,8 @@ export function Workspace({
                   if (stay && canEditProperty(snapshot, stay.property_id, true))
                     setEditor({ type: 'moveout', id });
                 }}
+                onPlan={(id) => setEditor({ type: 'plan', id })}
+                onTransfer={(id) => setEditor({ type: 'transfer', id })}
               />
             </section>
           ) : section === 'map' ? (
