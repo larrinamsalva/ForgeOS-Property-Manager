@@ -2769,3 +2769,187 @@ table summary {
   max-width: 480px;
   margin: 20px 0;
 }
+.billing-workspace .panel + .panel {
+  margin-top: 24px;
+}
+.billing-form-row {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin: 16px 0;
+}
+.billing-form-row .field {
+  flex: 1;
+  min-width: 0;
+}
+.billing-form-row button {
+  margin-bottom: 1px;
+}
+.billing-rate-fields {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.billing-extra-fields {
+  margin-top: 24px;
+}
+.billing-actions {
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.billing-evidence {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.billing-evidence small {
+  display: block;
+  margin-top: 8px;
+}
+.billing-status {
+  display: inline-block;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.source-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: 16px;
+  max-height: 450px;
+  overflow: auto;
+}
+.statement-page {
+  max-width: 1000px;
+  margin: 32px auto;
+  padding: 20px;
+}
+.statement-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.statement {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 40px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.statement h1 {
+  font-size: 28px;
+}
+.statement h2 {
+  margin-top: 30px;
+}
+.statement p {
+  margin: 12px 0;
+}
+.statement-status {
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  padding: 14px;
+}
+.statement-total {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 24px 0;
+}
+.statement-evidence {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+.preserve-lines {
+  white-space: pre-line;
+}
+@media (max-width: 600px) {
+  .billing-form-row {
+    flex-wrap: wrap;
+    align-items: start;
+  }
+  .billing-form-row .field {
+    flex-basis: 45%;
+  }
+  .billing-form-row button {
+    margin-bottom: 8px;
+  }
+  .statement {
+    padding: 20px;
+  }
+  .statement-page {
+    padding: 12px;
+    margin: 12px auto;
+  }
+  .statement-actions {
+    flex-wrap: wrap;
+  }
+}
+@media print {
+  :root {
+    color-scheme: light;
+    --text: #17243b;
+    --surface: #fff;
+    --surface-2: #f7f9fc;
+    --line: #d0d5dc;
+  }
+  body {
+    background: #fff;
+    color: #17243b;
+    font-size: 10pt;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+  .statement-page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  .statement {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+  .statement .table-wrap {
+    overflow: visible;
+  }
+  .statement table {
+    min-width: 0;
+    width: 100%;
+  }
+  .statement table th,
+  .statement table td {
+    white-space: normal;
+    padding: 8px;
+  }
+  .statement thead {
+    display: table-header-group;
+  }
+  .statement tr {
+    break-inside: avoid;
+  }
+  .statement h2,
+  .statement h3 {
+    break-after: avoid;
+  }
+  .source-json {
+    max-height: none;
+    overflow: visible;
+    font-size: 8pt;
+  }
+  .print-expanded {
+    display: none !important;
+  }
+  @page {
+    size: letter;
+    margin: 16mm;
+  }
+}

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import {
@@ -52,6 +53,9 @@ import {
 } from './record-form';
 import { Badge, Empty, Overview, SiteMap, StayHistory } from './workspace-parts';
 import { MeterWorkspace } from './meter-workspace';
+const BillingWorkspace = dynamic(() =>
+  import('./billing-workspace').then((module) => module.BillingWorkspace)
+);
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
@@ -64,9 +68,9 @@ const navigation = [
   { id: 'reservations', label: 'Reservations', icon: CalendarDays },
   { id: 'leases', label: 'Leases & renewals', icon: FileText },
   { id: 'meters', label: 'Meters & reader', icon: Gauge },
+  { id: 'billing', label: 'Utilities & billing', icon: Receipt },
 ];
 const upcoming = [
-  { label: 'Utilities & billing', icon: Receipt, milestone: 4 },
   { label: 'Payments & receipts', icon: Receipt, milestone: 5 },
   { label: 'Maintenance', icon: Wrench, milestone: 6 },
   { label: 'Inventory & operations', icon: Package, milestone: 6 },
@@ -604,7 +608,8 @@ export function Workspace({
           />
         )}
         <p className="future-caption">
-          Meters, invoices, documents, and maintenance connect in later milestones.
+          Meter captures and billing connect to each stay. Documents and maintenance arrive in later
+          milestones.
         </p>
       </Modal>
     );
@@ -669,7 +674,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Meter reader release<small>Milestone 3 of 7</small>
+              Utilities & billing release<small>Milestone 4 of 7</small>
             </div>
           </div>
         </div>
@@ -849,6 +854,8 @@ export function Workspace({
             />
           ) : section === 'meters' ? (
             <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
+          ) : section === 'billing' ? (
+            <BillingWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'reservations' || section === 'leases' ? (
             <PlanningWorkspace
               snapshot={snapshot}
