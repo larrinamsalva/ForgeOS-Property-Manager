@@ -26,6 +26,12 @@ const tableNames = [
   'meter_photos',
   'meter_sync_conflicts',
   'meter_conflict_resolutions',
+  'billing_policies',
+  'utility_rate_plans',
+  'meter_register_events',
+  'invoices',
+  'invoice_revisions',
+  'billing_ledger_entries',
 ];
 const columns = new Map();
 for (const table of tableNames)
@@ -140,6 +146,110 @@ async function seed() {
     ).rows.map((r) => r.id),
   };
 }
+// Test clock simulation only. Both captures and reviews below use the production RPCs.
+async function billingBaseline() {
+  const property = (
+    await db.query(
+      "select id,organization_id from properties where name='Pine Creek RV Park' order by id limit 1"
+    )
+  ).rows[0];
+  const site = (
+    await db.query('select id from sites_units where property_id=$1 order by label limit 1', [property.id])
+  ).rows[0].id;
+  const scope = { organization_id: property.organization_id, property_id: property.id };
+  const date = (value) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(value);
+  const captured = new Date(Date.now() - 86400000).toISOString();
+  const starts = date(new Date(captured));
+  const ends = date(new Date());
+  const until = date(new Date(Date.now() + 86400000));
+  const command = (action, payload) =>
+    asUser(
+      db,
+      identities.owner,
+      async (tx) =>
+        (
+          await tx.query('select meter_command($1,$2::jsonb) as id', [
+            action,
+            JSON.stringify({ ...scope, ...payload }),
+          ])
+        ).rows[0].id
+    );
+  const meter = await command('new_meter', {
+    label: 'Billing electric meter',
+    utility: 'electric',
+    serial_number: 'TEST-BILLING-ELECTRIC',
+    unit: 'kWh',
+    register_digits: 6,
+    multiplier: '1',
+    max_delta: null,
+    installed_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    notes: 'Fictional billing test',
+  });
+  const assignment = await command('new_assignment', {
+    meter_id: meter,
+    site_id: site,
+    starts_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  });
+  const baselineRoute = await command('new_route', {
+    label: 'Prior test day',
+    assigned_to: identities.owner,
+    starts_on: starts,
+    ends_on: until,
+    cadence: 'custom',
+    assignments: [assignment],
+  });
+  await db.transaction(async (tx) => {
+    await tx.exec('set local session_replication_role=replica');
+    await tx.query('update meter_routes set created_at=$1 where id=$2', [captured, baselineRoute]);
+  });
+  const item = (await db.query('select id from meter_route_items where route_id=$1', [baselineRoute])).rows[0]
+    .id;
+  const payload = {
+    ...scope,
+    id: crypto.randomUUID(),
+    route_item_id: item,
+    assignment_id: assignment,
+    captured_at: captured,
+    device_id: crypto.randomUUID(),
+    previous_reading_id: null,
+    previous_review_id: null,
+    value: '10000',
+    kind: 'actual',
+    flag: 'none',
+    notes: 'Fictional previous reading',
+    photo: null,
+  };
+  const reading = await asUser(
+    db,
+    identities.owner,
+    async (tx) =>
+      (await tx.query('select submit_meter_reading($1::jsonb) as id', [JSON.stringify(payload)])).rows[0].id
+  );
+  const review = await command('review', {
+    reading_id: reading,
+    previous_review_id: null,
+    decision: 'accepted',
+    corrected_value: null,
+    reason: 'Prior test day evidence verified',
+  });
+  const route = await command('new_route', {
+    label: 'Closing billing route',
+    assigned_to: identities.owner,
+    starts_on: ends,
+    ends_on: until,
+    cadence: 'custom',
+    assignments: [assignment],
+  });
+  const closingItem = (await db.query('select id from meter_route_items where route_id=$1', [route])).rows[0]
+    .id;
+  return { scope, assignment, reading, review, closingItem, starts, ends };
+}
 const server = createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader(
@@ -152,7 +262,7 @@ const server = createServer(async (request, response) => {
     response.writeHead(status, { 'Content-Type': 'application/json', ...headers });
     response.end(
       JSON.stringify(data, (key, value) =>
-        ['starts_on', 'ends_on', 'planned_ends_on'].includes(key) && typeof value === 'string'
+        ['starts_on', 'ends_on', 'planned_ends_on', 'due_on'].includes(key) && typeof value === 'string'
           ? value.slice(0, 10)
           : value
       )
@@ -191,6 +301,10 @@ const server = createServer(async (request, response) => {
     if (url.pathname === '/__test/fail-photo') {
       failPhotoUploads = Number(body.count ?? 1);
       send(200, { ok: true });
+      return;
+    }
+    if (url.pathname === '/__test/billing-baseline') {
+      send(200, await billingBaseline());
       return;
     }
     if (url.pathname === '/__test/seed') {
@@ -298,6 +412,9 @@ const server = createServer(async (request, response) => {
           change_stay_plan: ['stay', 'departure', 'reason'],
           transfer_stay: ['stay', 'destination', 'transfer_on', 'rate_cents', 'reason'],
           meter_command: ['command', 'payload'],
+          billing_command: ['command', 'payload'],
+          billing_sources: ['org'],
+          billing_statement: ['invoice_id'],
           submit_meter_reading: ['payload'],
           complete_meter_photo: ['photo'],
           meter_occupancy: ['org'],
@@ -317,6 +434,9 @@ const server = createServer(async (request, response) => {
             'check_in_reservation',
             'transfer_stay',
             'meter_command',
+            'billing_command',
+            'billing_sources',
+            'billing_statement',
             'submit_meter_reading',
             'meter_occupancy',
             'report_meter_conflict',
