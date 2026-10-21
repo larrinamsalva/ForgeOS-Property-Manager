@@ -1,0 +1,2 @@
+-- Intentionally empty. Never load fictional tenants into a live workspace.
+-- Fictional records are created only by tests/support/fixture.mjs and automated tests.

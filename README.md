@@ -1,2 +1,120 @@
 # ForgeOS-Property-Manager
+
 All-in-one RV park, apartment, and property management operating system.
+
+**One System. Every Site. Total Control.**
+
+This repository contains the Milestone 1 application: a Next.js property workspace backed by a dedicated Supabase PostgreSQL database. The application supports organization onboarding, scoped staff roles, property/site/unit directories, customers, move-in assignments, move-out history, a live operational dashboard, a coordinate-backed site map, CSV export, and safe archive/restore.
+
+The full brief is [MASTER-BUILD-PROMPT.md](MASTER-BUILD-PROMPT.md). The repository remains private and the existing MIT license is unchanged. Development uses feature branches and pull requests; do not merge automatically.
+
+## Current status
+
+Foundation implementation and local verification are described in [docs/phase-1-report.md](docs/phase-1-report.md). A dedicated live Supabase project is not configured by this change, and no hosted website or live customer data is created. Without environment variables the app opens an explicit setup screen. It never substitutes browser-local sample records for a working database.
+
+Future reservations, meter collection, invoices, payments, maintenance, and communications are labeled as upcoming. No live payment collection, late fees, customer notices, or invoice issuance is enabled.
+
+## Run locally
+
+Use Node.js 22 or newer and npm.
+
+```bash
+npm ci
+cp .env.example .env.local
+```
+
+Set these values for a **dedicated ForgeOS project**, never a database from another product:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_me
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Only the publishable key is used. Do not add a service-role key to this app. Never commit `.env.local`, real passwords, tokens, or tenant records.
+
+Apply the foundation migration as described below, then run:
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000. Create an account, confirm its email when required, sign in, and create your organization. The signed-in account becomes that organization's owner. Add a property, then sites/units and customers. Use **Occupancy & history → Assign customer** to record a current or past move-in. Completed move-outs remain in history and mark the site in preparation. Edit its physical availability to Ready before assigning the next occupant.
+
+The **Property view** selector scopes each screen. The site directory supports search, status/section filters, archives, record details, and a CSV download that neutralizes spreadsheet formulas.
+
+## Database setup
+
+The CLI is pinned as a development dependency. Discover commands with `npx supabase --help` and the relevant subcommand's `--help` before using them.
+
+For a new, dedicated hosted Supabase project:
+
+1. Authenticate the CLI with your own account and link this checkout to the confirmed ForgeOS project. Inspect `npx supabase link --help` for current flags. Do not link another application's project.
+2. Inspect the planned migration before applying it:
+
+   ```bash
+   npx supabase db push --linked --dry-run --skip-vault
+   ```
+
+3. After reviewing that it targets the correct dedicated database, apply it:
+
+   ```bash
+   npx supabase db push --linked --skip-vault
+   ```
+
+4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance checklist in [docs/phase-1-report.md](docs/phase-1-report.md). The local PGlite tests do not replace this hosted check.
+
+Alternatively, use a local Supabase stack with Docker. The checked-in `supabase/config.toml` and empty `supabase/seed.sql` are ready for it. Inspect `npx supabase start --help`, start the stack, and use that stack's URL/publishable credentials. Apply pending migrations using the CLI's current migration command. This environment did not have Docker, so the complete local Supabase stack was not exercised.
+
+The migration creates only eight foundation tables, enables RLS on all of them, and grants authenticated access explicitly. `btree_gist` supplies UUID/date-range overlap protection. The private schema must **not** be added to the exposed Data API schemas. Do not run this migration against a shared or unrelated database.
+
+### Auth configuration
+
+In the dedicated Supabase project's Auth settings:
+
+- Set the Site URL to your actual application origin.
+- Allow the exact callback URL, for example `http://localhost:3000/auth/callback`, and later the exact staging/production URLs.
+- Configure email confirmation and an appropriate email provider/rate limits for real users. The UI requires at least 12 characters for new passwords; align hosted Auth password settings accordingly.
+- Test signup, the actual confirmation email, sign-in, session refresh, invalid credentials, and sign-out on the configured project. Email delivery and hosted Auth are not covered by the deterministic local test fixture.
+
+The app uses PKCE and `/auth/callback` to exchange the confirmation code for a session, then redirects to the workspace. It does not accept an arbitrary redirect destination.
+
+### Staff access
+
+Each employee first creates their own account and copies their user ID from **Team & access**. The owner selects **Grant property access**, enters that registered user's ID, and chooses the property and role. This grants access immediately without sending an invitation message. Revoke removes the property assignment; organization owners and administrators retain organization-wide access.
+
+The first account that creates an organization receives the owner role. Organization administrator assignment is an intentional administrative database operation in this milestone; the UI only grants property roles. Future invitations, account recovery UX, and resident access are separate work.
+
+## Verification
+
+```bash
+npm run lint
+npm test
+npm run build
+npm run typecheck
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+
+Unit tests cover money, dates, status derivation, validation, and safe CSV. Database integration tests apply the actual migration to embedded PostgreSQL with `btree_gist`, switch authenticated roles, and exercise RLS, conflicts, archives, history, revocation, and audit restrictions. Browser tests run desktop, tablet, and phone viewports, both themes, accessible dialogs, and the complete UI → API → PostgreSQL path through a test-only HTTP fixture. They create fictional records only. Browser Auth responses are deterministic; they are not evidence of hosted Supabase Auth or production deployment.
+
+The fixture binds to loopback and is never imported by application routes. The browser test process supplies its own public test environment values. Do not deploy `tests/support/fixture.mjs`. Optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and JSON-array `PLAYWRIGHT_CHROMIUM_ARGS` environment values support a preinstalled local test browser.
+
+GitHub Actions repeats lint, PostgreSQL tests, build, type checks, and Playwright tests for pull requests. It uses pinned official action commit IDs and read-only repository permissions. No production secrets are needed.
+
+## Deployment
+
+Deploy only after reviewing/merging the PR and completing dedicated database setup. A standard Next.js-compatible host such as Vercel can run this project with `npm run build`; the Node server uses `npm start`. Keep the repository and preview access private. Do not change the audience during deployment.
+
+Use separate Supabase projects and environment values for development, staging, and production. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_URL` in the selected environment. Public values are embedded at build time, so rebuild after changes. Configure the exact callback origin in the matching Supabase Auth project. Use HTTPS outside local development.
+
+Apply reviewed database migrations to the matching environment before releasing code that depends on them. Do not point previews at production tenant data. A deployment URL is not supplied by this PR because no deployment was performed.
+
+## Record safety and operations
+
+- Archive instead of delete. Active stays block archiving a property, site, or customer. Restore keeps the same identity.
+- Contact edits are auditable. Completed stays, agreed rent, and row ownership cannot be silently rewritten.
+- No customer data goes into browser localStorage. The theme preference is the only app data saved there.
+- Before real use, configure database backups/retention and rehearse a restore in staging. Archive is not a backup. Retain migration files alongside periodic authorized data exports, and limit access to audit snapshots containing private details.
+- This foundation does not yet offer full database export/restore UX, file uploads, resident accounts, offline reading, billing, or payment processing. The CSV export is a site-directory export only.
+- Review [docs/architecture.md](docs/architecture.md) for roles, data boundaries, and scale limits. Follow [docs/roadmap.md](docs/roadmap.md) for Milestone 2 and tablet-reader prerequisites.
