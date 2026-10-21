@@ -26,6 +26,7 @@ export default async function Page({
       'access',
       'reservations',
       'leases',
+      'meters',
     ].includes(section)
   )
     notFound();

@@ -14,6 +14,18 @@ const config: NextConfig = {
           { key: 'Cache-Control', value: 'private, no-store' },
         ],
       },
+      {
+        source: '/tablet/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+          },
+        ],
+      },
     ];
   },
 };

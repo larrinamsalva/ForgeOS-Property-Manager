@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#13233b" />
+    <meta
+      name="description"
+      content="ForgeOS tablet meter collection. Assigned routes, protected offline readings and photo syncing."
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>ForgeOS · Tablet Reader</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/tablet-icon/192" />
+    <link rel="stylesheet" href="/tablet/reader.css" />
+    <script type="module" src="/tablet/reader.mjs"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="/meters" class="brand" aria-label="ForgeOS meter workspace"
+        ><span class="brand-symbol">F</span>ForgeOS<span class="brand-sub">TABLET READER</span></a
+      >
+      <div class="header-actions">
+        <span id="connection" role="status">Checking connection</span
+        ><button id="contrast" type="button" class="outline">Outdoor mode</button
+        ><button id="lock" type="button" class="outline" hidden>Lock reader</button>
+      </div>
+    </header>
+    <main id="main">
+      <div class="page-title">
+        <div>
+          <span class="eyebrow">PROPERTY OPERATIONS / METERS</span>
+          <h1>Tablet meter reader</h1>
+          <p class="muted">A clear route from first reading to final review.</p>
+        </div>
+        <span class="release">FIELD COLLECTION · 03</span>
+      </div>
+      <p id="message" role="status" class="message" hidden></p>
+      <section id="setup" class="panel narrow">
+        <div class="section-label">DEVICE ACCESS</div>
+        <h2>Prepare your reader</h2>
+        <p>
+          Sign in online, download your assigned routes, and protect this device with a passphrase. Unlock the
+          same queue when working offline.
+        </p>
+        <form id="unlock-form">
+          <label for="vault-choice">Saved account queue</label
+          ><select id="vault-choice">
+            <option value="">New queue from signed-in account</option></select
+          ><label for="passphrase">Device passphrase</label
+          ><input
+            id="passphrase"
+            type="password"
+            autocomplete="off"
+            minlength="10"
+            required
+            placeholder="At least 10 characters"
+          />
+          <p class="hint">
+            Keep this passphrase for recovery. ForgeOS cannot reset it for unsynced entries. Use a private,
+            screen-locked work device.
+          </p>
+          <button class="primary wide" id="unlock" type="submit">Prepare or unlock reader</button>
+        </form>
+        <div class="secondary-actions">
+          <a href="/login">Sign in online</a
+          ><label class="file-link" for="recovery-file">Import encrypted recovery</label
+          ><input type="file" id="recovery-file" accept="application/json,.json" hidden />
+        </div>
+        <p class="hint">
+          Install: use your browser’s Install app option, or Share → Add to Home Screen on iPad. Open and
+          prepare the reader online before leaving coverage.
+        </p>
+      </section>
+      <section id="reader" hidden>
+        <div class="reader-toolbar">
+          <label for="route-choice">Assigned reading route<select id="route-choice"></select></label>
+          <div class="toolbar-buttons">
+            <button id="download" class="outline" type="button">Refresh routes</button
+            ><button id="sync" class="primary" type="button">Sync now <span id="queue-count">0</span></button>
+          </div>
+        </div>
+        <div class="progress-panel">
+          <div>
+            <span class="eyebrow" id="route-property"></span>
+            <h2 id="route-title">Choose a route</h2>
+            <p id="route-window" class="muted"></p>
+          </div>
+          <div class="progress-numbers">
+            <strong id="progress-text">0 / 0</strong><span>stops collected</span>
+          </div>
+          <progress id="progress" max="1" value="0" aria-label="Route collection progress"></progress>
+        </div>
+        <div class="reader-layout">
+          <aside class="panel stop-list">
+            <label for="stop-search">Find meter or site</label
+            ><input id="stop-search" type="search" placeholder="Site, meter or serial" />
+            <nav id="stops" aria-label="Meters in this route"></nav>
+          </aside>
+          <section class="panel capture-panel" id="capture-panel">
+            <div class="capture-heading">
+              <div>
+                <span class="eyebrow">SITE / UNIT</span>
+                <h2 id="site-label">—</h2>
+              </div>
+              <span class="utility" id="utility-label"></span>
+            </div>
+            <h3 id="meter-name">No assigned meter</h3>
+            <p id="meter-details" class="muted"></p>
+            <div class="last-reading">
+              <div><span>Last submitted register</span><strong id="last-value">—</strong></div>
+              <div><span>Last validated</span><strong id="validated-value">—</strong></div>
+            </div>
+            <p id="stop-state" class="stop-state" role="status"></p>
+            <form id="capture-form">
+              <fieldset id="capture-fields">
+                <label for="register">New register reading <span id="unit-label"></span></label
+                ><input
+                  id="register"
+                  class="register-input"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="0.000000"
+                  pattern="[0-9]{1,12}(\.[0-9]{1,6})?"
+                />
+                <div class="capture-options">
+                  <label for="flag"
+                    >Reading exception<select id="flag">
+                      <option value="none">Normal reading</option>
+                      <option value="rollover">Counter rollover</option>
+                      <option value="reset">Register reset</option>
+                      <option value="damaged">Damaged meter</option>
+                      <option value="missing">Missing meter</option>
+                      <option value="problem">Flag a problem</option>
+                    </select></label
+                  ><label for="kind"
+                    >Reading type<select id="kind">
+                      <option value="actual">Actual observation</option>
+                      <option value="estimated">Supervisor authorized estimate</option>
+                    </select></label
+                  >
+                </div>
+                <label for="notes">Field notes / exception reason</label
+                ><textarea
+                  id="notes"
+                  rows="3"
+                  maxlength="2000"
+                  placeholder="Describe damage, rollover, access problems or an authorized estimate"
+                ></textarea>
+                <div class="photo-row">
+                  <button class="photo-button" id="camera-button" type="button">＋ Take / attach photo</button
+                  ><input
+                    type="file"
+                    id="camera"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    hidden
+                  /><span id="photo-description" class="muted">Optional · JPEG, PNG or WebP</span
+                  ><button id="remove-photo" type="button" class="text-button" hidden>Remove photo</button>
+                </div>
+                <img id="photo-preview" alt="Photo queued with this meter reading" hidden />
+                <p class="hint">
+                  Readings await supervisor review. Do not include people, documents or customer information
+                  in photos or notes.
+                </p>
+                <button id="save" class="primary wide save" type="submit">Save reading & next</button>
+              </fieldset>
+            </form>
+            <div class="next-prev">
+              <button id="previous" type="button" class="outline">← Previous meter</button
+              ><button id="next" type="button" class="outline">Next meter →</button>
+            </div>
+          </section>
+        </div>
+        <section class="panel queue-panel">
+          <div class="queue-heading">
+            <div>
+              <span class="eyebrow">DEVICE OUTBOX</span>
+              <h2>Sync & recovery</h2>
+            </div>
+            <button id="export" class="outline" type="button">Export encrypted recovery</button>
+          </div>
+          <p id="storage-info" class="muted"></p>
+          <div class="toolbar-buttons">
+            <button id="persist" class="outline" type="button">Request durable storage</button
+            ><button id="forget" class="text-button" type="button">Remove completed device queue</button>
+          </div>
+          <p class="hint">
+            Sync while the reader is open. Photos and readings stay encrypted on this device until
+            acknowledged. Failed and conflicting entries remain here for recovery. Refresh online at least
+            every 7 days; captures must reach the server within 14 days.
+          </p>
+          <div id="queue-history"></div>
+        </section>
+      </section>
+      <noscript
+        ><p class="message">
+          JavaScript is required for protected offline storage and meter collection.
+        </p></noscript
+      >
+    </main>
+    <footer>FORGEOS · METER OPERATIONS <span>One system. Every site. Total control.</span></footer>
+  </body>
+</html>

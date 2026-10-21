@@ -28,9 +28,9 @@ Personal data is never written to localStorage; only the light/dark theme prefer
 | lease_terms              | Immutable reviewed agreement terms, renewals and void corrections                            |
 | audit_events             | Append-only actor, timestamp, and before/after record history                                |
 
-All ten public tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
+All 19 public application tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
 
-Customers are property-scoped in this release to keep staff access explicit. A later cross-property customer identity model should add an effective-dated customer/property relationship and a reviewed migration, rather than moving or rewriting historical records. Vehicle/occupant tables, file uploads, meters, invoices, and payments are deliberately deferred.
+Customers are property-scoped in this release to keep staff access explicit. A later cross-property customer identity model should add an effective-dated customer/property relationship and a reviewed migration, rather than moving or rewriting historical records. Separate vehicle/occupant entities, general document uploads, invoices and payments remain later work. Meter collection and private photographs are implemented in Milestone 3.
 
 ## Permissions
 
@@ -43,9 +43,9 @@ Customers are property-scoped in this release to keep staff access explicit. A l
 | Maintenance / meter technician     | Assigned properties; read         | No rows in this release         | No rows                                             | Own role only                        |
 | Resident / unauthenticated visitor | None                              | None                            | None                                                | None                                 |
 
-Maintenance and meter workflows will expose narrowly scoped operational data when implemented. Hiding a menu does not supply authorization: the database blocks direct requests as well. Only owners/administrators can read audit events because those snapshots may include private contact information.
+Meter technicians receive meter data for their assigned routes; customer and financial rows remain denied. Maintenance workflows remain later work. Hiding a menu does not supply authorization: the database blocks direct requests as well. Only owners/administrators can read audit events because those snapshots may include private contact information.
 
-Private membership lookups and narrow transactional functions use `SECURITY DEFINER` with an empty search path and explicit `auth.uid()` checks. They live in a non-exposed `private` schema, and public wrappers are `SECURITY INVOKER`. Anonymous execution is revoked. Elevated writes are restricted to owner bootstrap, owner-only property assignment/revocation, reservation check-in, stay planning/transfer/completion, internal availability synchronization, and audit recording; no generic elevated write endpoint exists.
+Private membership lookups and narrow transactional functions use `SECURITY DEFINER` with an empty search path and explicit `auth.uid()` checks. They live in a non-exposed `private` schema, and public wrappers are `SECURITY INVOKER`. Anonymous execution is revoked. Elevated writes are restricted to owner bootstrap, owner-only property assignment/revocation, reservation check-in, stay planning/transfer/completion, internal availability synchronization, scoped meter/route capture and review, photo completion, conflict reconciliation, and audit recording; no generic elevated write endpoint exists.
 
 ## Occupancy and historical integrity
 
@@ -63,7 +63,7 @@ Automated PostgreSQL tests use PGlite with the actual migration, real RLS roles,
 
 ## Expansion path
 
-Follow [the roadmap](roadmap.md). Continue with meter assignments, route capture and offline synchronization. Future file uploads require private Storage buckets and policy tests. The current `Permissions-Policy` disables camera use; the meter milestone must explicitly enable and permission-test same-origin camera access. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
+Follow [the roadmap](roadmap.md). Meter collection and private photo policies are described below. Continue with utility calculations and draft invoice approval. The tablet route permits same-origin camera use; microphone and geolocation remain disabled. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
 
 ## Reservation availability and lease foundations
 
@@ -75,6 +75,16 @@ Check-in locks the reservation, validates role, property, customer, readiness an
 
 Departure changes preserve the original booking dates and append an audit record. Transfers atomically close the earlier stay, prepare its site, and create a linked stay at another compatible site in the same property. Any failure rolls back all parts. Completed stay identity/rates/handovers remain immutable. A departure plan is an expectation; `ends_on` is the actual recorded departure. Monthly, weekly, nightly and custom period labels do not imply a billing engine.
 
-Lease terms record reviewed business agreements; they do not allocate space, sign documents or calculate balances. A renewal starts at the earlier term's end. Recorded terms cannot be edited; voiding retains a reason, and a partial unique index allows a corrected renewal after the earlier mistaken renewal is voided. Later active renewals must be voided before an earlier term. Change the stay's planned departure separately when extending occupancy. Legal document execution, private file attachments, verified meter readings, work orders and invoice/deposit reconciliation remain later work.
+Lease terms record reviewed business agreements; they do not allocate space, sign documents or calculate balances. A renewal starts at the earlier term's end. Recorded terms cannot be edited; voiding retains a reason, and a partial unique index allows a corrected renewal after the earlier mistaken renewal is voided. Later active renewals must be voided before an earlier term. Change the stay's planned departure separately when extending occupancy. Legal document execution, general private file attachments, work orders and invoice/deposit reconciliation remain later work. Meter readings and their photographs are implemented separately from the occupancy handover notes.
 
 Booking edits and lifecycle actions use the last-read `updated_at` value as an optimistic-concurrency condition; a stale form receives a reload message instead of overwriting another edit. Transactional check-in, plan changes and transfers independently re-check database state. Calendar/search results are snapshots: the write-side exclusion constraint is the final conflict authority. Property/site row locks serialize updates against archive transitions. Real concurrent load and a hosted PostgreSQL/Supabase deployment still require staging acceptance; PGlite tests do not certify those environments.
+
+## Tablet collection and evidence
+
+The additive tablet migration introduces nine public tables: `meters`, `meter_assignments`, `meter_routes`, `meter_route_items`, `meter_readings`, `meter_reading_reviews`, `meter_photos`, `meter_sync_conflicts` and `meter_conflict_resolutions`. Private tables retain exact capture operations and effective occupant attribution. RLS, explicit grants, immutable captures, append-only reviews, unique route stops and UUID operation IDs enforce history and retry safety. Meter assignments use nonoverlapping timestamp ranges; occupancy attribution uses the property's actual civil date at capture.
+
+`/api/meters` verifies the caller and delegates narrow commands to private authenticated transactions. New captures require the assigned employee; supervisor configuration/review is property-scoped. Decimal registers remain text and use exact `numeric`/`BigInt` comparisons. The offline reader snapshot excludes customer/stay links, rates, customer contacts, audit records and financial history. Its route download contains only that employee's open assigned routes. Stale baselines and assignment changes create retained conflicts, never last-write-wins edits. Supervisor reconciliation appends an outcome; future device sync acknowledges it.
+
+The standalone public `/tablet/index.html` shell and its allowlisted service worker run independently of authenticated Next.js HTML. Only static shell assets enter Cache Storage. IndexedDB values, photos and automatic-lock drafts are encrypted with a passphrase-derived AES-GCM key bound to the user/organization/record scope. The key is held only while unlocked. The reader provides durable transaction acknowledgments, separate reading/photo states, foreground/manual sync, quota reporting, non-overwriting encrypted export/import, sign-out warnings and recovery after reload or session/account changes. See the [phase 3 report](phase-3-report.md) for cryptographic parameters, expiry windows and operational limits.
+
+`meter-photos` is a private 5 MB image bucket. Reservations bind each path to its capture, operator and property. Server uploads use the ordinary caller session and verify size/type/hash; uploads never upsert. A private object can be viewed only after authorization, through a 60-second signed URL. Rejected-operation photos remain in the encrypted recovery queue for explicit reconciliation. Hosted Storage behavior, advisors and actual tablet/PWA/camera acceptance remain external setup gates.
