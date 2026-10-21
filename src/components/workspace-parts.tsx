@@ -14,7 +14,14 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { Property, Site, Snapshot, Stay } from '@/lib/domain';
-import { customerName, dateAtProperty, isCurrentStay, money, siteStatus } from '@/lib/domain';
+import {
+  canEditProperty,
+  customerName,
+  dateAtProperty,
+  isCurrentStay,
+  money,
+  siteStatus,
+} from '@/lib/domain';
 export function Badge({ status }: { status: string }) {
   return (
     <span className={`badge status-${status}`}>
@@ -47,10 +54,14 @@ export function StayHistory({
   stays,
   snapshot,
   onMoveout,
+  onPlan,
+  onTransfer,
 }: {
   stays: Stay[];
   snapshot: Snapshot;
   onMoveout?: (id: string) => void;
+  onPlan?: (id: string) => void;
+  onTransfer?: (id: string) => void;
 }) {
   if (!stays.length)
     return (
@@ -67,6 +78,7 @@ export function StayHistory({
             <th>Departure</th>
             <th>Agreed rent</th>
             <th>Status</th>
+            <th>Handover</th>
             {onMoveout && (
               <th>
                 <span className="sr-only">Actions</span>
@@ -82,22 +94,90 @@ export function StayHistory({
                 <td>
                   <strong>{customerName(snapshot.customers.find((c) => c.id === stay.customer_id))}</strong>
                 </td>
-                <td>{snapshot.sites.find((s) => s.id === stay.site_id)?.label ?? 'Archived site'}</td>
+                <td>
+                  {snapshot.sites.find((s) => s.id === stay.site_id)?.label ?? 'Archived site'}
+                  {stay.previous_stay_id && (
+                    <small>
+                      Transferred from{' '}
+                      {snapshot.sites.find(
+                        (s) => s.id === snapshot.stays.find((o) => o.id === stay.previous_stay_id)?.site_id
+                      )?.label ?? 'earlier stay'}
+                    </small>
+                  )}
+                </td>
                 <td>{stay.starts_on}</td>
-                <td>{stay.ends_on ?? '—'}</td>
+                <td>
+                  {stay.ends_on ?? '—'}
+                  {!stay.ends_on && (
+                    <small>{stay.planned_ends_on ? `Planned: ${stay.planned_ends_on}` : 'Open-ended'}</small>
+                  )}
+                </td>
                 <td>
                   {money(stay.agreed_rate_cents)}
-                  <small>/ month</small>
+                  <small>/ {stay.billing_period ?? 'monthly'}</small>
                 </td>
                 <td>
                   <Badge status={stay.ends_on ? 'completed' : 'active'} />
                 </td>
+                <td>
+                  {[
+                    stay.occupants,
+                    stay.vehicle_details,
+                    stay.arrival_condition,
+                    stay.departure_condition,
+                    stay.initial_meter_notes,
+                    stay.final_meter_notes,
+                    stay.deposit_notes,
+                    stay.handover_notes,
+                    stay.document_reference,
+                    stay.plan_notes,
+                    stay.notes,
+                  ].some(Boolean) || stay.maintenance_needed ? (
+                    <details className="handover-notes">
+                      <summary>View handover</summary>
+                      {Object.entries({
+                        Occupants: stay.occupants,
+                        Vehicle: stay.vehicle_details,
+                        'Move-in condition': stay.arrival_condition,
+                        'Initial meter notes': stay.initial_meter_notes,
+                        'Document reference': stay.document_reference,
+                        'Move-out condition': stay.departure_condition,
+                        'Final meter notes': stay.final_meter_notes,
+                        'Billing / deposit notes': stay.deposit_notes,
+                        'Departure notes': stay.handover_notes,
+                        'Departure plan': stay.plan_notes,
+                        'Stay notes': stay.notes,
+                      })
+                        .filter(([, v]) => v)
+                        .map(([k, v]) => (
+                          <p key={k}>
+                            <strong>{k}:</strong> {v}
+                          </p>
+                        ))}
+                      {stay.maintenance_needed && <p>Maintenance follow-up needed</p>}
+                    </details>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 {onMoveout && (
                   <td className="row-actions">
-                    {!stay.ends_on && (
-                      <button className="text-button" onClick={() => onMoveout(stay.id)}>
-                        Move out
-                      </button>
+                    {!stay.ends_on && canEditProperty(snapshot, stay.property_id, true) && (
+                      <>
+                        {onPlan && (
+                          <button className="text-button" onClick={() => onPlan(stay.id)}>
+                            Departure plan
+                          </button>
+                        )}
+                        {onTransfer && (
+                          <button className="text-button" onClick={() => onTransfer(stay.id)}>
+                            Transfer
+                          </button>
+                        )}
+                        <button className="text-button" onClick={() => onMoveout(stay.id)}>
+                          Move out
+                        </button>
+                      </>
                     )}
                   </td>
                 )}
@@ -149,7 +229,12 @@ export function SiteMap({
                 const timezone =
                   snapshot.properties.find((p) => p.id === site.property_id)?.timezone ??
                   'America/Los_Angeles';
-                const status = siteStatus(site, snapshot.stays, dateAtProperty(timezone));
+                const status = siteStatus(
+                  site,
+                  snapshot.stays,
+                  dateAtProperty(timezone),
+                  snapshot.reservations
+                );
                 const Icon = site.kind === 'apartment' ? Building2 : Caravan;
                 return (
                   <button
@@ -171,7 +256,7 @@ export function SiteMap({
         </div>
       </div>
       <div className="map-legend">
-        {['available', 'occupied', 'in_preparation', 'blocked', 'out_of_service'].map((s) => (
+        {['available', 'reserved', 'occupied', 'in_preparation', 'blocked', 'out_of_service'].map((s) => (
           <Badge key={s} status={s} />
         ))}
       </div>
@@ -204,12 +289,22 @@ export function Overview({
       snapshot.stays,
       dateAtProperty(
         snapshot.properties.find((p) => p.id === site.property_id)?.timezone ?? 'America/Los_Angeles'
-      )
+      ),
+      snapshot.reservations
     );
   const occupied = activeSites.filter((s) => status(s) === 'occupied').length;
   const available = activeSites.filter((s) => status(s) === 'available').length;
   const preparation = activeSites.filter((s) => status(s) === 'in_preparation').length;
   const unavailable = activeSites.filter((s) => ['blocked', 'out_of_service'].includes(status(s))).length;
+  const arrivals = snapshot.reservations.filter(
+    (r) =>
+      propertyIds.has(r.property_id) &&
+      r.status === 'confirmed' &&
+      r.starts_on ===
+        dateAtProperty(
+          snapshot.properties.find((p) => p.id === r.property_id)?.timezone ?? 'America/Los_Angeles'
+        )
+  ).length;
   const currentStays = snapshot.stays.filter(
     (s) =>
       propertyIds.has(s.property_id) &&
@@ -363,6 +458,17 @@ export function Overview({
             <b>{preparation}</b>
             <ArrowRight size={15} />
           </Link>
+          <Link href={href('reservations')} className="attention-row">
+            <span className="attention-icon slate">
+              <ArrowRight size={19} />
+            </span>
+            <div>
+              <strong>Arrivals today</strong>
+              <span>Confirmed bookings ready for review</span>
+            </div>
+            <b>{arrivals}</b>
+            <ArrowRight size={15} />
+          </Link>
           <Link href={href('sites')} className="attention-row">
             <span className="attention-icon slate">
               <Caravan size={19} />
@@ -376,7 +482,7 @@ export function Overview({
           </Link>
           <div className="roadmap-note">
             <span className="eyebrow">Coming in later milestones</span>
-            <p>Reservations, meter routes, billing, and maintenance will connect here as they are built.</p>
+            <p>Meter routes, billing, and maintenance will connect here as they are built.</p>
           </div>
         </section>
       </div>

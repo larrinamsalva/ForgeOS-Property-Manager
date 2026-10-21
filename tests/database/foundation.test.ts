@@ -404,7 +404,7 @@ describe('PostgreSQL foundation, constraints and real RLS', () => {
     const tables = await db.query<{ relname: string; relrowsecurity: boolean }>(
       "select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'"
     );
-    expect(tables.rows).toHaveLength(8);
+    expect(tables.rows).toHaveLength(10);
     expect(tables.rows.every((r) => r.relrowsecurity)).toBe(true);
     expect(
       (

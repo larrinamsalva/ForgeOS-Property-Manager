@@ -17,6 +17,8 @@ const integer = z.preprocess(
   z.number().int().min(0).max(1000000).nullable()
 );
 const date = z.iso.date();
+const optionalDate = z.union([date, z.literal('')]).transform((value) => value || null);
+const billingPeriod = z.enum(['nightly', 'weekly', 'monthly', 'custom']);
 export const propertySchema = z
   .object({
     name: required('Property name'),
@@ -119,9 +121,86 @@ export const staySchema = z
     starts_on: date,
     agreed_rate: amount,
     notes: text(4000),
+    planned_ends_on: optionalDate.default(null),
+    billing_period: billingPeriod.default('monthly'),
+    deposit_required: amount.default(0),
+    guest_count: z.coerce.number().int().min(1).max(99).default(1),
+    occupants: text(2000).default(''),
+    vehicle_details: text(2000).default(''),
+    arrival_condition: text(4000).default(''),
+    initial_meter_notes: text(2000).default(''),
+    document_reference: text(1000).default(''),
   })
   .strict()
-  .transform(({ agreed_rate, ...rest }) => ({ ...rest, agreed_rate_cents: agreed_rate }));
+  .transform(({ agreed_rate, deposit_required, ...rest }) => ({
+    ...rest,
+    agreed_rate_cents: agreed_rate,
+    deposit_required_cents: deposit_required,
+  }));
+export const reservationSchema = z
+  .object({
+    property_id: id,
+    site_id: id,
+    customer_id: id,
+    starts_on: date,
+    ends_on: date,
+    status: z.enum(['inquiry', 'tentative', 'confirmed']),
+    billing_period: billingPeriod,
+    agreed_rate: amount,
+    deposit_required: amount,
+    deposit_recorded: amount,
+    deposit_reference: text(500),
+    guest_count: z.coerce.number().int().min(1).max(99),
+    rv_length_ft: number.refine((v) => v === null || v <= 1000, 'RV length must be 1000 feet or less.'),
+    vehicle_details: text(2000),
+    pet_notes: text(1000),
+    notes: text(4000),
+  })
+  .strict()
+  .refine((v) => v.ends_on > v.starts_on, 'Departure must follow arrival.')
+  .refine((v) => v.deposit_recorded <= v.deposit_required, 'The noted deposit cannot exceed the requirement.')
+  .transform(({ agreed_rate, deposit_required, deposit_recorded, ...rest }) => ({
+    ...rest,
+    agreed_rate_cents: agreed_rate,
+    deposit_required_cents: deposit_required,
+    deposit_recorded_cents: deposit_recorded,
+  }));
+export const leaseSchema = z
+  .object({
+    stay_id: id,
+    starts_on: date,
+    ends_on: date,
+    billing_period: billingPeriod,
+    renewed_from_id: z.union([id, z.literal('')]).transform((v) => v || null),
+    agreed_rate: amount,
+    deposit_required: amount,
+    document_reference: text(1000),
+    notes: text(4000),
+  })
+  .strict()
+  .refine((v) => v.ends_on > v.starts_on, 'The term end must follow its start.')
+  .transform(({ agreed_rate, deposit_required, ...rest }) => ({
+    ...rest,
+    agreed_rate_cents: agreed_rate,
+    deposit_required_cents: deposit_required,
+  }));
+export const reasonSchema = z.object({ reason: required('Reason', 2000) }).strict();
+export const checkinSchema = z
+  .object({
+    starts_on: date,
+    occupants: text(2000),
+    arrival_condition: text(4000),
+    initial_meter_notes: text(2000),
+    document_reference: text(1000),
+    notes: text(4000),
+  })
+  .strict();
+export const planSchema = z
+  .object({ planned_ends_on: optionalDate, reason: required('Reason', 2000) })
+  .strict();
+export const transferSchema = z
+  .object({ destination: id, transfer_on: date, agreed_rate: amount, reason: required('Reason', 2000) })
+  .strict();
 export const mutationSchema = z.discriminatedUnion('entity', [
   z
     .object({
@@ -142,9 +221,29 @@ export const mutationSchema = z.discriminatedUnion('entity', [
   z
     .object({
       entity: z.literal('stay'),
-      action: z.enum(['create', 'moveout']),
+      action: z.enum(['create', 'moveout', 'plan', 'transfer']),
       organization_id: id,
       id: id.optional(),
+      values: z.unknown(),
+    })
+    .strict(),
+  z
+    .object({
+      entity: z.literal('reservation'),
+      action: z.enum(['create', 'update', 'confirm', 'cancel', 'no_show', 'checkin']),
+      organization_id: id,
+      id: id.optional(),
+      version: text(100).optional(),
+      values: z.unknown().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      entity: z.literal('lease'),
+      action: z.enum(['create', 'void']),
+      organization_id: id,
+      id: id.optional(),
+      version: text(100).optional(),
       values: z.unknown(),
     })
     .strict(),
@@ -163,4 +262,13 @@ export const mutationSchema = z.discriminatedUnion('entity', [
     })
     .strict(),
 ]);
-export const moveoutSchema = z.object({ ends_on: date }).strict();
+export const moveoutSchema = z
+  .object({
+    ends_on: date,
+    departure_condition: text(4000).default(''),
+    final_meter_notes: text(2000).default(''),
+    deposit_notes: text(2000).default(''),
+    handover_notes: text(4000).default(''),
+    maintenance_needed: z.boolean().default(false),
+  })
+  .strict();

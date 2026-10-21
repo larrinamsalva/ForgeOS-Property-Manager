@@ -179,9 +179,6 @@ button:focus:not(:focus-visible) {
   white-space: nowrap;
   border: 1px solid transparent;
   min-height: 41px;
-  transition:
-    background 0.15s,
-    color 0.15s;
 }
 .button.primary {
   background: var(--button-bg, var(--primary));
@@ -2203,4 +2200,375 @@ select option {
 .table-wrap:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: -3px;
+}
+
+.planning-workspace {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+.planning-toolbar,
+.calendar-controls,
+.planning-filters,
+.availability-search {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.planning-toolbar {
+  margin-bottom: 22px;
+}
+.planning-toolbar > p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  max-width: 540px;
+}
+.availability-search {
+  padding: 0 22px 22px;
+  justify-content: flex-start;
+  align-items: flex-end;
+}
+.availability-search label,
+.planning-property,
+.planning-filters > label:not(.search-field) {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.availability-search input,
+.calendar-date input,
+.planning-property select,
+.planning-filters select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: var(--input);
+  color: var(--text);
+  min-height: 41px;
+  font-size: 12px;
+}
+.planning-property {
+  margin-bottom: 22px;
+}
+.availability-results {
+  padding: 0 22px 22px;
+  border-top: 1px solid var(--line);
+}
+.availability-results > p,
+.planning-caption {
+  font-size: 11px;
+  color: var(--muted);
+}
+.availability-results > p {
+  padding-top: 18px;
+}
+.available-sites {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.available-site {
+  padding: 15px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  color: var(--text);
+}
+.available-site > svg {
+  color: var(--green);
+}
+.available-site > span {
+  width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.available-site > span:last-child {
+  color: var(--primary);
+  font-weight: 700;
+}
+.calendar-controls {
+  padding: 0 22px 18px;
+}
+.calendar-views,
+.calendar-date {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.calendar-views .button {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 11px;
+}
+.calendar-views [aria-pressed='true'] {
+  background: var(--blue-bg);
+  color: var(--blue-text);
+  border-color: var(--primary);
+}
+.reservation-calendar th,
+.reservation-calendar td {
+  min-width: 125px;
+  padding: 9px;
+  vertical-align: top;
+}
+.reservation-calendar th:first-child {
+  min-width: 164px;
+  max-width: 180px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-2);
+  white-space: normal;
+  border-right: 1px solid var(--line);
+}
+.reservation-calendar th small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-top: 5px;
+}
+.reservation-calendar td {
+  height: 78px;
+  border-right: 1px solid var(--line);
+}
+.reservation-calendar .calendar-today {
+  background: var(--blue-bg);
+}
+.calendar-event {
+  display: block;
+  width: 100%;
+  max-width: 150px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 1.45;
+  padding: 7px 8px;
+  margin-bottom: 4px;
+  text-align: left;
+  color: var(--muted);
+  background: var(--surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-event small {
+  font-size: 9px;
+  color: inherit;
+  display: block;
+  margin-top: 3px;
+}
+.calendar-event.confirmed {
+  color: var(--blue-text);
+  background: var(--blue-bg);
+  border-color: var(--line);
+}
+.calendar-event.occupied {
+  color: var(--green);
+  background: var(--green-bg);
+}
+.calendar-event.inquiry,
+.calendar-event.tentative {
+  border-style: dashed;
+}
+.calendar-empty {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  padding-top: 10px;
+}
+.planning-caption {
+  padding: 15px 22px;
+  margin: 0;
+}
+.planning-operations {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+}
+.operation-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+.operation-item > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.operation-item strong {
+  display: block;
+  font-size: 12px;
+}
+.operation-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.planning-operations .panel-content > p {
+  font-size: 11px;
+  margin: 12px 0 0;
+}
+.planning-filters {
+  padding: 0 22px 20px;
+}
+.planning-filters .search-field {
+  width: min(390px, 70%);
+}
+.planning-filters > label:not(.search-field) {
+  flex-direction: row;
+  align-items: center;
+}
+.planning-note {
+  white-space: normal;
+  min-width: 160px;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+.planning-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.planning-detail dl {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr);
+  gap: 8px 15px;
+  padding: 16px;
+  background: var(--surface-2);
+  border-radius: 7px;
+}
+.planning-detail dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.planning-detail dd {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.planning-detail h3 {
+  margin-top: 20px;
+}
+.planning-detail > p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.planning-history {
+  margin-top: 25px;
+}
+.planning-history h3:not(:first-child) {
+  margin-top: 25px;
+}
+.history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 13px 0;
+  font-size: 12px;
+}
+.history-item p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.handover-notes {
+  max-width: 260px;
+  min-width: 110px;
+  white-space: normal;
+}
+.handover-notes summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
+}
+.handover-notes p {
+  margin: 8px 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.status-confirmed,
+.status-checked_in,
+.status-recorded {
+  background: var(--blue-bg);
+  color: var(--blue-text);
+}
+.status-reserved,
+.status-departure_due,
+.status-tentative {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+.map-reserved .status-dot {
+  background: var(--amber);
+}
+@media (max-width: 900px) {
+  .planning-operations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .planning-toolbar > p {
+    max-width: 100%;
+  }
+}
+@media (max-width: 700px) {
+  .availability-search,
+  .calendar-controls,
+  .planning-filters {
+    padding-inline: 15px;
+  }
+  .availability-search label {
+    min-width: 0;
+    flex: 1;
+  }
+  .availability-search input {
+    width: 100%;
+    min-width: 0;
+  }
+  .availability-search .button {
+    width: 100%;
+  }
+  .availability-results {
+    padding-inline: 15px;
+  }
+  .planning-filters .search-field {
+    width: 100%;
+  }
+  .planning-caption {
+    padding-inline: 15px;
+  }
+  .planning-detail dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .planning-detail dd {
+    margin-bottom: 8px;
+  }
+  .planning-actions .button {
+    flex: 1 1 45%;
+  }
 }
