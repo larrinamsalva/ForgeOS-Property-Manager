@@ -23,4 +23,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg).*)'] };
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icon.svg|tablet/|tablet-icon/|manifest.webmanifest).*)',
+  ],
+};

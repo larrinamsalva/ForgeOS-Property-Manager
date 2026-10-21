@@ -51,6 +51,8 @@ import {
   type Field,
 } from './record-form';
 import { Badge, Empty, Overview, SiteMap, StayHistory } from './workspace-parts';
+import { MeterWorkspace } from './meter-workspace';
+import { pendingMeterCount } from '@/lib/offline-pending';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -61,9 +63,9 @@ const navigation = [
   { id: 'occupancy', label: 'Occupancy & history', icon: KeyRound },
   { id: 'reservations', label: 'Reservations', icon: CalendarDays },
   { id: 'leases', label: 'Leases & renewals', icon: FileText },
+  { id: 'meters', label: 'Meters & reader', icon: Gauge },
 ];
 const upcoming = [
-  { label: 'Tablet meter reader', icon: Gauge, milestone: 3 },
   { label: 'Utilities & billing', icon: Receipt, milestone: 4 },
   { label: 'Payments & receipts', icon: Receipt, milestone: 5 },
   { label: 'Maintenance', icon: Wrench, milestone: 6 },
@@ -174,6 +176,19 @@ export function Workspace({
     return result;
   }
   async function signout() {
+    try {
+      const pending = await pendingMeterCount(snapshot.userId);
+      if (
+        pending &&
+        !window.confirm(
+          `${pending} meter entries or photos are still unsynced on this device. Export a recovery copy in the Tablet Reader first. Sign out and keep the encrypted queue?`
+        )
+      )
+        return;
+    } catch {
+      if (!window.confirm('Local meter storage could not be checked. Sign out and keep any saved queue?'))
+        return;
+    }
     const response = await fetch('/api/auth/signout', { method: 'POST' });
     if (response.ok) {
       router.replace('/login');
@@ -654,7 +669,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Planning release<small>Milestone 2 of 7</small>
+              Meter reader release<small>Milestone 3 of 7</small>
             </div>
           </div>
         </div>
@@ -816,7 +831,7 @@ export function Workspace({
                 }}
               />
             </section>
-          ) : !operatingAccess && !['properties', 'access'].includes(section) ? (
+          ) : !operatingAccess && !['properties', 'access', 'meters'].includes(section) ? (
             <section className="panel">
               <Empty title="Your role has limited access">
                 Your assigned properties appear in the property directory. Operational, customer, and
@@ -832,6 +847,8 @@ export function Workspace({
               addProperty={manageOrg ? () => setEditor({ type: 'property' }) : undefined}
               viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
             />
+          ) : section === 'meters' ? (
+            <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'reservations' || section === 'leases' ? (
             <PlanningWorkspace
               snapshot={snapshot}

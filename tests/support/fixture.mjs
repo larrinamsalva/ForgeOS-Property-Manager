@@ -3,6 +3,8 @@
 import { createServer } from 'node:http';
 import { database, asUser, identities, foundation } from './database.mjs';
 const db = await database();
+const storageBytes = new Map();
+let failPhotoUploads = 0;
 const port = Number(process.env.FORGEOS_FIXTURE_PORT ?? 54331);
 const tableNames = [
   'organizations',
@@ -15,6 +17,15 @@ const tableNames = [
   'reservations',
   'lease_terms',
   'audit_events',
+  'meters',
+  'meter_assignments',
+  'meter_routes',
+  'meter_route_items',
+  'meter_readings',
+  'meter_reading_reviews',
+  'meter_photos',
+  'meter_sync_conflicts',
+  'meter_conflict_resolutions',
 ];
 const columns = new Map();
 for (const table of tableNames)
@@ -68,6 +79,14 @@ function session(id) {
 }
 function uid(request) {
   try {
+    const signedToken = new URL(request.url, `http://127.0.0.1:${port}`).searchParams.get('token');
+    if (
+      signedToken?.startsWith('fixture-signed-') &&
+      request.url.startsWith('/storage/v1/object/authenticated/')
+    ) {
+      const signedId = signedToken.slice(15);
+      return Object.values(identities).includes(signedId) ? signedId : null;
+    }
     const token = request.headers.authorization?.replace('Bearer ', '');
     const id = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub;
     return Object.values(identities).includes(id) ? id : null;
@@ -114,7 +133,12 @@ async function seed() {
       identities.technician,
     ]);
   });
-  return a;
+  return {
+    ...a,
+    siteIds: (
+      await db.query('select id from sites_units where property_id=$1 order by label limit 2', [a.property])
+    ).rows.map((r) => r.id),
+  };
 }
 const server = createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
@@ -143,9 +167,14 @@ const server = createServer(async (request, response) => {
   let body = {};
   try {
     if (request.method === 'POST' || request.method === 'PATCH') {
-      let raw = '';
-      for await (const chunk of request) raw += chunk;
-      if (raw) body = JSON.parse(raw);
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      let raw = Buffer.concat(chunks).toString(
+        parts[0] === 'storage' && parts[2] === 'object' && !parts.includes('sign') ? 'base64' : 'utf8'
+      );
+      if (parts[0] === 'storage' && parts[2] === 'object' && !parts.includes('sign'))
+        body = Buffer.from(raw, 'base64');
+      else if (raw) body = JSON.parse(raw);
     }
     if (url.pathname === '/health') {
       send(200, { ok: true });
@@ -153,6 +182,14 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === '/__test/reset') {
       await db.exec('truncate public.organizations cascade');
+      await db.exec('truncate storage.objects');
+      storageBytes.clear();
+      failPhotoUploads = 0;
+      send(200, { ok: true });
+      return;
+    }
+    if (url.pathname === '/__test/fail-photo') {
+      failPhotoUploads = Number(body.count ?? 1);
       send(200, { ok: true });
       return;
     }
@@ -188,6 +225,62 @@ const server = createServer(async (request, response) => {
       send(401, { message: 'Not authenticated', code: '42501' });
       return;
     }
+    if (parts[0] === 'storage') {
+      const isSign = parts[3] === 'sign';
+      const authenticatedObject = parts[3] === 'authenticated';
+      const start = isSign || authenticatedObject ? 5 : 4;
+      const bucket = parts[isSign || authenticatedObject ? 4 : 3];
+      const path = parts.slice(start).join('/');
+      if (bucket !== 'meter-photos') {
+        send(404, {});
+        return;
+      }
+      if (isSign) {
+        const rows = await asUser(db, id, (tx) =>
+          tx.query('select id from storage.objects where bucket_id=$1 and name=$2', [bucket, path])
+        );
+        if (!rows.rows.length) {
+          send(403, { message: 'Denied' });
+          return;
+        }
+        send(200, { signedURL: `/object/authenticated/meter-photos/${path}?token=fixture-signed-${id}` });
+        return;
+      }
+      const readPath = parts[3] === 'authenticated' ? parts.slice(5).join('/') : path;
+      if (request.method === 'GET') {
+        const rows = await asUser(db, id, (tx) =>
+          tx.query('select id from storage.objects where bucket_id=$1 and name=$2', [
+            'meter-photos',
+            readPath,
+          ])
+        );
+        const stored = storageBytes.get(readPath);
+        if (!rows.rows.length || !stored) {
+          send(404, { message: 'Not found' });
+          return;
+        }
+        response.writeHead(200, { 'Content-Type': stored.mime });
+        response.end(stored.bytes);
+        return;
+      }
+      if (request.method === 'POST') {
+        if (failPhotoUploads > 0) {
+          failPhotoUploads--;
+          send(503, { message: 'Simulated photo interruption' });
+          return;
+        }
+        const mime = request.headers['content-type'];
+        await asUser(db, id, (tx) =>
+          tx.query(
+            'insert into storage.objects(bucket_id,name,metadata,owner_id) values($1,$2,$3::jsonb,$4)',
+            ['meter-photos', path, JSON.stringify({ size: body.length, mimetype: mime }), id]
+          )
+        );
+        storageBytes.set(path, { bytes: body, mime });
+        send(200, { Key: `meter-photos/${path}`, Id: 'fixture-photo' });
+        return;
+      }
+    }
     if (parts[0] !== 'rest') {
       send(404, {});
       return;
@@ -204,6 +297,11 @@ const server = createServer(async (request, response) => {
           complete_stay_checklist: ['stay', 'departure', 'details'],
           change_stay_plan: ['stay', 'departure', 'reason'],
           transfer_stay: ['stay', 'destination', 'transfer_on', 'rate_cents', 'reason'],
+          meter_command: ['command', 'payload'],
+          submit_meter_reading: ['payload'],
+          complete_meter_photo: ['photo'],
+          meter_occupancy: ['org'],
+          report_meter_conflict: ['payload', 'reason_code'],
         }[name];
         if (!args) throw new Error('Unknown RPC');
         const result = await tx.query(
@@ -214,7 +312,15 @@ const server = createServer(async (request, response) => {
         );
         return {
           rpc: true,
-          value: ['create_organization', 'check_in_reservation', 'transfer_stay'].includes(name)
+          value: [
+            'create_organization',
+            'check_in_reservation',
+            'transfer_stay',
+            'meter_command',
+            'submit_meter_reading',
+            'meter_occupancy',
+            'report_meter_conflict',
+          ].includes(name)
             ? result.rows[0].result
             : null,
         };
@@ -257,7 +363,7 @@ const server = createServer(async (request, response) => {
       }
       const order =
         ' order by ' +
-        (url.searchParams.get('order') ?? 'id.asc')
+        (url.searchParams.get('order') ?? (valid.has('id') ? 'id.asc' : 'user_id.asc'))
           .split(',')
           .map((value) => {
             const [column, direction] = value.split('.');

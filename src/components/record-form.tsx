@@ -6,7 +6,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 export interface Field {
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'number' | 'textarea' | 'select' | 'checkbox' | 'date';
+  type?: 'text' | 'email' | 'number' | 'textarea' | 'select' | 'checkbox' | 'date' | 'datetime-local';
   required?: boolean;
   options?: { value: string; label: string }[];
   step?: string;

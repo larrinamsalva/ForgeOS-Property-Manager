@@ -4,15 +4,15 @@ All-in-one RV park, apartment, and property management operating system.
 
 **One System. Every Site. Total Control.**
 
-This repository contains the Milestone 1 foundation and Milestone 2 planning application: a Next.js property workspace backed by a dedicated Supabase PostgreSQL database. It supports organization onboarding, scoped staff roles, property/site/unit directories, customers, reservations, availability and calendars, lease-term history and renewals, move-in/out handovers, planned departures, atomic site transfers, an operational dashboard, a coordinate-backed site map, CSV export, and safe archive/restore.
+This repository contains the Milestones 1–3 property workspace and tablet meter reader: a Next.js property workspace backed by a dedicated Supabase PostgreSQL database. It supports organization onboarding, scoped staff roles, property/site/unit directories, customers, reservations, availability and calendars, lease-term history and renewals, move-in/out handovers, planned departures, atomic site transfers, an operational dashboard, a coordinate-backed site map, CSV export, and safe archive/restore, dated meter assignments, assigned reading routes, encrypted offline capture and photos, idempotent sync, supervisor corrections, and a conflict inbox.
 
 The full brief is [MASTER-BUILD-PROMPT.md](MASTER-BUILD-PROMPT.md). The repository remains private and the existing MIT license is unchanged. Development uses feature branches and pull requests; do not merge automatically.
 
 ## Current status
 
-Implementation and verification are described in [docs/phase-2-report.md](docs/phase-2-report.md), with the earlier foundation report retained in [docs/phase-1-report.md](docs/phase-1-report.md). A dedicated live Supabase project is not configured by this change, and no hosted website or live customer data is created. Without environment variables the app opens an explicit setup screen. It never substitutes browser-local sample records for a working database.
+Implementation and verification are described in [docs/phase-3-report.md](docs/phase-3-report.md). Earlier milestone reports remain in `docs/`. A dedicated live Supabase project is not configured by this change, and no hosted website or live customer data is created. Without environment variables the app opens an explicit setup screen. It never substitutes browser-local sample records for a working database.
 
-Meter collection, invoices, payments, maintenance, and communications remain upcoming. No live payment collection, late fees, customer notices, or invoice issuance is enabled.
+Utility charge calculations, invoices, payments, maintenance, and communications remain upcoming. No live payment collection, late fees, customer notices, or invoice issuance is enabled.
 
 ## Run locally
 
@@ -33,7 +33,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 Only the publishable key is used. Do not add a service-role key to this app. Never commit `.env.local`, real passwords, tokens, or tenant records.
 
-Apply the foundation migration as described below, then run:
+Apply all three migrations as described below, then run:
 
 ```bash
 npm run dev
@@ -49,9 +49,15 @@ The **Property view** selector scopes each screen. The site directory supports s
 - Arrival is inclusive and departure is exclusive. Confirmed bookings and actual stay plans share a database exclusion constraint. A direct move-in cannot consume a confirmed booking. Check-in atomically replaces that booking's hold with the stay; retrying an already completed check-in returns the same stay.
 - An open-ended stay blocks future booking. **Occupancy & history → Departure plan** sets or changes expected departure, with a reason. An overdue occupant remains occupied until actual move-out. Resolve that departure before accepting another arrival. If an overstay conflicts with a later booking, relocate/cancel that booking before extending or completing the conflicting stay.
 - **Transfer** closes the earlier stay and creates a new stay at a compatible site in the same property, preserving customer history, the original rate and the new agreed rate. A destination conflict rolls back the entire transfer. The earlier site goes into preparation.
-- Move-in/out forms retain occupants, vehicle details, condition and handover notes. Meter notes and document references are optional references to your current process; verified readings, secure attachments, work orders and invoice/deposit reconciliation are separate later milestones.
+- Move-in/out forms retain occupants, vehicle details, condition and handover notes. Meter notes and document references are optional references to your current process; verified meter readings and meter photographs are available in Meters & reader; legal attachments, work orders and invoice/deposit reconciliation remain separate workflows.
 - **Leases & renewals** records reviewed terms linked to a stay. Renewals append adjacent terms. Saved terms cannot be rewritten; managers can void mistakes with a reason and record corrected terms. The registry does not sign a legal document, issue an invoice, or update a stay's planned departure. Update the departure plan separately when extending occupancy. Booking deposit amounts are manually noted references, not a financial ledger.
 - Customer and site detail dialogs include booking, lease and occupancy histories. Completed, cancelled, no-show and voided records remain accessible to authorized staff.
+
+### Tablet meter reader
+
+Open **Meters & reader** to create meters, dated site assignments and assigned routes. Employees open **Open tablet reader** online, protect the device queue with a passphrase, and download their routes before going offline. Save each observation before advancing; photos stay with the encrypted queue. Use **Sync now** after reconnecting. Supervisors review original readings, append corrections, and reconcile conflicts without overwriting captures.
+
+The installable shell caches only public assets. IndexedDB holds encrypted route data, readings, photos and automatic-lock drafts; no authentication token is stored there. Export encrypted recovery copies and keep the passphrase securely. Browser storage retention, actual Android/iPad behavior and hosted private Storage must be tested before live use. Full workflow, limits and setup: [Milestone 3 report](docs/phase-3-report.md).
 
 ## Database setup
 
@@ -72,11 +78,11 @@ For a new, dedicated hosted Supabase project:
    npx supabase db push --linked --skip-vault
    ```
 
-4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-2-report.md](docs/phase-2-report.md). The local PGlite tests do not replace this hosted check.
+4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-3-report.md](docs/phase-3-report.md). The local PGlite tests do not replace this hosted check.
 
 Alternatively, use a local Supabase stack with Docker. The checked-in `supabase/config.toml` and empty `supabase/seed.sql` are ready for it. Inspect `npx supabase start --help`, start the stack, and use that stack's URL/publishable credentials. Apply pending migrations using the CLI's current migration command. This environment did not have Docker, so the complete local Supabase stack was not exercised.
 
-Apply both checked-in migrations in order. The foundation migration remains unchanged; the additive planning migration retains existing records, adds reservations and lease terms, extends stay handover fields, and backfills existing stays into a private availability-allocation table. All ten public tables and that private table have RLS; authenticated grants are explicit. `btree_gist` supplies UUID/date-range overlap protection. The private schema must **not** be added to the exposed Data API schemas. Do not run these migrations against a shared or unrelated database.
+Apply all three checked-in migrations in order. The foundation migration remains unchanged; the additive planning migration retains existing records, adds reservations and lease terms, extends stay handover fields, and backfills existing stays into a private availability-allocation table. The tablet migration adds meter/routes/readings/reviews, conflicts, private occupant attribution and a private photo bucket. All 19 public application tables and three private tables have RLS; authenticated grants are explicit. `btree_gist` supplies UUID/date-range overlap protection. The private schema must **not** be added to the exposed Data API schemas. Do not run these migrations against a shared or unrelated database.
 
 ### Auth configuration
 
@@ -106,7 +112,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
-Unit tests cover exact money, dates/DST/leap days, calendar boundaries, status derivation, validation, and safe CSV. Database integration tests apply the actual migrations to embedded PostgreSQL with `btree_gist`, switch authenticated roles, and exercise RLS, reservation/stay/lease conflicts, archives, history, transfers, renewals, revocation, and audit restrictions. Browser tests run desktop, tablet, and phone viewports, both themes, accessible dialogs, and the complete UI → API → PostgreSQL path through a test-only HTTP fixture. They create fictional records only. Browser Auth responses are deterministic; they are not evidence of hosted Supabase Auth or production deployment.
+Unit tests cover exact money, dates/DST/leap days, calendar boundaries, status derivation, validation, and safe CSV. Database integration tests apply the actual migrations to embedded PostgreSQL with `btree_gist`, switch authenticated roles, and exercise RLS, reservation/stay/lease conflicts, archives, history, transfers, renewals, revocation, audit restrictions, meter assignment/history conflicts, idempotent captures, review corrections, private photo policies and conflict reconciliation. Browser tests run desktop, tablet, and phone viewports, both themes, accessible dialogs, and offline reload, encrypted recovery, photo retries and the complete UI → API → PostgreSQL path through a test-only HTTP fixture. They create fictional records only. Browser Auth responses are deterministic; they are not evidence of hosted Supabase Auth or production deployment.
 
 The fixture binds to loopback and is never imported by application routes. The browser test process supplies its own public test environment values. Do not deploy `tests/support/fixture.mjs`. Optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and JSON-array `PLAYWRIGHT_CHROMIUM_ARGS` environment values support a preinstalled local test browser.
 
@@ -126,5 +132,5 @@ Apply reviewed database migrations to the matching environment before releasing 
 - Contact edits are auditable. Completed stays, agreed rent, and row ownership cannot be silently rewritten.
 - No customer data goes into browser localStorage. The theme preference is the only app data saved there.
 - Before real use, configure database backups/retention and rehearse a restore in staging. Archive is not a backup. Retain migration files alongside periodic authorized data exports, and limit access to audit snapshots containing private details.
-- This foundation does not yet offer full database export/restore UX, file uploads, resident accounts, offline reading, billing, or payment processing. The CSV export is a site-directory export only.
-- Review [docs/architecture.md](docs/architecture.md) for roles, data boundaries, and scale limits. Follow [docs/roadmap.md](docs/roadmap.md) for Milestone 3 tablet-reader prerequisites.
+- This foundation does not yet offer full database export/restore UX, general document uploads, resident accounts, billing, or payment processing. Meter photographs and protected offline reading are included. The CSV export is a site-directory export only.
+- Review [docs/architecture.md](docs/architecture.md) for roles, data boundaries, and scale limits. Follow [docs/roadmap.md](docs/roadmap.md) for Milestone 4 utilities and billing work.
