@@ -17,3 +17,9 @@
 .paperless-opened{padding:17px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px}
 .paperless-opened p{margin-bottom:10px}
 @media(max-width:720px){.paperless-grid{grid-template-columns:1fr}.paperless-actions .button{width:100%}.paperless-file-list article{flex-wrap:wrap}.paperless-file-list article>.button{width:100%}}
+
+.paperless-file-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.paperless-delete{border-color:#c96b6b!important;color:#a72730!important}
+.paperless-delete:hover:not(:disabled){background:#ffe9e9!important}
+.paperless-delete:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:720px){.paperless-file-actions{width:100%}.paperless-file-actions button{flex:1}}
