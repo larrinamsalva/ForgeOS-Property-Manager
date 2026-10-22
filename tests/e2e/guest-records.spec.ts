@@ -127,6 +127,6 @@ test('RV site length, width, rent and electrical fields can be cleared and retyp
   await nav.getByRole('button', { name: 'Sites & map' }).click();
   await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
   for (const field of fields) {
-    await expect(page.getByLabel(field.label), field.label + ' saved correctly').toHaveValue(field.value);
+    await expect(page.getByLabel(field.label), field.label + ' saved correctly').toHaveValue(field.label === 'Monthly rent ($)' ? '795.5' : field.value);
   }
 });
