@@ -56,6 +56,9 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
               : 'Sign in to your property workspace.'}
           </p>
           <AuthForm portal={portal} />
+          <Link className="button secondary full" href="/demo" style={{ marginTop: 12 }}>
+            Explore ForgeOS without an account
+          </Link>
           <Link href={portal ? '/login' : '/login?portal=1'}>
             {portal ? 'Staff sign in' : 'Resident sign in'}
           </Link>
