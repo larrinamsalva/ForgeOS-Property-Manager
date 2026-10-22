@@ -14,6 +14,14 @@ Implementation and verification are described in [docs/phase-7-report.md](docs/p
 
 Owner reports, multi-property measures, independent resident accounts, retained English/Spanish in-app communications, bounded CSV and audited owner JSON archives are implemented. No hosted system or live processor is active. Manual issuance and reviewed fee/deposit deduction actions require explicit owner configuration; automated fees and outbound notices remain disabled.
 
+### Guest customer, unit, vehicle and photo files
+
+Guest visitors can open any sample site or apartment's **Details & photos** panel and edit its label, type (RV space, apartment, cabin, tent, house or commercial), building/row, rent, dimensions, electric/water/sewer/gas connections, and notes. Each space also has its own small **Photos & vehicles** inventory: upload JPG, PNG or WebP example photos categorized as site/apartment, car/truck, RV/trailer, motorcycle, off-road/ATV/UTV, or boat/watercraft; add and remove sample vehicle descriptions and identifiers. The demo enforces 8 MB per image and 12 images per space. Photo object URLs are revoked on removal/reset/unmount. Photos and vehicle data remain in transient browser memory and are not stored in Supabase or uploaded to Vercel.
+
+Customer records in the guest view can now be added and edited with optional phone, email, emergency contact, vehicle notes, arrival date, deposit and site assignment (or unassigned). A customer changing sites updates the **fictional** occupancy and visible resident name, without ever writing actual customer information to a backend. Demo users must use sample identities and pictures. Refreshing/resetting discards all guest changes. Staff/owner workspaces and API permissions are unchanged.
+
+**Real rollout follow-up:** create property/organization-scoped private photo storage with owner/authorized staff controls, metadata, file validation and auditing; connect real vehicle inventories to authenticated site/customer records. Do not expose real resident photos or vehicle plates in an anonymous gallery.
+
 ### Guest capacity and local layout planner
 
 The guest demo starts with 20 **fictional** spaces and 14 example customer records, with a sample planning target of 700. This is not a product data limit. A visitor can add 1–250 spaces per batch repeatedly, number them automatically, search large inventories and navigate paginated space/customer lists. Visitors add fictional customers on arrival, choosing an available space or an unassigned/waiting-list entry. The real authenticated customer/site tables are not modified by demo actions. The authenticated workspace already loads more than 1,000 records through paginated database reads.
