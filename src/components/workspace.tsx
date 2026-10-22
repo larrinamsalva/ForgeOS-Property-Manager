@@ -62,6 +62,7 @@ const CollectionsWorkspace = dynamic(() =>
 const OperationsWorkspace = dynamic(() =>
   import('./operations-workspace').then((module) => module.OperationsWorkspace)
 );
+const PaperlessWorkspace = dynamic(() => import('./paperless-workspace').then((module) => module.PaperlessWorkspace));
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
@@ -70,6 +71,7 @@ const navigation = [
   { id: 'map', label: 'Property map', icon: Map },
   { id: 'sites', label: 'Sites & units', icon: Caravan },
   { id: 'customers', label: 'Customers & tenants', icon: Users },
+  { id: 'paperless', label: 'Paperless photos & files', icon: FileText },
   { id: 'occupancy', label: 'Occupancy & history', icon: KeyRound },
   { id: 'reservations', label: 'Reservations', icon: CalendarDays },
   { id: 'leases', label: 'Leases & renewals', icon: FileText },
@@ -728,6 +730,8 @@ export function Workspace({
                     ? 'Every space, with a clear status and a complete record.'
                     : section === 'customers'
                       ? 'A lasting record for every customer and tenant.'
+                    : section === 'paperless'
+                      ? 'Capture photos and scan paperwork directly into authorized customer and space files.'
                       : section === 'occupancy'
                         ? 'Track who is here. Preserve every stay.'
                         : section === 'map'
@@ -868,6 +872,8 @@ export function Workspace({
                 viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
               />
             </>
+          ) : section === 'paperless' ? (
+            <PaperlessWorkspace snapshot={snapshot} propertyId={propertyId} />
           ) : section === 'meters' ? (
             <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : ['maintenance', 'inventory', 'operations'].includes(section) ? (
