@@ -14,6 +14,10 @@ Implementation and verification are described in [docs/phase-7-report.md](docs/p
 
 Owner reports, multi-property measures, independent resident accounts, retained English/Spanish in-app communications, bounded CSV and audited owner JSON archives are implemented. No hosted system or live processor is active. Manual issuance and reviewed fee/deposit deduction actions require explicit owner configuration; automated fees and outbound notices remain disabled.
 
+### Guest unit designations (Sites, Spaces, Apartments and Mobile Homes)
+
+In the public **Sites & map → Details & photos** guest form, the unit label has two separate controls: **Unit type**, a selection of *Site*, *Space*, *Apartment*, or *Mobile Home*; and **Unit number or name** (for example *12*, *A-4*, or *Lot 25*). The chosen designation and friendly unit name display together in the directory and can be searched. This is a guest-preview display classification only; the stable internal site ID, assigned customer, files, and occupancy stay linked when the label changes. In the demo, Site and Space use the existing RV category, Apartment uses apartment, and Mobile Home maps to the existing house category so no unsupported database kinds are written. Guest changes vanish on refresh/reset; authenticated site taxonomies are unchanged.
+
 ### Guest customer, unit, vehicle and photo files
 
 Guest visitors can open any sample site or apartment's **Details & photos** panel and edit its label, type (RV space, apartment, cabin, tent, house or commercial), building/row, rent, dimensions, electric/water/sewer/gas connections, and notes. Each space also has its own small **Photos & vehicles** inventory: upload JPG, PNG or WebP example photos categorized as site/apartment, car/truck, RV/trailer, motorcycle, off-road/ATV/UTV, or boat/watercraft; add and remove sample vehicle descriptions and identifiers. The demo enforces 8 MB per image and 12 images per space. Photo object URLs are revoked on removal/reset/unmount. Photos and vehicle data remain in transient browser memory and are not stored in Supabase or uploaded to Vercel.
