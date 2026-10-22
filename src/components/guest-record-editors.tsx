@@ -184,6 +184,15 @@ export function GuestCustomerForm({
   const [unitFilter, setUnitFilter] = useState<UnitDesignation | 'all'>(() =>
     customer?.siteId ? sites.find((site) => site.id === customer.siteId)?.designation ?? 'all' : 'all'
   );
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [availableSearch, setAvailableSearch] = useState('');
+  // This is the actual full inventory, not the 60-per-page directory or the
+  // separately configured *planned* capacity. Newly added units appear here.
+  const availableAcrossProperty = sites.filter((site) => site.status === 'available');
+  const browseMatches = availableAcrossProperty.filter((site) =>
+    (designationLabel(site.designation) + ' ' + site.label + ' ' + site.id + ' ' + site.section)
+      .toLowerCase().includes(availableSearch.toLowerCase().trim())
+  );
   const unoccupiedSites = sites.filter((site) =>
     site.status !== 'occupied' || (editing && site.id === customer?.siteId)
   );
@@ -244,8 +253,44 @@ export function GuestCustomerForm({
             {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
             {heldSites.map((site) => <option key={site.id} value={site.id} disabled>{designationLabel(site.designation)} · {site.label} ({site.id}) — Reserved / held</option>)}
           </select>
-          <small aria-live="polite">{readySites.length} available to assign · {heldSites.length} reserved (shown but not assignable) · {unoccupiedSites.length} total non-occupied units across the property.</small>
+          <small aria-live="polite">{readySites.length} available in this selection · {heldSites.length} reserved (held, cannot assign).</small>
         </label>
+        <section className="demo-available-panel" aria-label="All available units">
+          <div className="demo-available-header">
+            <div>
+              <strong>{availableAcrossProperty.length} available sites and units</strong>
+              <small>From all {sites.length} created units in this property, including sites, spaces, apartments, mobile homes and campgrounds. Planned capacity is not yet-created inventory.</small>
+            </div>
+            <button type="button" className="demo-small-button" aria-expanded={browseOpen}
+              aria-controls={fieldId('available-list')}
+              onClick={() => setBrowseOpen((open) => !open)}>
+              {browseOpen ? 'Hide available units' : 'Browse all available units'}
+            </button>
+          </div>
+          {browseOpen && <div id={fieldId('available-list')} className="demo-available-browser">
+            <label htmlFor={fieldId('available-search')}>Search all available sites and units
+              <input id={fieldId('available-search')} type="search" value={availableSearch}
+                placeholder="Search number, site name, type or section"
+                onChange={(event) => setAvailableSearch(event.target.value)}/>
+            </label>
+            <p className="demo-available-match-count" aria-live="polite">
+              {browseMatches.length} matching available {browseMatches.length === 1 ? 'unit' : 'units'} · Tap any unit to assign it.
+            </p>
+            <div className="demo-available-list" aria-label="Available units to assign">
+              {browseMatches.map((site) => <button type="button" key={site.id}
+                className="demo-available-item"
+                aria-label={'Assign ' + designationLabel(site.designation) + ' ' + site.label + ' (' + site.id + ')'}
+                onClick={() => {
+                  setUnitFilter('all');
+                  edit({ siteId: site.id });
+                }}>
+                <span><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></span>
+                <span className="demo-available-choose">{draft.siteId === site.id ? 'Selected' : 'Select'}</span>
+              </button>)}
+              {!browseMatches.length && <p className="demo-available-empty">No available units match. Check another search or add more spaces in Property layout.</p>}
+            </div>
+          </div>}
+        </section>
         <label htmlFor={fieldId('phone')}>Phone number
           <input id={fieldId('phone')} type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
         </label>
