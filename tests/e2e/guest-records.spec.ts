@@ -301,7 +301,7 @@ test('Add Customer links a typed Space 88 to its available unit and blocks occup
   await expect(assignment).toHaveValue('unassigned');
   await page.getByLabel('Fictional customer name').fill('Another Sample Resident');
   await page.getByRole('button', { name: 'Add example customer' }).click();
-  await expect(page.getByRole('alert')).toContainText('Space or unit number not found');
+  await expect(page.locator('.demo-record-error[role="alert"]')).toContainText('Space or unit number not found');
   await expect(page.getByRole('button', { name: 'Edit customer Another Sample Resident' })).toHaveCount(0);
 
   // Reserved RV-18 and occupied RV-01 can never be resolved to new assignments.
