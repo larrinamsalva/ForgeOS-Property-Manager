@@ -4,6 +4,16 @@ import { useState, type FormEvent } from 'react';
 import { Building2, Save, UserRound, X } from 'lucide-react';
 
 export type DemoKind = 'rv' | 'apartment' | 'cabin' | 'tent' | 'house' | 'commercial';
+export type UnitDesignation = 'site' | 'space' | 'apartment' | 'mobile';
+export const unitDesignations: { value: UnitDesignation; label: string }[] = [
+  { value: 'site', label: 'Site' },
+  { value: 'space', label: 'Space' },
+  { value: 'apartment', label: 'Apartment' },
+  { value: 'mobile', label: 'Mobile Home' },
+];
+export const designationLabel = (value: UnitDesignation) =>
+  unitDesignations.find((designation) => designation.value === value)?.label ?? 'Site';
+
 export type DemoStatus = 'occupied' | 'available' | 'reserved';
 export type DemoSite = {
   id: string;
@@ -11,6 +21,7 @@ export type DemoSite = {
   resident: string;
   rent: number;
   kind: DemoKind;
+  designation: UnitDesignation;
   label: string;
   section: string;
   lengthFt: number;
@@ -48,7 +59,8 @@ export const kindLabel = (kind: DemoKind) => demoKinds.find((item) => item.value
 
 export function makeDemoSite(id: string, kind: DemoKind = 'rv', status: DemoStatus = 'available', rent = 675): DemoSite {
   return {
-    id, kind, label: id, status, resident: '', rent, section: '',
+    id, kind, designation: kind === 'apartment' ? 'apartment' : kind === 'house' ? 'mobile' : 'site',
+    label: id, status, resident: '', rent, section: '',
     lengthFt: 0, widthFt: 0, electric: true, water: true, sewer: true, gas: false,
     amperage: 30, notes: '',
   };
@@ -86,7 +98,8 @@ export function GuestSiteEditor({
     const lengthFt = numberText.lengthFt.trim() === '' ? 0 : Number(numberText.lengthFt);
     const widthFt = numberText.widthFt.trim() === '' ? 0 : Number(numberText.widthFt);
     const amperage = numberText.amperage.trim() === '' ? 0 : Number(numberText.amperage);
-    if (!validName(draft.label) || !moneyOkay(rent) ||
+    if (!validName(draft.label) || !unitDesignations.some((option) => option.value === draft.designation) ||
+      !moneyOkay(rent) ||
       ![lengthFt, widthFt, amperage].every((v) => Number.isFinite(v) && v >= 0 && v <= 100000) ||
       !Number.isInteger(amperage)) {
       setError('Enter a space name and valid nonnegative rates, dimensions and electrical capacity.');
@@ -104,13 +117,16 @@ export function GuestSiteEditor({
     </div>
     <form onSubmit={submit}>
       <div className="demo-record-grid">
-        <label htmlFor="demo-space-label">Site / apartment name
-          <input id="demo-space-label" maxLength={100} required value={draft.label} onChange={(e) => edit({ label: e.target.value })}/>
-        </label>
-        <label htmlFor="demo-space-kind">Type of space
-          <select id="demo-space-kind" value={draft.kind} onChange={(e) => edit({ kind: e.target.value as DemoKind })}>
-            {demoKinds.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+        <label htmlFor="demo-space-designation">Unit type
+          <select id="demo-space-designation" value={draft.designation} onChange={(e) => {
+            const designation = e.target.value as UnitDesignation;
+            edit({ designation, kind: designation === 'apartment' ? 'apartment' : designation === 'mobile' ? 'house' : 'rv' });
+          }}>
+            {unitDesignations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
+        </label>
+        <label htmlFor="demo-space-label">Unit number or name
+          <input id="demo-space-label" maxLength={100} required placeholder="Example: 12, A-4, or Lot 25" value={draft.label} onChange={(e) => edit({ label: e.target.value })}/>
         </label>
         <label htmlFor="demo-space-section">Area / building / row
           <input id="demo-space-section" maxLength={80} placeholder="Example: Building A, Row 2" value={draft.section} onChange={(e) => edit({ section: e.target.value })}/>
