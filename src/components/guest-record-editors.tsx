@@ -143,6 +143,7 @@ export function GuestCustomerForm({
   const [draft, setDraft] = useState<DemoCustomer>(customer ?? makeDemoCustomer(0, ''));
   const [error, setError] = useState('');
   const editing = !!customer;
+  const fieldId = (name: string) => (editing ? 'demo-edit-customer-' : 'demo-new-customer-') + name;
   const edit = (fields: Partial<DemoCustomer>) => setDraft((current) => ({ ...current, ...fields }));
   const assignableSites = sites.filter((s) => s.status === 'available' || s.id === customer?.siteId);
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -172,36 +173,36 @@ export function GuestCustomerForm({
     </div>
     <form onSubmit={submit}>
       <div className="demo-record-grid">
-        <label htmlFor="demo-customer-name">{editing ? 'Customer name' : 'Fictional customer name'}
-          <input id="demo-customer-name" required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
+        <label htmlFor={fieldId('name')}>{editing ? 'Customer name' : 'Fictional customer name'}
+          <input id={fieldId('name')} required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-site">{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
-          <select id="demo-customer-site" value={draft.siteId ?? 'unassigned'} onChange={(e) => edit({ siteId: e.target.value === 'unassigned' ? null : e.target.value })}>
+        <label htmlFor={fieldId('site')}>{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
+          <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => edit({ siteId: e.target.value === 'unassigned' ? null : e.target.value })}>
             <option value="unassigned">Waitlist / not assigned</option>
             {assignableSites.map((site) => <option key={site.id} value={site.id}>{site.id} — {site.label}</option>)}
           </select>
         </label>
-        <label htmlFor="demo-customer-phone">Phone number
-          <input id="demo-customer-phone" type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
+        <label htmlFor={fieldId('phone')}>Phone number
+          <input id={fieldId('phone')} type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-email">Email
-          <input id="demo-customer-email" type="email" maxLength={150} placeholder="example@invalid.test" value={draft.email} onChange={(e) => edit({ email: e.target.value })}/>
+        <label htmlFor={fieldId('email')}>Email
+          <input id={fieldId('email')} type="email" maxLength={150} placeholder="example@invalid.test" value={draft.email} onChange={(e) => edit({ email: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-emergency">Emergency contact
-          <input id="demo-customer-emergency" maxLength={100} value={draft.emergencyContact} onChange={(e) => edit({ emergencyContact: e.target.value })}/>
+        <label htmlFor={fieldId('emergency')}>Emergency contact
+          <input id={fieldId('emergency')} maxLength={100} value={draft.emergencyContact} onChange={(e) => edit({ emergencyContact: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-vehicle">Vehicle / RV details
-          <input id="demo-customer-vehicle" maxLength={160} placeholder="Example: Blue RV, sample plate" value={draft.vehicle} onChange={(e) => edit({ vehicle: e.target.value })}/>
+        <label htmlFor={fieldId('vehicle')}>Vehicle / RV details
+          <input id={fieldId('vehicle')} maxLength={160} placeholder="Example: Blue RV, sample plate" value={draft.vehicle} onChange={(e) => edit({ vehicle: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-arrival">Arrival / move-in date
-          <input id="demo-customer-arrival" type="date" value={draft.arrivalDate} onChange={(e) => edit({ arrivalDate: e.target.value })}/>
+        <label htmlFor={fieldId('arrival')}>Arrival / move-in date
+          <input id={fieldId('arrival')} type="date" value={draft.arrivalDate} onChange={(e) => edit({ arrivalDate: e.target.value })}/>
         </label>
-        <label htmlFor="demo-customer-deposit">Deposit amount ($)
-          <input id="demo-customer-deposit" type="number" min="0" max="10000000" step="0.01" value={draft.deposit} onChange={(e) => edit({ deposit: Number(e.target.value) })}/>
+        <label htmlFor={fieldId('deposit')}>Deposit amount ($)
+          <input id={fieldId('deposit')} type="number" min="0" max="10000000" step="0.01" value={draft.deposit} onChange={(e) => edit({ deposit: Number(e.target.value) })}/>
         </label>
       </div>
-      <label className="demo-record-full" htmlFor="demo-customer-notes">Additional notes / special requests
-        <textarea id="demo-customer-notes" maxLength={2000} rows={3} value={draft.notes} onChange={(e) => edit({ notes: e.target.value })} placeholder="Example: Needs a pull-through space"/>
+      <label className="demo-record-full" htmlFor={fieldId('notes')}>Additional notes / special requests
+        <textarea id={fieldId('notes')} maxLength={2000} rows={3} value={draft.notes} onChange={(e) => edit({ notes: e.target.value })} placeholder="Example: Needs a pull-through space"/>
       </label>
       {error && <p role="alert" className="demo-record-error">{error}</p>}
       <div className="demo-form-actions"><button className="demo-action" type="submit"><Save size={16}/> {editing ? 'Save sample customer' : 'Add example customer'}</button>
