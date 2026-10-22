@@ -27,7 +27,7 @@ test('paperless UI shows camera and record selectors only in authenticated works
   await expect(page.getByRole('heading',{name:'Operations overview'})).toBeVisible();
   await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Paperless photos & files'}).click();
   await expect(page.getByRole('heading',{name:'Paperless photos & files',exact:true})).toBeVisible();
-  await expect(page.getByText('Sign in as an owner, manager or authorized office worker')).toBeVisible();
+  await expect(page.getByLabel('Organization name')).toBeVisible();
   await expect(page.getByLabel('Camera photo capture')).toHaveCount(0);
 });
 
