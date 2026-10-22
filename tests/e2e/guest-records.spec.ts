@@ -211,6 +211,18 @@ test('customer unit selector lists all unoccupied types across the property and 
   await expect(assignment.locator('option[value="RV-18"]')).toHaveAttribute('disabled', '');
   await expect(assignment.locator('option[value="RV-01"]')).toHaveCount(0); // Already occupied.
 
+  // The separate complete-availability browser shows ALL actual vacant units,
+  // independent of the type selector, directory page, and reserved units.
+  const fullList = page.getByRole('region', { name: 'All available units' });
+  await expect(fullList).toContainText('3 available sites and units');
+  await expect(fullList).toContainText('20 created units');
+  await page.getByRole('button', { name: 'Browse all available units' }).click();
+  await expect(fullList.getByRole('button', { name: 'Assign Apartment A-15 (RV-15)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Campground Camp 16 (RV-16)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Mobile Home MH 17 (RV-17)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Space Space 18 (RV-18)' })).toHaveCount(0);
+  await expect(fullList.getByRole('button', { name: 'Assign Site RV-01 (RV-01)' })).toHaveCount(0);
+
   await type.selectOption('apartment');
   await expect(assignment.locator('option[value="RV-15"]')).toBeEnabled();
   await expect(assignment.locator('option[value="RV-16"]')).toHaveCount(0);
@@ -221,6 +233,13 @@ test('customer unit selector lists all unoccupied types across the property and 
 
   // Occupying the apartment removes it from new-customer availability.
   await expect(assignment.locator('option[value="RV-15"]')).toHaveCount(0);
+  await expect(fullList).toContainText('2 available sites and units');
+  await expect(fullList.getByRole('button', { name: 'Assign Apartment A-15 (RV-15)' })).toHaveCount(0);
+  // Even with Apartment still selected in the type dropdown, the full browser
+  // can choose a site of a different type and reset the filter to All.
+  await fullList.getByRole('button', { name: 'Assign Campground Camp 16 (RV-16)' }).click();
+  await expect(type).toHaveValue('all');
+  await expect(assignment).toHaveValue('RV-16');
   await type.selectOption('campground');
   await expect(assignment.locator('option[value="RV-16"]')).toBeEnabled();
   await page.getByLabel('Fictional customer name').fill('Example Camp Guest');
