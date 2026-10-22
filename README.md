@@ -104,7 +104,7 @@ For a new, dedicated hosted Supabase project:
    npx supabase db push --linked --skip-vault
    ```
 
-4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-6-report.md](docs/phase-6-report.md) and the earlier milestone reports. The local PGlite tests do not replace this hosted check.
+4. Run the project's Supabase security and performance advisors, inspect migration history, and repeat the live acceptance workflows in [docs/phase-7-report.md](docs/phase-7-report.md) and the earlier milestone reports. The local PGlite tests do not replace this hosted check.
 
 Alternatively, use a local Supabase stack with Docker. The checked-in `supabase/config.toml` and empty `supabase/seed.sql` are ready for it. Inspect `npx supabase start --help`, start the stack, and use that stack's URL/publishable credentials. Apply pending migrations using the CLI's current migration command. This environment did not have Docker, so the complete local Supabase stack was not exercised.
 
@@ -125,7 +125,7 @@ The app uses PKCE and `/auth/callback` to exchange the confirmation code for a s
 
 Each employee first creates their own account and copies their user ID from **Team & access**. The owner selects **Grant property access**, enters that registered user's ID, and chooses the property and role. This grants access immediately without sending an invitation message. Revoke removes the property assignment; organization owners and administrators retain organization-wide access.
 
-The first account that creates an organization receives the owner role. Organization administrator assignment is an intentional administrative database operation in this milestone; the UI only grants property roles. Future invitations, account recovery UX, and resident access are separate work.
+The first account that creates an organization receives the owner role. Organization administrator assignment is an intentional administrative database operation in this milestone; the UI only grants property roles. Invitations and account recovery UX remain separate work. Resident access uses the owner-managed links described below.
 
 ## Verification
 
