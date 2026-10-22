@@ -201,7 +201,7 @@ export function GuestDemo() {
               <div className="demo-section-head"><div><h2>Interactive property map</h2><p>Tap a space to simulate reserving it, checking in, or checking out.</p></div><label className="demo-filter">Show <select value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)}><option value="all">All spaces</option><option value="occupied">Occupied</option><option value="available">Available</option><option value="reserved">Reserved</option></select></label></div>
               <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
               <div className="demo-full-map">
-                {sites.filter((s) => siteFilter === 'all' || s.status === siteFilter).map((s) => <button type="button" key={s.id} className={'demo-map-space ' + s.status} onClick={() => updateSite(s.id)}><span><Home size={19}/>{s.id}</span><small>{s.status}</small><small>{money(s.rent)} / mo</small></button>)}
+                {sites.filter((s) => siteFilter === 'all' || s.status === siteFilter).map((s) => <button type="button" key={s.id} data-site={s.id} className={'demo-map-space ' + s.status} onClick={() => updateSite(s.id)}><span><Home size={19}/>{s.id}</span><small>{s.status}</small><small>{money(s.rent)} / mo</small></button>)}
               </div>
               <p className="demo-caption">Changes are only a simulation. Refreshing this page starts the example over.</p>
             </section>
