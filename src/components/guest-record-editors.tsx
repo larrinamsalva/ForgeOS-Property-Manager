@@ -300,24 +300,26 @@ export function GuestCustomerForm({
           </select>
           <small aria-live="polite">{vacancyCount} currently available {vacancyCount === 1 ? 'unit' : 'units'} in this selection. Only vacant spaces, apartments, mobile homes and campground sites are available to new customers.</small>
         </label>
-        <label htmlFor={fieldId('type')}>Choose unit type
-          <select id={fieldId('type')} value={unitFilter} onChange={(e) => selectUnitFilter(e.target.value as UnitDesignation | 'all')}>
-            <option value="all">All sites, spaces, apartments, mobile homes &amp; campgrounds</option>
-            {unitDesignations.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        <label htmlFor={fieldId('unit-number')}>Space / unit number
-          <input id={fieldId('unit-number')} inputMode="text" maxLength={100}
-            value={unitNumberText} placeholder="Example: 88, A-4, Lot 25"
-            onChange={(event) => typeUnitNumber(event.target.value)}/>
-          <small aria-live="polite">{selectedUnit
-            ? 'Selected: I live in ' + designationLabel(selectedUnit.designation) + ' ' + unitNumber(selectedUnit)
-            : !unitNumberText.trim()
-              ? 'Enter an existing available unit number, or choose it below.'
-              : exactNumberMatches.length > 1
-                ? 'Multiple units share that number. Choose the exact one below.'
-                : 'No available unit matches that number and type. Choose an existing unit below or create it first.'}</small>
-        </label>
+        <div className="demo-customer-unit-pair">
+          <label htmlFor={fieldId('type')}>Choose unit type
+            <select id={fieldId('type')} value={unitFilter} onChange={(e) => selectUnitFilter(e.target.value as UnitDesignation | 'all')}>
+              <option value="all">All types</option>
+              {unitDesignations.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label htmlFor={fieldId('unit-number')}>Space / unit number
+            <input id={fieldId('unit-number')} inputMode="text" maxLength={100}
+              value={unitNumberText} placeholder="88 or A-4"
+              onChange={(event) => typeUnitNumber(event.target.value)}/>
+            <small aria-live="polite">{selectedUnit
+              ? 'Selected: I live in ' + designationLabel(selectedUnit.designation) + ' ' + unitNumber(selectedUnit)
+              : !unitNumberText.trim()
+                ? 'Enter an existing available unit number, or choose it below.'
+                : exactNumberMatches.length > 1
+                  ? 'Multiple units share that number. Choose the exact one below.'
+                  : 'No available unit matches that number and type. Choose an existing unit below or create it first.'}</small>
+          </label>
+        </div>
 
         <section className="demo-available-panel" aria-label="All available units">
           <div className="demo-available-header">
