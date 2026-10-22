@@ -217,7 +217,7 @@ export function GuestCustomerForm({
         <label htmlFor={fieldId('site')}>{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
           <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => edit({ siteId: e.target.value === 'unassigned' ? null : e.target.value })}>
             <option value="unassigned">Waitlist / not assigned</option>
-            {assignableSites.map((site) => <option key={site.id} value={site.id}>{site.id} — {site.label}</option>)}
+            {assignableSites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id})</option>)}
           </select>
         </label>
         <label htmlFor={fieldId('phone')}>Phone number
