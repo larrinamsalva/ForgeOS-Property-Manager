@@ -3,22 +3,25 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
+import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
-  RotateCcw, ShieldCheck, Users, Wrench,
+  RotateCcw, ShieldCheck, Users, Wrench, UploadCloud,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'sites' | 'tenants' | 'meters' | 'billing' | 'maintenance' | 'inventory' | 'resident';
+type Tab = 'overview' | 'sites' | 'layout' | 'tenants' | 'meters' | 'billing' | 'maintenance' | 'inventory' | 'resident';
 type Status = 'occupied' | 'available' | 'reserved';
 type Site = { id: string; status: Status; resident: string; rent: number };
 type Job = { id: number; title: string; location: string; status: 'Open' | 'Done' };
 type Stock = { name: string; quantity: number; unit: string };
 type Reading = { site: string; value: number; usage: number };
+type DemoCustomer = { id: number; name: string; siteId: string | null };
 
 const menu = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'sites', label: 'Sites & map', icon: MapPinned },
+  { id: 'layout', label: 'Property layout', icon: UploadCloud },
   { id: 'tenants', label: 'Customers', icon: Users },
   { id: 'meters', label: 'Meter readings', icon: Gauge },
   { id: 'billing', label: 'Billing', icon: Receipt },
@@ -34,6 +37,9 @@ const initialSites = (): Site[] =>
     resident: i < 14 ? 'Example Resident ' + String(i + 1).padStart(2, '0') : '',
     rent: i % 3 === 0 ? 725 : 675,
   }));
+const initialCustomers = (): DemoCustomer[] => initialSites()
+  .filter((site) => site.status === 'occupied')
+  .map((site, i) => ({ id: i + 1, name: site.resident, siteId: site.id }));
 const initialJobs = (): Job[] => [
   { id: 1, title: 'Inspect water hookup', location: 'RV-04', status: 'Open' },
   { id: 2, title: 'Replace walkway light', location: 'North path', status: 'Open' },
@@ -52,6 +58,15 @@ export function GuestDemo() {
   const hydrated = useHydrated();
   const [tab, setTab] = useState<Tab>('overview');
   const [sites, setSites] = useState<Site[]>(initialSites);
+  const [customers, setCustomers] = useState<DemoCustomer[]>(initialCustomers);
+  const [plannedCapacity, setPlannedCapacity] = useState(700);
+  const [sitePage, setSitePage] = useState(0);
+  const [customerPage, setCustomerPage] = useState(0);
+  const [siteQuery, setSiteQuery] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [customerSite, setCustomerSite] = useState('unassigned');
+  const [plannerReset, setPlannerReset] = useState(0);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -70,6 +85,42 @@ export function GuestDemo() {
   const latest = [...readings].reverse().find((r) => r.site === meterSite);
   const previousRegister = latest?.value ?? startingRegister(meterSite);
   const sampleUsage = readings.reduce((total, r) => total + r.usage, 0);
+  const filteredSites = sites.filter((s) => (siteFilter === 'all' || s.status === siteFilter) && s.id.toLowerCase().includes(siteQuery.toLowerCase().trim()));
+  const sitePages = Math.max(1, Math.ceil(filteredSites.length / 60));
+  const visibleSitePage = Math.min(sitePage, sitePages - 1);
+  const filteredCustomers = customers.filter((c) => (c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim()));
+  const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
+  const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
+  function addSites(count: number) {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 250) return;
+    const nextNumber = sites.reduce((max, site) => Math.max(max, Number(site.id.slice(3)) || 0), 0) + 1;
+    const added = Array.from({ length: count }, (_, i): Site => ({
+      id: 'RV-' + String(nextNumber + i).padStart(2, '0'),
+      status: 'available',
+      resident: '',
+      rent: 675,
+    }));
+    setSites((current) => [...current, ...added]);
+    setSitePage(0);
+    setNotice('Added ' + count + ' fictional space' + (count === 1 ? '' : 's') + '. Site count: ' + (sites.length + count) + '.');
+  }
+  function addCustomer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = newCustomerName.trim();
+    if (!name || name.length > 100) { setNotice('Enter a short fictional customer name (1–100 characters).'); return; }
+    const id = customerSite === 'unassigned' ? null : customerSite;
+    if (id && !sites.some((site) => site.id === id && site.status === 'available')) {
+      setNotice('Choose an available space or add the person to your waiting list.');
+      return;
+    }
+    const next = customers.reduce((max, c) => Math.max(max, c.id), 0) + 1;
+    setCustomers((current) => [...current, { id: next, name, siteId: id }]);
+    if (id) setSites((current) => current.map((site) => site.id === id ? { ...site, status: 'occupied', resident: name } : site));
+    setNewCustomerName('');
+    setCustomerSite('unassigned');
+    setCustomerPage(0);
+    setNotice(name + ' added to this fictional ' + (id ? 'site' : 'waiting list') + '. No account or real customer record was created.');
+  }
 
   function updateSite(id: string) {
     const original = sites.find((site) => site.id === id);
@@ -79,9 +130,18 @@ export function GuestDemo() {
       original.status === 'reserved' ? 'occupied' : 'available';
     const changed =
       next === 'reserved' ? 'Reserved' : next === 'occupied' ? 'Checked in' : 'Checked out';
+    let resident = '';
+    if (next === 'occupied') {
+      const nextId = customers.reduce((max, c) => Math.max(max, c.id), 0) + 1;
+      resident = 'Example Walk-in ' + nextId;
+      setCustomers((current) => [...current, { id: nextId, name: resident, siteId: id }]);
+    }
+    if (original.status === 'occupied') {
+      setCustomers((current) => current.map((customer) => customer.siteId === id ? { ...customer, siteId: null } : customer));
+    }
     setSites((old) =>
       old.map((site) =>
-        site.id === id ? { ...site, status: next, resident: next === 'occupied' ? 'Example Walk-in' : '' } : site
+        site.id === id ? { ...site, status: next, resident } : site
       )
     );
     setNotice(id + ' — ' + changed + ' in this sample only. No actual booking was made.');
@@ -101,6 +161,15 @@ export function GuestDemo() {
 
   function resetDemo() {
     setSites(initialSites());
+    setCustomers(initialCustomers());
+    setPlannedCapacity(700);
+    setSitePage(0);
+    setCustomerPage(0);
+    setSiteQuery('');
+    setCustomerQuery('');
+    setNewCustomerName('');
+    setCustomerSite('unassigned');
+    setPlannerReset((current) => current + 1);
     setJobs(initialJobs());
     setStock(initialStock());
     setReadings([]);
@@ -135,7 +204,7 @@ export function GuestDemo() {
       <div className="demo-body">
         <aside className="demo-rail">
           <div className="demo-property-icon"><Building2 size={21} /></div>
-          <div className="demo-property-label"><strong>Pine Creek RV Park</strong><span>Example property · 20 spaces</span></div>
+          <div className="demo-property-label"><strong>Pine Creek RV Park</strong><span>Example property · {sites.length.toLocaleString()} spaces</span></div>
           <nav className="demo-nav" aria-label="Guest demo navigation">
             {menu.map((item) => {
               const Icon = item.icon;
@@ -175,10 +244,12 @@ export function GuestDemo() {
                 <div className="demo-welcome-icon" aria-hidden="true"><MapPinned size={58}/></div>
               </section>
               <div className="demo-kpis">
-                <Metric label="Occupied spaces" value={String(occupied) + ' / 20'} detail={String(Math.round((occupied / 20) * 100)) + '% occupancy'} />
+                <Metric label="Occupied spaces" value={String(occupied) + ' / ' + sites.length.toLocaleString()} detail={String(Math.round((occupied / Math.max(1, sites.length)) * 100)) + '% occupancy'} />
                 <Metric label="Available now" value={String(available)} detail={String(reserved) + ' reservations'} />
                 <Metric label="Sample monthly rent" value={money(rentTotal)} detail="Illustrative only" />
                 <Metric label="Open work orders" value={String(unpaidJobs)} detail="Tasks to review" />
+                <Metric label="Customer records" value={customers.length.toLocaleString()} detail="Created as people arrive" />
+                <Metric label="Planned spaces" value={plannedCapacity.toLocaleString()} detail="Adjust in Property layout" />
               </div>
               <div className="demo-two-columns">
                 <section className="demo-panel">
@@ -199,21 +270,65 @@ export function GuestDemo() {
           )}
 
           {tab === 'sites' && (
-            <section className="demo-panel">
-              <div className="demo-section-head"><div><h2>Interactive property map</h2><p>Tap a space to simulate reserving it, checking in, or checking out.</p></div><label className="demo-filter">Show <select value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)}><option value="all">All spaces</option><option value="occupied">Occupied</option><option value="available">Available</option><option value="reserved">Reserved</option></select></label></div>
-              <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
-              <div className="demo-full-map">
-                {sites.filter((s) => siteFilter === 'all' || s.status === siteFilter).map((s) => <button type="button" key={s.id} data-site={s.id} className={'demo-map-space ' + s.status} onClick={() => updateSite(s.id)}><span><Home size={19}/>{s.id}</span><small>{s.status}</small><small>{money(s.rent)} / mo</small></button>)}
-              </div>
-              <p className="demo-caption">Changes are only a simulation. Refreshing this page starts the example over.</p>
-            </section>
+            <>
+              <section className="demo-panel">
+                <div className="demo-section-head">
+                  <div><h2>Interactive property map</h2><p>{sites.length.toLocaleString()} created spaces. Tap a space to simulate a reservation, check-in or checkout.</p></div>
+                  <button className="demo-action" type="button" onClick={() => setTab('layout')}><Plus size={16}/> Add spaces / upload layout</button>
+                </div>
+                <div className="demo-planner-controls">
+                  <label htmlFor="demo-site-search">Find a space
+                    <input id="demo-site-search" placeholder="e.g. RV-700" value={siteQuery} onChange={(e) => {setSiteQuery(e.target.value); setSitePage(0);}}/>
+                  </label>
+                  <label className="demo-filter" htmlFor="demo-site-status">Status
+                    <select id="demo-site-status" value={siteFilter} onChange={(e) => {setSiteFilter(e.target.value); setSitePage(0);}}><option value="all">All spaces</option><option value="occupied">Occupied</option><option value="available">Available</option><option value="reserved">Reserved</option></select>
+                  </label>
+                </div>
+                <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
+                <div className="demo-full-map">
+                  {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <button type="button" key={site.id} data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}><span><Home size={19}/>{site.id}</span><small>{site.status}</small><small>{money(site.rent)} / mo</small></button>)}
+                </div>
+                <Pagination page={visibleSitePage} pages={sitePages} total={filteredSites.length} label="spaces" onChange={setSitePage}/>
+                <p className="demo-caption">60 spaces per page keeps the map usable even when your example has 700 or more. Changes are temporary.</p>
+              </section>
+            </>
+          )}
+
+          {tab === 'layout' && (
+            <GuestPropertyPlanner key={plannerReset} sites={sites} target={plannedCapacity} onTargetChange={setPlannedCapacity} onAddSites={addSites}/>
           )}
 
           {tab === 'tenants' && (
-            <section className="demo-panel">
-              <div className="demo-section-head"><div><h2>Customer & tenant records</h2><p>Sample tenant directory based on the spaces currently occupied in your demo.</p></div><span className="demo-property-pill"><Users size={15}/> {occupied} sample residents</span></div>
-              <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th></tr></thead><tbody>{sites.filter((s) => s.status === 'occupied').map((s) => <tr key={s.id}><td>{s.resident}</td><td>{s.id}</td><td>{money(s.rent)}</td><td><span className="demo-status occupied">Current resident</span></td></tr>)}</tbody></table></div>
-            </section>
+            <>
+              <section className="demo-panel">
+                <div className="demo-section-head"><div><h2>Customers as they arrive</h2><p>{customers.length.toLocaleString()} sample customers, independent of the number of spaces. Add one at a time or maintain a waiting list.</p></div></div>
+                <form className="demo-planner-controls" onSubmit={addCustomer}>
+                  <label htmlFor="demo-customer-name">Fictional customer name
+                    <input id="demo-customer-name" required maxLength={100} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="e.g. Example Guest 15"/>
+                  </label>
+                  <label htmlFor="demo-customer-site">Assign an available site (optional)
+                    <select id="demo-customer-site" value={customerSite} onChange={(e) => setCustomerSite(e.target.value)}>
+                      <option value="unassigned">Waitlist / not assigned</option>
+                      {sites.filter((site) => site.status === 'available').map((site) => <option key={site.id} value={site.id}>{site.id}</option>)}
+                    </select>
+                  </label>
+                  <button className="demo-action" type="submit"><Plus size={16}/> Add example customer</button>
+                </form>
+                <p className="demo-caption">For privacy, use fictional names in this public demo. Real customer records belong in the secured owner workspace.</p>
+              </section>
+              <section className="demo-panel">
+                <div className="demo-section-head"><div><h2>Customer directory</h2><p>Lists are paginated in groups of 50 so larger parks stay easy to use.</p></div>
+                  <label className="demo-filter" htmlFor="demo-customer-search">Search
+                    <input id="demo-customer-search" placeholder="Name or site" value={customerQuery} onChange={(e) => {setCustomerQuery(e.target.value); setCustomerPage(0);}}/>
+                  </label>
+                </div>
+                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
+                  const site = sites.find((s) => s.id === customer.siteId);
+                  return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td></tr>;
+                })}</tbody></table></div>
+                <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
+              </section>
+            </>
           )}
 
           {tab === 'meters' && (
@@ -297,6 +412,14 @@ export function GuestDemo() {
       </div>
     </div>
   );
+}
+
+function Pagination({page, pages, total, label, onChange}: {page: number; pages: number; total: number; label: string; onChange: (n: number) => void}) {
+  return <div className="demo-pagination" aria-label={label + ' pagination'}>
+    <span>{total.toLocaleString()} {label} · Page {page + 1} of {pages}</span>
+    <div><button type="button" disabled={page === 0} onClick={() => onChange(page - 1)}>Previous</button>
+    <button type="button" disabled={page >= pages - 1} onClick={() => onChange(page + 1)}>Next</button></div>
+  </div>;
 }
 
 function Metric({label, value, detail}: {label: string; value: string; detail: string}) {
