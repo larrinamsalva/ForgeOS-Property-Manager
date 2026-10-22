@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
+import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
+import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
@@ -12,11 +14,10 @@ import {
 
 type Tab = 'overview' | 'sites' | 'layout' | 'tenants' | 'meters' | 'billing' | 'maintenance' | 'inventory' | 'resident';
 type Status = 'occupied' | 'available' | 'reserved';
-type Site = { id: string; status: Status; resident: string; rent: number };
+type Site = DemoSite;
 type Job = { id: number; title: string; location: string; status: 'Open' | 'Done' };
 type Stock = { name: string; quantity: number; unit: string };
 type Reading = { site: string; value: number; usage: number };
-type DemoCustomer = { id: number; name: string; siteId: string | null };
 
 const menu = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -32,14 +33,12 @@ const menu = [
 
 const initialSites = (): Site[] =>
   Array.from({ length: 20 }, (_, i) => ({
-    id: 'RV-' + String(i + 1).padStart(2, '0'),
-    status: i < 14 ? 'occupied' : i < 17 ? 'available' : 'reserved',
+    ...makeDemoSite('RV-' + String(i + 1).padStart(2, '0'), 'rv', i < 14 ? 'occupied' : i < 17 ? 'available' : 'reserved', i % 3 === 0 ? 725 : 675),
     resident: i < 14 ? 'Example Resident ' + String(i + 1).padStart(2, '0') : '',
-    rent: i % 3 === 0 ? 725 : 675,
   }));
 const initialCustomers = (): DemoCustomer[] => initialSites()
   .filter((site) => site.status === 'occupied')
-  .map((site, i) => ({ id: i + 1, name: site.resident, siteId: site.id }));
+  .map((site, i) => makeDemoCustomer(i + 1, site.resident, site.id));
 const initialJobs = (): Job[] => [
   { id: 1, title: 'Inspect water hookup', location: 'RV-04', status: 'Open' },
   { id: 2, title: 'Replace walkway light', location: 'North path', status: 'Open' },
@@ -64,8 +63,22 @@ export function GuestDemo() {
   const [customerPage, setCustomerPage] = useState(0);
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
-  const [newCustomerName, setNewCustomerName] = useState('');
-  const [customerSite, setCustomerSite] = useState('unassigned');
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [photos, setPhotos] = useState<DemoSitePhoto[]>([]);
+  const [vehicles, setVehicles] = useState<DemoVehicle[]>([]);
+  const photoUrlsRef = useRef(new Set<string>());
+  const photoIdRef = useRef(0);
+  const vehicleIdRef = useRef(0);
+  useEffect(() => {
+    const photoUrls = photoUrlsRef.current;
+    return () => { photoUrls.forEach((url) => URL.revokeObjectURL(url)); photoUrls.clear(); };
+  }, []);
+  useEffect(() => {
+    if (tab === 'sites' && selectedSiteId) {
+      document.getElementById('demo-selected-space')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [tab, selectedSiteId]);
   const [plannerReset, setPlannerReset] = useState(0);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
@@ -94,32 +107,61 @@ export function GuestDemo() {
   function addSites(count: number) {
     if (!Number.isSafeInteger(count) || count < 1 || count > 250) return;
     const nextNumber = sites.reduce((max, site) => Math.max(max, Number(site.id.slice(3)) || 0), 0) + 1;
-    const added = Array.from({ length: count }, (_, i): Site => ({
-      id: 'RV-' + String(nextNumber + i).padStart(2, '0'),
-      status: 'available',
-      resident: '',
-      rent: 675,
-    }));
+    const added = Array.from({ length: count }, (_, i): Site => makeDemoSite('RV-' + String(nextNumber + i).padStart(2, '0')));
     setSites((current) => [...current, ...added]);
     setSitePage(0);
     setNotice('Added ' + count + ' fictional space' + (count === 1 ? '' : 's') + '. Site count: ' + (sites.length + count) + '.');
   }
-  function addCustomer(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const name = newCustomerName.trim();
-    if (!name || name.length > 100) { setNotice('Enter a short fictional customer name (1–100 characters).'); return; }
-    const id = customerSite === 'unassigned' ? null : customerSite;
-    if (id && !sites.some((site) => site.id === id && site.status === 'available')) {
-      setNotice('Choose an available space or add the person to your waiting list.');
+  function saveCustomer(record: DemoCustomer) {
+    const existing = record.id ? customers.find((c) => c.id === record.id) : undefined;
+    const nextId = existing?.id ?? (customers.reduce((max, c) => Math.max(max, c.id), 0) + 1);
+    const updated = { ...record, id: nextId };
+    const newSite = updated.siteId;
+    if (newSite && !sites.some((site) => site.id === newSite && (site.status === 'available' || site.id === existing?.siteId))) {
+      setNotice('Choose a currently available site or keep this customer unassigned.');
       return;
     }
-    const next = customers.reduce((max, c) => Math.max(max, c.id), 0) + 1;
-    setCustomers((current) => [...current, { id: next, name, siteId: id }]);
-    if (id) setSites((current) => current.map((site) => site.id === id ? { ...site, status: 'occupied', resident: name } : site));
-    setNewCustomerName('');
-    setCustomerSite('unassigned');
+    setCustomers((current) => existing
+      ? current.map((customer) => customer.id === nextId ? updated : customer)
+      : [...current, updated]);
+    setSites((current) => current.map((site) => {
+      if (existing?.siteId === site.id && newSite !== site.id) return { ...site, status: 'available', resident: '' };
+      if (newSite === site.id) return { ...site, status: 'occupied', resident: updated.name };
+      return site;
+    }));
+    setSelectedCustomerId(null);
     setCustomerPage(0);
-    setNotice(name + ' added to this fictional ' + (id ? 'site' : 'waiting list') + '. No account or real customer record was created.');
+    setNotice(updated.name + (existing ? ' updated' : ' added') + ' in this fictional ' + (newSite ? 'site' : 'waiting list') + '. No real record was created.');
+  }
+  function saveSpace(updated: Site) {
+    setSites((current) => current.map((site) => site.id === updated.id ? updated : site));
+    setNotice(updated.id + ' details updated in the sample, including the space type and rent.');
+  }
+  function addPhotos(siteId: string, category: PhotoCategory, files: File[]): string {
+    const validation = validateDemoPhotos(photos.filter((photo) => photo.siteId === siteId).length, files);
+    if (validation) return validation;
+    const added = files.map((file): DemoSitePhoto => {
+      photoIdRef.current += 1;
+      const url = URL.createObjectURL(file);
+      photoUrlsRef.current.add(url);
+      return { id: photoIdRef.current, siteId, category, name: file.name, url };
+    });
+    setPhotos((current) => [...current, ...added]);
+    return 'Added ' + added.length + ' local picture' + (added.length === 1 ? '' : 's') + ' to ' + siteId + '. Not uploaded.';
+  }
+  function removePhoto(id: number) {
+    const found = photos.find((photo) => photo.id === id);
+    if (!found) return;
+    photoUrlsRef.current.delete(found.url);
+    URL.revokeObjectURL(found.url);
+    setPhotos((current) => current.filter((photo) => photo.id !== id));
+  }
+  function addVehicle(siteId: string, vehicle: Pick<DemoVehicle, 'category' | 'description' | 'identification'>): string {
+    if (!vehicle.description.trim() || vehicle.description.length > 100 || vehicle.identification.length > 40)
+      return 'Enter a fictional description up to 100 characters.';
+    vehicleIdRef.current += 1;
+    setVehicles((current) => [...current, { ...vehicle, id: vehicleIdRef.current, siteId }]);
+    return 'Added sample ' + vehicle.description + ' to ' + siteId + '.';
   }
 
   function updateSite(id: string) {
@@ -134,7 +176,7 @@ export function GuestDemo() {
     if (next === 'occupied') {
       const nextId = customers.reduce((max, c) => Math.max(max, c.id), 0) + 1;
       resident = 'Example Walk-in ' + nextId;
-      setCustomers((current) => [...current, { id: nextId, name: resident, siteId: id }]);
+      setCustomers((current) => [...current, makeDemoCustomer(nextId, resident, id)]);
     }
     if (original.status === 'occupied') {
       setCustomers((current) => current.map((customer) => customer.siteId === id ? { ...customer, siteId: null } : customer));
@@ -167,8 +209,12 @@ export function GuestDemo() {
     setCustomerPage(0);
     setSiteQuery('');
     setCustomerQuery('');
-    setNewCustomerName('');
-    setCustomerSite('unassigned');
+    setSelectedSiteId(null);
+    setSelectedCustomerId(null);
+    photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    photoUrlsRef.current.clear();
+    setPhotos([]);
+    setVehicles([]);
     setPlannerReset((current) => current + 1);
     setJobs(initialJobs());
     setStock(initialStock());
@@ -273,7 +319,7 @@ export function GuestDemo() {
             <>
               <section className="demo-panel">
                 <div className="demo-section-head">
-                  <div><h2>Interactive property map</h2><p>{sites.length.toLocaleString()} created spaces. Tap a space to simulate a reservation, check-in or checkout.</p></div>
+                  <div><h2>Site & apartment directory</h2><p>{sites.length.toLocaleString()} created spaces. Use <strong>Details & photos</strong> to add information for any space; tap the site tile to simulate check-in.</p></div>
                   <button className="demo-action" type="button" onClick={() => setTab('layout')}><Plus size={16}/> Add spaces / upload layout</button>
                 </div>
                 <div className="demo-planner-controls">
@@ -286,11 +332,31 @@ export function GuestDemo() {
                 </div>
                 <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
                 <div className="demo-full-map">
-                  {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <button type="button" key={site.id} data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}><span><Home size={19}/>{site.id}</span><small>{site.status}</small><small>{money(site.rent)} / mo</small></button>)}
+                  {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <div key={site.id} className="demo-space-card">
+                    <button type="button" data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}>
+                      <span><Home size={19}/>{site.id}</span><small>{site.label !== site.id ? site.label + ' · ' : ''}{site.kind === 'apartment' ? 'Apartment' : site.kind === 'rv' ? 'RV space' : site.kind}</small><small>{site.status} · {money(site.rent)} / mo</small>
+                    </button>
+                    <button type="button" className="demo-site-details-button" aria-label={'Details and photos for ' + site.id} onClick={() => setSelectedSiteId(site.id)}>
+                      Details &amp; photos {photos.some((photo) => photo.siteId === site.id) ? '(' + photos.filter((photo) => photo.siteId === site.id).length + ')' : ''}
+                    </button>
+                  </div>)}
                 </div>
                 <Pagination page={visibleSitePage} pages={sitePages} total={filteredSites.length} label="spaces" onChange={setSitePage}/>
-                <p className="demo-caption">60 spaces per page keeps the map usable even when your example has 700 or more. Changes are temporary.</p>
+                <p className="demo-caption">60 spaces per page keeps large properties manageable. Every space has its own editable details, vehicle list and local photo gallery.</p>
               </section>
+              {selectedSiteId && sites.some((site) => site.id === selectedSiteId) && <div id="demo-selected-space">
+                <GuestSiteEditor key={selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!} onSave={saveSpace} onClose={() => setSelectedSiteId(null)}/>
+                <GuestSiteMedia
+                  key={'media-' + selectedSiteId}
+                  siteId={selectedSiteId}
+                  photos={photos.filter((photo) => photo.siteId === selectedSiteId)}
+                  vehicles={vehicles.filter((vehicle) => vehicle.siteId === selectedSiteId)}
+                  onAddPhotos={(category, files) => addPhotos(selectedSiteId, category, files)}
+                  onRemovePhoto={removePhoto}
+                  onAddVehicle={(vehicle) => addVehicle(selectedSiteId, vehicle)}
+                  onRemoveVehicle={(id) => setVehicles((current) => current.filter((vehicle) => vehicle.id !== id))}
+                />
+              </div>}
             </>
           )}
 
@@ -300,31 +366,18 @@ export function GuestDemo() {
 
           {tab === 'tenants' && (
             <>
+              <GuestCustomerForm sites={sites} onSave={saveCustomer}/>
+              {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestCustomerForm key={'customer-' + selectedCustomerId} customer={customers.find((customer) => customer.id === selectedCustomerId)} sites={sites} onSave={saveCustomer} onClose={() => setSelectedCustomerId(null)}/>}
               <section className="demo-panel">
-                <div className="demo-section-head"><div><h2>Customers as they arrive</h2><p>{customers.length.toLocaleString()} sample customers, independent of the number of spaces. Add one at a time or maintain a waiting list.</p></div></div>
-                <form className="demo-planner-controls" onSubmit={addCustomer}>
-                  <label htmlFor="demo-customer-name">Fictional customer name
-                    <input id="demo-customer-name" required maxLength={100} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="e.g. Example Guest 15"/>
-                  </label>
-                  <label htmlFor="demo-customer-site">Assign an available site (optional)
-                    <select id="demo-customer-site" value={customerSite} onChange={(e) => setCustomerSite(e.target.value)}>
-                      <option value="unassigned">Waitlist / not assigned</option>
-                      {sites.filter((site) => site.status === 'available').map((site) => <option key={site.id} value={site.id}>{site.id}</option>)}
-                    </select>
-                  </label>
-                  <button className="demo-action" type="submit"><Plus size={16}/> Add example customer</button>
-                </form>
-                <p className="demo-caption">For privacy, use fictional names in this public demo. Real customer records belong in the secured owner workspace.</p>
-              </section>
-              <section className="demo-panel">
-                <div className="demo-section-head"><div><h2>Customer directory</h2><p>Lists are paginated in groups of 50 so larger parks stay easy to use.</p></div>
+                <div className="demo-section-head"><div><h2>Customer directory</h2><p>{customers.length.toLocaleString()} fictional customer files with optional contacts, arrival details, vehicle notes and deposits. Lists display 50 at a time.</p></div>
                   <label className="demo-filter" htmlFor="demo-customer-search">Search
                     <input id="demo-customer-search" placeholder="Name or site" value={customerQuery} onChange={(e) => {setCustomerQuery(e.target.value); setCustomerPage(0);}}/>
                   </label>
                 </div>
-                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
+                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
-                  return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td></tr>;
+                  return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
+                  <td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
                 })}</tbody></table></div>
                 <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
               </section>
