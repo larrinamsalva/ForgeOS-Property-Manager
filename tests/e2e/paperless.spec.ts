@@ -15,6 +15,10 @@ test('paperless files are not exposed to anonymous visitors or cross-site POSTs'
   expect(cross.status()).toBe(403);
   const unauth=await request.post('/api/attachments',{headers:{origin,'content-type':'image/png'},data:Buffer.from('sample')});
   expect(unauth.status()).toBe(401);
+  const rejectedDeletion=await request.delete('/api/attachments?file=00000000-0000-4000-8000-000000000003',{headers:{origin:'https://evil.example'}});
+  expect(rejectedDeletion.status()).toBe(403);
+  const unauthenticatedDelete=await request.delete('/api/attachments?file=00000000-0000-4000-8000-000000000003',{headers:{origin}});
+  expect(unauthenticatedDelete.status()).toBe(401);
 });
 
 test('paperless UI shows camera and record selectors only in authenticated workspace',async ({page})=>{
