@@ -8,6 +8,8 @@ export const identities = {
   technician: '10000000-0000-4000-8000-000000000004',
   manager: '10000000-0000-4000-8000-000000000005',
   maintenance: '10000000-0000-4000-8000-000000000006',
+  resident: '10000000-0000-4000-8000-000000000007',
+  resident2: '10000000-0000-4000-8000-000000000008',
 };
 export async function database() {
   const db = new PGlite({ extensions: { btree_gist } });

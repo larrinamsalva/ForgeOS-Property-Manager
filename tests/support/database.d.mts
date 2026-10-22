@@ -1,6 +1,6 @@
 import type { PGlite, Transaction } from '@electric-sql/pglite';
 export const identities: Record<
-  'owner' | 'other' | 'office' | 'technician' | 'manager' | 'maintenance',
+  'owner' | 'other' | 'office' | 'technician' | 'manager' | 'maintenance' | 'resident' | 'resident2',
   string
 >;
 export function database(): Promise<PGlite>;
