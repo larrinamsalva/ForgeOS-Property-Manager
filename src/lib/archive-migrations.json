@@ -1,0 +1,9 @@
+[
+  "20261021022402_foundation.sql",
+  "20261021050711_reservations_leases.sql",
+  "20261021055004_tablet_meter_reader.sql",
+  "20261021191645_utilities_billing.sql",
+  "20261021201615_payments_collections.sql",
+  "20261022003037_property_operations.sql",
+  "20261022013316_commercial_readiness.sql"
+]

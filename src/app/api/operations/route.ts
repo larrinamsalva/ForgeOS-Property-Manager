@@ -1,3 +1,4 @@
+import { readJson, BodyError } from '@/lib/request-body';
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { serverClient } from '@/lib/supabase/server';
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (e) {
+    if (e instanceof BodyError) return NextResponse.json({ error: e.message }, { status: e.status });
     return NextResponse.json(
       {
         error:
@@ -47,12 +49,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return NextResponse.json({ error: 'Use a JSON request.' }, { status: 415 });
-  if (Number(request.headers.get('content-length') ?? 0) > 131072)
-    return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
   try {
-    const raw = await request.text();
-    if (raw.length > 131072) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
-    const input = operationsCommandSchema.parse(JSON.parse(raw));
     const client = await serverClient();
     const {
       data: { user },
@@ -60,6 +57,7 @@ export async function POST(request: NextRequest) {
     } = await client.auth.getUser();
     if (error || !user)
       return NextResponse.json({ error: 'Session expired. Sign in before retrying.' }, { status: 401 });
+    const input = operationsCommandSchema.parse(await readJson(request));
     const result = await client.rpc('operations_command', input);
     if (result.error) {
       const mapped = operationsError(result.error.code, result.error.message);
@@ -67,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(result.data, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) {
+    if (e instanceof BodyError) return NextResponse.json({ error: e.message }, { status: e.status });
     return NextResponse.json(
       {
         error:

@@ -6,12 +6,13 @@ import { ThemeButton } from '@/components/theme-button';
 import { configured } from '@/lib/supabase/config';
 import { serverClient } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
-export default async function Login() {
+export default async function Login({ searchParams }: { searchParams: Promise<{ portal?: string }> }) {
+  const portal = (await searchParams).portal === '1';
   if (!configured()) redirect('/setup');
   const {
     data: { user },
   } = await (await serverClient()).auth.getUser();
-  if (user) redirect('/');
+  if (user) redirect(portal ? '/portal' : '/');
   return (
     <main className="auth-page">
       <div className="auth-art">
@@ -48,11 +49,18 @@ export default async function Login() {
         </div>
         <div className="auth-card">
           <span className="eyebrow">Welcome to ForgeOS</span>
-          <h2>Your operation starts here.</h2>
-          <p className="muted">Sign in to your property workspace.</p>
-          <AuthForm />
+          <h2>{portal ? 'Your resident account.' : 'Your operation starts here.'}</h2>
+          <p className="muted">
+            {portal
+              ? 'Sign in to view records shared by your property.'
+              : 'Sign in to your property workspace.'}
+          </p>
+          <AuthForm portal={portal} />
+          <Link href={portal ? '/login' : '/login?portal=1'}>
+            {portal ? 'Staff sign in' : 'Resident sign in'}
+          </Link>
         </div>
-        <p className="auth-footnote">ForgeOS Property Manager · Foundation release</p>
+        <p className="auth-footnote">ForgeOS Property Manager</p>
       </div>
     </main>
   );

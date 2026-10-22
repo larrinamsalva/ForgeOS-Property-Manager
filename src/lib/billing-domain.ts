@@ -164,7 +164,10 @@ export function dollarsToCents(value: string): string {
   const [whole, fraction = ''] = value.split('.');
   return (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'))).toString();
 }
-export function ledgerBalance(entries: LedgerEntry[], invoiceId?: string): string {
+export function ledgerBalance(
+  entries: Pick<LedgerEntry, 'invoice_id' | 'amount_cents'>[],
+  invoiceId?: string
+): string {
   return entries
     .filter((e) => !invoiceId || e.invoice_id === invoiceId)
     .reduce((sum, e) => sum + BigInt(e.amount_cents), 0n)

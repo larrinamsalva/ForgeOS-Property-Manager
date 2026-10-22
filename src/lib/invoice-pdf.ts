@@ -4,13 +4,15 @@ import fontkit from '@pdf-lib/fontkit';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PDFDocument, rgb, type PDFPage } from 'pdf-lib';
-import { cents, ledgerBalance, type Invoice, type InvoiceRevision, type LedgerEntry } from './billing-domain';
+import { cents, ledgerBalance } from './billing-domain';
+import type { StatementInvoice, StatementRevision, StatementLedger } from './statement-domain';
 export class StatementCharacterError extends Error {}
 export async function invoicePdf(
-  invoice: Invoice,
-  revision: InvoiceRevision,
-  ledger: LedgerEntry[],
-  collection?: CollectionAccount
+  invoice: StatementInvoice,
+  revision: StatementRevision,
+  ledger: StatementLedger[],
+  collection?: CollectionAccount,
+  resident = false
 ) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(`${invoice.number} - ${collection?.issued_on ? 'Invoice' : 'Internal review statement'}`);
@@ -223,7 +225,8 @@ export async function invoicePdf(
       text(`Effective ${rate.starts_on} to ${rate.ends_on || 'open ended'} | ${rate.billed_unit}`, 9);
       for (const tier of rate.tiers)
         text(`Tier through ${tier.up_to || 'unlimited'}: $${tier.unit_price} / ${rate.billed_unit}`, 9);
-      if (rate.tax_bps > 0) text(`Tax authorization: ${rate.authorization_reference}`, 9);
+      if (rate.tax_bps > 0 && rate.authorization_reference)
+        text(`Tax authorization: ${rate.authorization_reference}`, 9);
     }
     for (const segment of item.source.segments ?? []) {
       space(135);
@@ -264,7 +267,7 @@ export async function invoicePdf(
   const entries = ledger.filter((e) => e.invoice_id === invoice.id);
   if (entries.length) {
     space(110);
-    heading('Internal ledger history');
+    heading(resident ? 'Account adjustments' : 'Internal ledger history');
     row('Event', 'Date', 'Amount', true);
     tableHeader = ['Event', 'Date', 'Amount'];
     for (const entry of entries) {

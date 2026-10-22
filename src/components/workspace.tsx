@@ -79,8 +79,15 @@ const navigation = [
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
   { id: 'inventory', label: 'Inventory & purchasing', icon: Package },
   { id: 'operations', label: 'Team & daily operations', icon: CheckCircle2 },
+  { id: 'reports', label: 'Reports & properties', icon: LayoutDashboard },
+  { id: 'communications', label: 'Resident communications', icon: MessageSquare },
+  { id: 'commercial', label: 'Portal & account', icon: ShieldCheck },
 ];
-const upcoming = [{ label: 'Communications & reports', icon: MessageSquare, milestone: 7 }];
+const ReportsWorkspace = dynamic(() => import('./reports-workspace').then((m) => m.ReportsWorkspace));
+const OperationsMetrics = dynamic(() => import('./reports-workspace').then((m) => m.OperationsMetrics));
+const CommercialWorkspace = dynamic(() =>
+  import('./commercial-workspace').then((m) => m.CommercialWorkspace)
+);
 type Entity = 'property' | 'site' | 'customer';
 type Editor =
   | { type: Entity; id?: string }
@@ -657,17 +664,11 @@ export function Workspace({
             </Link>
           ))}
         </nav>
-        <div className="upcoming-nav">
-          <span className="nav-label">On the roadmap</span>
-          {upcoming.map(({ label, icon: Icon, milestone }) => (
-            <div key={label} className="nav-upcoming">
-              <Icon size={17} />
-              <span>{label}</span>
-              <small>M{milestone}</small>
-            </div>
-          ))}
-        </div>
         <div className="sidebar-bottom">
+          <Link className="nav-link" href="/portal">
+            <Users size={19} />
+            Resident portal
+          </Link>
           <Link
             className={`nav-link ${section === 'access' ? 'active' : ''}`}
             href={href('access')}
@@ -679,7 +680,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Operations release<small>Milestone 6 of 7</small>
+              Commercial readiness<small>Milestone 7 of 7</small>
             </div>
           </div>
         </div>
@@ -851,15 +852,22 @@ export function Workspace({
                 financial records require a manager or office role.
               </Empty>
             </section>
+          ) : section === 'reports' ? (
+            <ReportsWorkspace snapshot={snapshot} propertyId={propertyId} />
+          ) : section === 'commercial' || section === 'communications' ? (
+            <CommercialWorkspace snapshot={snapshot} propertyId={propertyId} section={section} />
           ) : section === 'overview' ? (
-            <Overview
-              snapshot={snapshot}
-              properties={properties}
-              sites={sites}
-              href={href}
-              addProperty={manageOrg ? () => setEditor({ type: 'property' }) : undefined}
-              viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
-            />
+            <>
+              <OperationsMetrics snapshot={snapshot} propertyId={propertyId} />
+              <Overview
+                snapshot={snapshot}
+                properties={properties}
+                sites={sites}
+                href={href}
+                addProperty={manageOrg ? () => setEditor({ type: 'property' }) : undefined}
+                viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
+              />
+            </>
           ) : section === 'meters' ? (
             <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : ['maintenance', 'inventory', 'operations'].includes(section) ? (

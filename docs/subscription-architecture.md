@@ -1,0 +1,9 @@
+# Disabled ForgeOS subscription architecture
+
+Milestone 7 defines a separate SaaS boundary in `subscription-domain.ts`. It grants the existing product’s local entitlements with `billingActive: false`, no plan ID, no prices and no invented quotas. It creates no provider account, checkout, subscription, webhook or charge. Tenant rent, utility receivables, manual payments and held deposits remain the customer’s property accounting records.
+
+A later approved implementation should introduce organization subscription accounts, provider customer/subscription IDs, plan/price references, entitlement versions and unique verified provider-event IDs in their own tables. Resolve the organization from an authenticated mapping; never accept an event-supplied organization claim without verifying that mapping. Verify webhook signatures over raw bytes, event age/replay and environment before storing the exact result idempotently. Out-of-order events require provider-state reconciliation rather than blind status changes. Restrict prices, refunds, cancellation, grace/restriction policy, taxes and billing support access to explicit owner-reviewed rules.
+
+The subscription service may update organization entitlements; it must never allocate tenant payments, issue tenant invoices, alter deposits or reuse collection receipt counters. Tenant payment processing, if later enabled, needs its own purpose, provider credential and reconciliation boundary. There is no transaction path from the disabled subscription module into the tenant ledger.
+
+Before activation, select the provider and billing model, validate legal/tax and refund policies with qualified reviewers, test sandbox success/failure/duplicate/delayed events, define dunning and data-access behavior, and obtain owner authorization for live credentials and charges. Do not lock residents out of retained statements merely because the property’s SaaS subscription changes without an approved policy and recovery path.
