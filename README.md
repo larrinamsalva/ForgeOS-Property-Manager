@@ -14,6 +14,14 @@ Implementation and verification are described in [docs/phase-7-report.md](docs/p
 
 Owner reports, multi-property measures, independent resident accounts, retained English/Spanish in-app communications, bounded CSV and audited owner JSON archives are implemented. No hosted system or live processor is active. Manual issuance and reviewed fee/deposit deduction actions require explicit owner configuration; automated fees and outbound notices remain disabled.
 
+### Guest capacity and local layout planner
+
+The guest demo starts with 20 **fictional** spaces and 14 example customer records, with a sample planning target of 700. This is not a product data limit. A visitor can add 1–250 spaces per batch repeatedly, number them automatically, search large inventories and navigate paginated space/customer lists. Visitors add fictional customers on arrival, choosing an available space or an unassigned/waiting-list entry. The real authenticated customer/site tables are not modified by demo actions. The authenticated workspace already loads more than 1,000 records through paginated database reads.
+
+The **Property layout** page accepts PNG, JPEG, WebP and PDF files up to 12 MB. Files are held in an in-memory browser object URL only, **not** uploaded to Supabase/Vercel and not persisted. Image layouts support manual clickable site-number pins, an annotated PNG download and a CSV export of all example sites and marked positions. PDF files are held locally for downloading; in-browser placement of numbered pins requires an image version of the plan. No automatic site-count recognition is claimed. Refresh/reset discards layouts, markers and temporary sample records.
+
+A persistent layout uploader for real customers is a separate authenticated and RLS-protected follow-up; do not expose plans to anonymous users or reuse demo file handling for production storage without secure validation.
+
 ## No-account guest demo
 
 Visitors without a verified staff account are sent to `/demo`, a public **fictional-data** exploration of the dashboard, sites, tenant examples, simulated meter readings, invoices, work orders, supplies and resident view. The demo never calls property record or billing APIs, never creates an Auth user, and does not read/write Supabase tables; temporary changes live in React memory and reset on reload. The sign-in screen links to the demo as well. `/login` and `/portal` remain the real authenticated entry points, and all real backend mutations retain existing session, role and RLS checks.
