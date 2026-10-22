@@ -69,3 +69,8 @@
 .demo-available-choose{color:var(--primary);font-size:11px;font-weight:800}
 .demo-available-empty{font-size:12px;color:var(--muted);padding:12px 0;margin:0}
 @media(max-width:650px){.demo-available-header .demo-small-button{width:100%}}
+
+/* Keep the resident's unit type directly beside the editable unit number. */
+.demo-record-grid .demo-customer-name,
+.demo-record-grid .demo-assignment-field{grid-column:1/-1}
+.demo-record-grid label small{display:block;line-height:1.45;color:var(--muted);font-size:11px;font-weight:500}
