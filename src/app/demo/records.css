@@ -74,3 +74,24 @@
 .demo-record-grid .demo-customer-name,
 .demo-record-grid .demo-assignment-field{grid-column:1/-1}
 .demo-record-grid label small{display:block;line-height:1.45;color:var(--muted);font-size:11px;font-weight:500}
+
+/* Compact, truly side-by-side type and number controls on every screen size. */
+.demo-record-grid .demo-customer-unit-pair{
+  grid-column:1/-1;display:grid;
+  grid-template-columns: minmax(0, 168px) minmax(0, 1fr);
+  gap:12px;align-items:start;min-width:0;
+}
+.demo-customer-unit-pair>label{display:grid;gap:6px;min-width:0}
+.demo-customer-unit-pair select,
+.demo-customer-unit-pair input{
+  box-sizing:border-box;max-width:100%;min-width:0;width:100%;
+  min-height:42px;padding:10px 12px;color:var(--text);
+  background:var(--input);border:1px solid var(--line);
+  border-radius:8px;font-size:13px;
+}
+@media(max-width:650px){
+  .demo-record-grid .demo-customer-unit-pair{
+    grid-template-columns:minmax(0, 112px) minmax(0, 1fr);gap:8px;
+  }
+  .demo-customer-unit-pair select,.demo-customer-unit-pair input{padding:10px 8px}
+}
