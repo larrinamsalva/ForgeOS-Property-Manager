@@ -44,6 +44,26 @@ const tableNames = [
   'account_notes',
   'reconciliations',
   'reconciliation_voids',
+  'staff_profiles',
+  'suppliers',
+  'inventory_items',
+  'inventory_movements',
+  'operations_plans',
+  'work_orders',
+  'work_order_events',
+  'work_order_costs',
+  'work_order_materials',
+  'work_order_photos',
+  'equipment',
+  'equipment_loans',
+  'equipment_events',
+  'purchase_requests',
+  'purchase_orders',
+  'purchase_order_lines',
+  'purchase_receipts',
+  'checklist_runs',
+  'checklist_entries',
+  'operations_notifications',
 ];
 const columns = new Map();
 for (const table of tableNames)
@@ -151,6 +171,13 @@ async function seed() {
       identities.technician,
     ]);
   });
+  await asUser(db, identities.owner, (tx) =>
+    tx.query("select grant_property_access($1,$2,$3,'maintenance')", [
+      a.org,
+      a.property,
+      identities.maintenance,
+    ])
+  );
   return {
     ...a,
     customerId: (
@@ -291,6 +318,17 @@ const server = createServer(async (request, response) => {
           'assessed_on',
           'follow_up_on',
           'promised_on',
+          'requested_on',
+          'anchor_on',
+          'completed_on',
+          'closed_on',
+          'performed_on',
+          'next_service_on',
+          'checked_out_on',
+          'returned_on',
+          'needed_on',
+          'expected_on',
+          'scheduled_for',
         ].includes(key) && typeof value === 'string'
           ? value.slice(0, 10)
           : value
@@ -374,7 +412,7 @@ const server = createServer(async (request, response) => {
       const start = isSign || authenticatedObject ? 5 : 4;
       const bucket = parts[isSign || authenticatedObject ? 4 : 3];
       const path = parts.slice(start).join('/');
-      if (bucket !== 'meter-photos') {
+      if (!['meter-photos', 'work-photos'].includes(bucket)) {
         send(404, {});
         return;
       }
@@ -386,18 +424,15 @@ const server = createServer(async (request, response) => {
           send(403, { message: 'Denied' });
           return;
         }
-        send(200, { signedURL: `/object/authenticated/meter-photos/${path}?token=fixture-signed-${id}` });
+        send(200, { signedURL: `/object/authenticated/${bucket}/${path}?token=fixture-signed-${id}` });
         return;
       }
       const readPath = parts[3] === 'authenticated' ? parts.slice(5).join('/') : path;
       if (request.method === 'GET') {
         const rows = await asUser(db, id, (tx) =>
-          tx.query('select id from storage.objects where bucket_id=$1 and name=$2', [
-            'meter-photos',
-            readPath,
-          ])
+          tx.query('select id from storage.objects where bucket_id=$1 and name=$2', [bucket, readPath])
         );
-        const stored = storageBytes.get(readPath);
+        const stored = storageBytes.get(`${bucket}/${readPath}`);
         if (!rows.rows.length || !stored) {
           send(404, { message: 'Not found' });
           return;
@@ -416,11 +451,11 @@ const server = createServer(async (request, response) => {
         await asUser(db, id, (tx) =>
           tx.query(
             'insert into storage.objects(bucket_id,name,metadata,owner_id) values($1,$2,$3::jsonb,$4)',
-            ['meter-photos', path, JSON.stringify({ size: body.length, mimetype: mime }), id]
+            [bucket, path, JSON.stringify({ size: body.length, mimetype: mime }), id]
           )
         );
-        storageBytes.set(path, { bytes: body, mime });
-        send(200, { Key: `meter-photos/${path}`, Id: 'fixture-photo' });
+        storageBytes.set(`${bucket}/${path}`, { bytes: body, mime });
+        send(200, { Key: `${bucket}/${path}`, Id: 'fixture-photo' });
         return;
       }
     }
@@ -448,6 +483,11 @@ const server = createServer(async (request, response) => {
           collection_accounts: ['org'],
           collection_summary: ['org'],
           collection_receipt: ['receipt_id'],
+          operations_command: ['command', 'payload'],
+          operations_summary: ['org'],
+          operations_context: ['org'],
+          operations_schedule: ['org', 'starts_on', 'ends_on'],
+          complete_work_photo: ['photo_id'],
           submit_meter_reading: ['payload'],
           complete_meter_photo: ['photo'],
           meter_occupancy: ['org'],
@@ -474,6 +514,10 @@ const server = createServer(async (request, response) => {
             'collection_accounts',
             'collection_summary',
             'collection_receipt',
+            'operations_command',
+            'operations_summary',
+            'operations_context',
+            'operations_schedule',
             'submit_meter_reading',
             'meter_occupancy',
             'report_meter_conflict',

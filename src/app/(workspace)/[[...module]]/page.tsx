@@ -29,6 +29,9 @@ export default async function Page({
       'meters',
       'billing',
       'collections',
+      'maintenance',
+      'inventory',
+      'operations',
     ].includes(section)
   )
     notFound();
