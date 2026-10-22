@@ -51,8 +51,14 @@ describe('paperless customer and property photo RLS', () => {
       const result=await tx.query<{status:string}>("select status from record_attachments where id=$1",[attachment]);
       expect(result.rows[0].status).toBe('uploaded');
     });
-    await expect(asUser(db,identities.owner,(tx)=>tx.query(
-      "update record_attachments set object_path='tampered' where id=$1",[attachment]))).rejects.toThrow();
+    // Uploaded metadata is immutable: UPDATE is denied by RLS, which correctly affects zero rows.
+    const attempted = await asUser(db,identities.owner,(tx)=>tx.query(
+      "update record_attachments set object_path='tampered' where id=$1 returning id",[attachment]));
+    expect(attempted.rows).toHaveLength(0);
+    const originalPath = (await db.query<{object_path:string}>(
+      'select object_path from record_attachments where id=$1',[attachment]
+    )).rows[0].object_path;
+    expect(originalPath).toBe(path);
     await asUser(db,identities.other,async (tx)=>{
       expect((await tx.query("select name from storage.objects where bucket_id='record-attachments' and name=$1",[path])).rows).toHaveLength(0);
     });
