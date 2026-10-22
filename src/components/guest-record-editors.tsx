@@ -216,7 +216,9 @@ export function GuestCustomerForm({
   );
   const matchingSites = unoccupiedSites.filter((site) => unitFilter === 'all' || site.designation === unitFilter);
   const readySites = matchingSites.filter((site) => site.status === 'available' || (editing && site.id === customer?.siteId));
-  const heldSites = matchingSites.filter((site) => site.status === 'reserved' && site.id !== customer?.siteId);
+  // The assignment dropdown is for vacancies only. Existing customers may
+  // retain their own assigned unit, but other occupied/held units never appear.
+  const vacancyCount = readySites.filter((site) => site.status === 'available').length;
   const exactNumberMatches = unitNumberText.trim()
     ? readySites.filter((site) => unitNumberMatches(site, unitNumberText))
     : [];
@@ -291,6 +293,13 @@ export function GuestCustomerForm({
         <label className="demo-customer-name" htmlFor={fieldId('name')}>{editing ? 'Customer name' : 'Fictional customer name'}
           <input id={fieldId('name')} required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
         </label>
+        <label className="demo-assignment-field" htmlFor={fieldId('site')}>{editing ? 'Assigned / available unit' : 'Assign an available site (optional)'}
+          <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => chooseUnit(e.target.value === 'unassigned' ? null : e.target.value)}>
+            <option value="unassigned">Waitlist / not assigned</option>
+            {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
+          </select>
+          <small aria-live="polite">{vacancyCount} currently available {vacancyCount === 1 ? 'unit' : 'units'} in this selection. Only vacant spaces, apartments, mobile homes and campground sites are available to new customers.</small>
+        </label>
         <label htmlFor={fieldId('type')}>Choose unit type
           <select id={fieldId('type')} value={unitFilter} onChange={(e) => selectUnitFilter(e.target.value as UnitDesignation | 'all')}>
             <option value="all">All sites, spaces, apartments, mobile homes &amp; campgrounds</option>
@@ -309,14 +318,7 @@ export function GuestCustomerForm({
                 ? 'Multiple units share that number. Choose the exact one below.'
                 : 'No available unit matches that number and type. Choose an existing unit below or create it first.'}</small>
         </label>
-        <label className="demo-assignment-field" htmlFor={fieldId('site')}>{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
-          <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => chooseUnit(e.target.value === 'unassigned' ? null : e.target.value)}>
-            <option value="unassigned">Waitlist / not assigned</option>
-            {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
-            {heldSites.map((site) => <option key={site.id} value={site.id} disabled>{designationLabel(site.designation)} · {site.label} ({site.id}) — Reserved / held</option>)}
-          </select>
-          <small aria-live="polite">{readySites.length} available in this selection · {heldSites.length} reserved (held, cannot assign).</small>
-        </label>
+
         <section className="demo-available-panel" aria-label="All available units">
           <div className="demo-available-header">
             <div>
