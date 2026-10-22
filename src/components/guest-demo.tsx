@@ -7,7 +7,7 @@ import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
-  RotateCcw, ShieldCheck, Users, Wrench, UploadCloud,
+  RotateCcw, ShieldCheck, Users, Wrench, UploadCloud, Plus,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'sites' | 'layout' | 'tenants' | 'meters' | 'billing' | 'maintenance' | 'inventory' | 'resident';
