@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { Camera, FileText, FolderOpen, ImagePlus, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Camera, FileText, FolderOpen, ImagePlus, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import { canEditProperty, type Snapshot } from '@/lib/domain';
 import './paperless-workspace.css';
 
 type StoredFile = {
   id: string; customer_id: string | null; site_id: string | null;
   category: string; title: string; mime: string; byte_size: number;
-  created_at: string; created_by: string;
+  created_at: string; created_by: string; status: 'uploaded' | 'deleting';
 };
 const categories = [
   ['space','Space / apartment'],['car','Car / truck'],['rv','RV / motorhome / trailer'],
@@ -27,6 +27,7 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
   const [files,setFiles] = useState<StoredFile[]>([]);
   const [loading,setLoading] = useState(false);
   const [uploading,setUploading] = useState(false);
+  const [removingId,setRemovingId] = useState<string | null>(null);
   const [notice,setNotice] = useState('');
   const [error,setError] = useState('');
   const [opened,setOpened] = useState<{id:string;url:string;mime:string}|null>(null);
@@ -94,12 +95,37 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
   }
   async function viewFile(id:string) {
     setError('');setOpened(null);
+    if(files.find((item)=>item.id===id)?.status==='deleting') {setError('This file is awaiting permanent deletion. Retry the deletion instead.');return;}
     try {
       const r=await fetch('/api/attachments?'+new URLSearchParams({file:id}),{cache:'no-store'});
       const data=await r.json();
       if(!r.ok)throw new Error(data.error??'Access denied.');
       setOpened({id,url:data.url,mime:data.mime});
     }catch(e){setError(e instanceof Error?e.message:'File unavailable.');}
+  }
+
+  async function removeFile(file:StoredFile) {
+    if (!window.confirm(
+      file.status === 'deleting'
+        ? 'Retry permanent removal of this file from private storage?'
+        : 'Permanently delete "' + file.title + '" from this customer/space file? This cannot be undone.'
+    )) return;
+    setRemovingId(file.id);setError('');setNotice('');
+    try {
+      const response=await fetch('/api/attachments?'+new URLSearchParams({file:file.id}),{method:'DELETE'});
+      const data=await response.json();
+      if(!response.ok){
+        if(response.status === 503) setFiles((current)=>current.map((existing)=>
+          existing.id===file.id ? {...existing,status:'deleting'} : existing));
+        throw new Error(data.error??'Could not remove this photo.');
+      }
+      setFiles((current)=>current.filter((existing)=>existing.id!==file.id));
+      setOpened((current)=>current?.id===file.id ? null : current);
+      setNotice('File permanently deleted from private storage. The audit record was retained.');
+      setRefresh((n)=>n+1);
+    }catch(error){
+      setError(error instanceof Error?error.message:'Could not delete the file. Try again.');
+    }finally{setRemovingId(null);}
   }
 
   if(!editable.length)return <section className="panel"><div className="panel-content">
@@ -165,13 +191,18 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
           <button type="button" className={filter==='site'?'button primary':'button secondary'} onClick={()=>changeFilter('site')}>Space files</button>
         </div>
         {!chosen ? <p className="muted">Choose a {filter==='customer'?'customer':'space'} above to see their private files.</p> :
-          <p className="muted small">Showing up to 100 newest files for the selected {filter==='customer'?'customer':'space'}. Use the customer and space selectors to switch files.</p>}
+          <p className="muted small">Authorized staff may delete any saved photo or document attached to their property. A confirmation is required; deleted files cannot be restored. Showing up to 100 newest files for the selected {filter==='customer'?'customer':'space'}. Use the customer and space selectors to switch files.</p>}
         {chosen && !files.length && <p className="muted">{loading ? 'Loading private files…' : 'No saved files found for this record.'}</p>}
         {files.length>0 && <div className="paperless-file-list">
           {files.map((f)=><article key={f.id}>
             <span className="paperless-file-icon"><FileText size={20}/></span>
             <div><strong>{f.title}</strong><small>{categories.find(([key])=>key===f.category)?.[1]??f.category} · {new Date(f.created_at).toLocaleDateString()} · {(f.byte_size/1024).toFixed(0)} KB</small></div>
-            <button type="button" className="button secondary" onClick={()=>viewFile(f.id)}>View privately</button>
+            <div className="paperless-file-actions">
+              {f.status==='uploaded' && <button type="button" className="button secondary" disabled={removingId!==null} onClick={()=>viewFile(f.id)}>View privately</button>}
+              <button type="button" className="button secondary paperless-delete" disabled={removingId!==null || uploading}
+                aria-label={(f.status==='deleting' ? 'Retry deletion ' : f.mime==='application/pdf' ? 'Delete document ' : 'Delete photo ') + f.title}
+                onClick={()=>removeFile(f)}><Trash2 size={15}/> {removingId===f.id ? 'Removing…' : f.status==='deleting' ? 'Retry deletion' : 'Delete file'}</button>
+            </div>
           </article>)}
         </div>}
         {opened && <div className="paperless-opened">
