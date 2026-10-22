@@ -1,0 +1,212 @@
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { Building2, Save, UserRound, X } from 'lucide-react';
+
+export type DemoKind = 'rv' | 'apartment' | 'cabin' | 'tent' | 'house' | 'commercial';
+export type DemoStatus = 'occupied' | 'available' | 'reserved';
+export type DemoSite = {
+  id: string;
+  status: DemoStatus;
+  resident: string;
+  rent: number;
+  kind: DemoKind;
+  label: string;
+  section: string;
+  lengthFt: number;
+  widthFt: number;
+  electric: boolean;
+  water: boolean;
+  sewer: boolean;
+  gas: boolean;
+  amperage: number;
+  notes: string;
+};
+export type DemoCustomer = {
+  id: number;
+  name: string;
+  siteId: string | null;
+  phone: string;
+  email: string;
+  emergencyContact: string;
+  vehicle: string;
+  arrivalDate: string;
+  deposit: number;
+  notes: string;
+};
+
+export const demoKinds: { value: DemoKind; label: string; prefix: string }[] = [
+  { value: 'rv', label: 'RV space', prefix: 'RV' },
+  { value: 'apartment', label: 'Apartment', prefix: 'APT' },
+  { value: 'cabin', label: 'Cabin', prefix: 'CAB' },
+  { value: 'tent', label: 'Tent campsite', prefix: 'TENT' },
+  { value: 'house', label: 'House', prefix: 'HOUSE' },
+  { value: 'commercial', label: 'Commercial unit', prefix: 'UNIT' },
+];
+
+export const kindLabel = (kind: DemoKind) => demoKinds.find((item) => item.value === kind)?.label ?? 'Space';
+
+export function makeDemoSite(id: string, kind: DemoKind = 'rv', status: DemoStatus = 'available', rent = 675): DemoSite {
+  return {
+    id, kind, label: id, status, resident: '', rent, section: '',
+    lengthFt: 0, widthFt: 0, electric: true, water: true, sewer: true, gas: false,
+    amperage: 30, notes: '',
+  };
+}
+
+export function makeDemoCustomer(id: number, name: string, siteId: string | null = null): DemoCustomer {
+  return {
+    id, name, siteId, phone: '', email: '', emergencyContact: '',
+    vehicle: '', arrivalDate: '', deposit: 0, notes: '',
+  };
+}
+
+function validName(v: string) { return v.trim().length > 0 && v.trim().length <= 100; }
+function moneyOkay(v: number) { return Number.isFinite(v) && v >= 0 && v <= 10000000; }
+
+export function GuestSiteEditor({
+  site, onSave, onClose,
+}: { site: DemoSite; onSave: (updated: DemoSite) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState<DemoSite>(site);
+  const [error, setError] = useState('');
+  const edit = (fields: Partial<DemoSite>) => setDraft((current) => ({ ...current, ...fields }));
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!validName(draft.label) || !moneyOkay(draft.rent) ||
+      ![draft.lengthFt, draft.widthFt, draft.amperage].every((v) => Number.isFinite(v) && v >= 0 && v <= 100000)) {
+      setError('Enter a space name and valid nonnegative rates, dimensions and electrical capacity.');
+      return;
+    }
+    onSave({
+      ...draft, id: site.id, status: site.status, resident: site.resident,
+      label: draft.label.trim(), section: draft.section.trim(), notes: draft.notes.trim(),
+    });
+  }
+  return <section className="demo-panel demo-record-editor" aria-label={'Edit space ' + site.id}>
+    <div className="demo-section-head"><div><h2><Building2 size={19}/> Space / apartment record</h2><p>Editing <strong>{site.id}</strong> · Sample changes only · No real records saved</p></div>
+      <button type="button" className="demo-small-button" onClick={onClose}><X size={15}/> Close</button>
+    </div>
+    <form onSubmit={submit}>
+      <div className="demo-record-grid">
+        <label htmlFor="demo-space-label">Site / apartment name
+          <input id="demo-space-label" maxLength={100} required value={draft.label} onChange={(e) => edit({ label: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-space-kind">Type of space
+          <select id="demo-space-kind" value={draft.kind} onChange={(e) => edit({ kind: e.target.value as DemoKind })}>
+            {demoKinds.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+          </select>
+        </label>
+        <label htmlFor="demo-space-section">Area / building / row
+          <input id="demo-space-section" maxLength={80} placeholder="Example: Building A, Row 2" value={draft.section} onChange={(e) => edit({ section: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-space-rent">Monthly rent ($)
+          <input id="demo-space-rent" type="number" min="0" max="10000000" step="0.01" required value={draft.rent} onChange={(e) => edit({ rent: Number(e.target.value) })}/>
+        </label>
+        <label htmlFor="demo-space-length">Length (feet)
+          <input id="demo-space-length" type="number" min="0" max="100000" step="0.1" value={draft.lengthFt} onChange={(e) => edit({ lengthFt: Number(e.target.value) })}/>
+        </label>
+        <label htmlFor="demo-space-width">Width (feet)
+          <input id="demo-space-width" type="number" min="0" max="100000" step="0.1" value={draft.widthFt} onChange={(e) => edit({ widthFt: Number(e.target.value) })}/>
+        </label>
+        <label htmlFor="demo-space-amps">Electrical service (amps)
+          <input id="demo-space-amps" type="number" min="0" max="100000" step="1" value={draft.amperage} onChange={(e) => edit({ amperage: Number(e.target.value) })}/>
+        </label>
+        <label className="demo-record-meta">Current occupancy
+          <output>{site.status} {site.resident ? '· ' + site.resident : ''}</output>
+        </label>
+      </div>
+      <fieldset className="demo-utility-set">
+        <legend>Utilities and connections</legend>
+        {(['electric','water','sewer','gas'] as const).map((key) => <label key={key}>
+          <input type="checkbox" checked={draft[key]} onChange={(e) => edit({ [key]: e.target.checked })}/>
+          {key.charAt(0).toUpperCase() + key.slice(1)}
+        </label>)}
+      </fieldset>
+      <label className="demo-record-full" htmlFor="demo-space-notes">Site information / notes
+        <textarea id="demo-space-notes" rows={3} maxLength={2000} placeholder="Example: 50-amp upgrade planned, accessible entrance, gravel driveway" value={draft.notes} onChange={(e) => edit({ notes: e.target.value })}/>
+      </label>
+      {error && <p className="demo-record-error" role="alert">{error}</p>}
+      <div className="demo-form-actions"><button className="demo-action" type="submit"><Save size={16}/> Save sample space</button>
+        <button type="button" className="demo-small-button" onClick={onClose}>Cancel</button></div>
+    </form>
+  </section>;
+}
+
+export function GuestCustomerForm({
+  customer, sites, onSave, onClose,
+}: {
+  customer?: DemoCustomer;
+  sites: DemoSite[];
+  onSave: (record: DemoCustomer) => void;
+  onClose?: () => void;
+}) {
+  const [draft, setDraft] = useState<DemoCustomer>(customer ?? makeDemoCustomer(0, ''));
+  const [error, setError] = useState('');
+  const editing = !!customer;
+  const edit = (fields: Partial<DemoCustomer>) => setDraft((current) => ({ ...current, ...fields }));
+  const assignableSites = sites.filter((s) => s.status === 'available' || s.id === customer?.siteId);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!validName(draft.name) || !moneyOkay(draft.deposit) ||
+      (draft.siteId && !assignableSites.some((s) => s.id === draft.siteId))) {
+      setError('Enter a sample name, a valid deposit, and a space that is available.');
+      return;
+    }
+    onSave({
+      ...draft,
+      id: customer?.id ?? 0,
+      name: draft.name.trim(),
+      phone: draft.phone.trim(),
+      email: draft.email.trim(),
+      emergencyContact: draft.emergencyContact.trim(),
+      vehicle: draft.vehicle.trim(),
+      notes: draft.notes.trim(),
+    });
+    if (!editing) setDraft(makeDemoCustomer(0, ''));
+    setError('');
+  }
+  return <section className="demo-panel demo-record-editor" aria-label={editing ? 'Edit customer ' + customer.name : 'Add customer information'}>
+    <div className="demo-section-head"><div><h2><UserRound size={19}/> {editing ? 'Customer record' : 'Add a customer'}</h2>
+      <p>Use made-up information here. Real customer details belong in the secure owner account.</p></div>
+      {editing && onClose && <button type="button" className="demo-small-button" onClick={onClose}><X size={15}/> Close</button>}
+    </div>
+    <form onSubmit={submit}>
+      <div className="demo-record-grid">
+        <label htmlFor="demo-customer-name">{editing ? 'Customer name' : 'Fictional customer name'}
+          <input id="demo-customer-name" required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-site">{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
+          <select id="demo-customer-site" value={draft.siteId ?? 'unassigned'} onChange={(e) => edit({ siteId: e.target.value === 'unassigned' ? null : e.target.value })}>
+            <option value="unassigned">Waitlist / not assigned</option>
+            {assignableSites.map((site) => <option key={site.id} value={site.id}>{site.id} — {site.label}</option>)}
+          </select>
+        </label>
+        <label htmlFor="demo-customer-phone">Phone number
+          <input id="demo-customer-phone" type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-email">Email
+          <input id="demo-customer-email" type="email" maxLength={150} placeholder="example@invalid.test" value={draft.email} onChange={(e) => edit({ email: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-emergency">Emergency contact
+          <input id="demo-customer-emergency" maxLength={100} value={draft.emergencyContact} onChange={(e) => edit({ emergencyContact: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-vehicle">Vehicle / RV details
+          <input id="demo-customer-vehicle" maxLength={160} placeholder="Example: Blue RV, sample plate" value={draft.vehicle} onChange={(e) => edit({ vehicle: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-arrival">Arrival / move-in date
+          <input id="demo-customer-arrival" type="date" value={draft.arrivalDate} onChange={(e) => edit({ arrivalDate: e.target.value })}/>
+        </label>
+        <label htmlFor="demo-customer-deposit">Deposit amount ($)
+          <input id="demo-customer-deposit" type="number" min="0" max="10000000" step="0.01" value={draft.deposit} onChange={(e) => edit({ deposit: Number(e.target.value) })}/>
+        </label>
+      </div>
+      <label className="demo-record-full" htmlFor="demo-customer-notes">Additional notes / special requests
+        <textarea id="demo-customer-notes" maxLength={2000} rows={3} value={draft.notes} onChange={(e) => edit({ notes: e.target.value })} placeholder="Example: Needs a pull-through space"/>
+      </label>
+      {error && <p role="alert" className="demo-record-error">{error}</p>}
+      <div className="demo-form-actions"><button className="demo-action" type="submit"><Save size={16}/> {editing ? 'Save sample customer' : 'Add example customer'}</button>
+        {editing && onClose && <button className="demo-small-button" type="button" onClick={onClose}>Cancel</button>}
+      </div>
+    </form>
+  </section>;
+}
