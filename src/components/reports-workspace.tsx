@@ -410,7 +410,7 @@ export function ReportsWorkspace({ snapshot, propertyId }: { snapshot: Snapshot;
                 </button>
               </div>
               {data.rows.length ? (
-                <div className="table-scroll" tabIndex={0} role="region" aria-label="Report results table">
+                <div className="table-wrap" tabIndex={0} role="region" aria-label="Report results table">
                   <table>
                     <caption className="sr-only">{definition.label}</caption>
                     <thead>
@@ -475,7 +475,7 @@ export function ReportsWorkspace({ snapshot, propertyId }: { snapshot: Snapshot;
             <section className="panel">
               <h2>Current property comparison</h2>
               <div
-                className="table-scroll"
+                className="table-wrap"
                 tabIndex={0}
                 role="region"
                 aria-label="Current property comparison table"

@@ -99,7 +99,7 @@ export function ResidentPortal({
     } else setError('Unable to sign out. Try again.');
   }
   const table = (label: string, head: string[], rows: ReactNode[][]) => (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label={label}>
+    <div className="table-wrap" tabIndex={0} role="region" aria-label={label}>
       <table>
         <thead>
           <tr>

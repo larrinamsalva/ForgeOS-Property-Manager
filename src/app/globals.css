@@ -3244,3 +3244,13 @@ table summary {
     width: 100%;
   }
 }
+
+.commercial-stack .form-fields,
+.modal .form-fields {
+  border: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}

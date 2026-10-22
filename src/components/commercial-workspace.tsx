@@ -454,7 +454,7 @@ export function CommercialWorkspace({
                 <section className="panel">
                   <h2>Customer communication preferences</h2>
                   <div
-                    className="table-scroll"
+                    className="table-wrap"
                     tabIndex={0}
                     role="region"
                     aria-label="Customer preferences table"
@@ -575,7 +575,7 @@ export function CommercialWorkspace({
                       20,000 rows per table, 100,000 total rows and three exports per hour.
                     </p>
                     <div
-                      className="table-scroll"
+                      className="table-wrap"
                       tabIndex={0}
                       role="region"
                       aria-label="Account export history table"
@@ -652,7 +652,7 @@ function AccessTable({
 }) {
   if (!memberships.length) return <p className="muted">No resident accounts linked at this property.</p>;
   return (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label="Resident access table">
+    <div className="table-wrap" tabIndex={0} role="region" aria-label="Resident access table">
       <table>
         <thead>
           <tr>
