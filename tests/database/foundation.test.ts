@@ -404,12 +404,12 @@ describe('PostgreSQL foundation, constraints and real RLS', () => {
     const tables = await db.query<{ relname: string; relrowsecurity: boolean }>(
       "select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'"
     );
-    expect(tables.rows).toHaveLength(57);
+    expect(tables.rows).toHaveLength(66);
     expect(tables.rows.every((r) => r.relrowsecurity)).toBe(true);
     const privateTables = await db.query<{ relrowsecurity: boolean }>(
       "select c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='private' and c.relkind='r'"
     );
-    expect(privateTables.rows).toHaveLength(15);
+    expect(privateTables.rows).toHaveLength(17);
     expect(privateTables.rows.every((r) => r.relrowsecurity)).toBe(true);
 
     expect(

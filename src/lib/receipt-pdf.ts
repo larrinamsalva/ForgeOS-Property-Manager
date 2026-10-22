@@ -3,9 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PDFDocument, rgb, type PDFPage } from 'pdf-lib';
 import { cents } from './billing-domain';
-import { stateLabel, type ReceiptStatement } from './collections-domain';
+import { stateLabel } from './collections-domain';
+import type { StatementReceipt } from './statement-domain';
 import { StatementCharacterError } from './invoice-pdf';
-export async function receiptPdf(statement: ReceiptStatement) {
+export async function receiptPdf(statement: StatementReceipt) {
   const { receipt: r, history, voided, available_cents } = statement,
     s = r.snapshot;
   const pdf = await PDFDocument.create();
