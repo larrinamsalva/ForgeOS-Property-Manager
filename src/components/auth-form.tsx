@@ -2,7 +2,7 @@
 import { useActionState, useState } from 'react';
 import { authenticate } from '@/lib/auth-actions';
 import { useHydrated } from '@/lib/use-hydrated';
-export function AuthForm() {
+export function AuthForm({ portal = false }: { portal?: boolean }) {
   const [signup, setSignup] = useState(false);
   const [state, action, pending] = useActionState(authenticate, { message: '', intent: '' });
   const hydrated = useHydrated();
@@ -29,6 +29,7 @@ export function AuthForm() {
       </div>
       <form action={action}>
         <input type="hidden" name="intent" value={intent} />
+        <input type="hidden" name="destination" value={portal ? '/portal' : '/'} />
         <fieldset className="auth-fields" disabled={pending || !hydrated}>
           <div className="field">
             <label htmlFor="email">Email</label>
@@ -47,7 +48,10 @@ export function AuthForm() {
           </div>
           {signup && (
             <p className="muted">
-              Use at least 12 characters. Your account starts with an empty, private workspace.
+              Use at least 12 characters.{' '}
+              {portal
+                ? 'The property owner must link your registered account before property records become available.'
+                : 'Your account starts with an empty, private workspace.'}
             </p>
           )}
           {state.message && state.intent === intent && (

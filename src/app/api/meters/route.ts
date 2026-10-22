@@ -1,3 +1,4 @@
+import { readJson, BodyError } from '@/lib/request-body';
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { serverClient } from '@/lib/supabase/server';
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
       { headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (e) {
+    if (e instanceof BodyError) return NextResponse.json({ error: e.message }, { status: e.status });
     return NextResponse.json(
       {
         error:
@@ -44,12 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Request origin is not allowed.' }, { status: 403 });
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return NextResponse.json({ error: 'Use a JSON request.' }, { status: 415 });
-  if (Number(request.headers.get('content-length') ?? 0) > 32768)
-    return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
   try {
-    const raw = await request.text();
-    if (raw.length > 32768) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 });
-    const input = JSON.parse(raw);
     const client = await serverClient();
     const {
       data: { user },
@@ -60,6 +57,10 @@ export async function POST(request: NextRequest) {
         { error: 'Session expired. Sign in again; the queue is preserved.' },
         { status: 401 }
       );
+    const input = z
+      .object({ command: z.string(), payload: z.unknown() })
+      .strict()
+      .parse(await readJson(request));
     const result =
       input.command === 'capture'
         ? await client.rpc('submit_meter_reading', { payload: captureSchema.parse(input.payload) })
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ id: result.data });
   } catch (e) {
+    if (e instanceof BodyError) return NextResponse.json({ error: e.message }, { status: e.status });
     return NextResponse.json(
       {
         error:

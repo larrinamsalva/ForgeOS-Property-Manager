@@ -9,6 +9,7 @@ export interface AuthState {
 }
 export async function authenticate(_state: AuthState, form: FormData): Promise<AuthState> {
   const intent = form.get('intent') === 'signup' ? 'signup' : 'signin';
+  const destination = form.get('destination') === '/portal' ? '/portal' : '/';
   const failure = (message: string) => ({ message, intent });
   if (!configured()) return failure('Connect the ForgeOS database first.');
   const input = z
@@ -30,7 +31,7 @@ export async function authenticate(_state: AuthState, form: FormData): Promise<A
             ...input.data,
             options: {
               emailRedirectTo: new URL(
-                '/auth/callback',
+                '/auth/callback' + (destination === '/portal' ? '?portal=1' : ''),
                 process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
               ).href,
             },
@@ -47,5 +48,5 @@ export async function authenticate(_state: AuthState, form: FormData): Promise<A
   } catch {
     return failure('The sign-in service is unavailable. Please try again.');
   }
-  redirect('/');
+  redirect(destination);
 }

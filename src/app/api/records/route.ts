@@ -1,3 +1,4 @@
+import { readJson, BodyError } from '@/lib/request-body';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { serverClient } from '@/lib/supabase/server';
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
   } = await client.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Sign in to continue.' }, { status: 401 });
   try {
-    const input = mutationSchema.parse(await request.json());
+    const input = mutationSchema.parse(await readJson(request));
     let result;
     if (input.entity === 'organization') {
       result = await client.rpc('create_organization', { organization_name: input.values.name });
@@ -212,6 +213,8 @@ export async function POST(request: NextRequest) {
       { headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (error) {
+    if (error instanceof BodyError)
+      return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof z.ZodError)
       return NextResponse.json({ error: error.issues[0]?.message ?? 'Check the form.' }, { status: 400 });
     return NextResponse.json({ error: 'Check your request and try again.' }, { status: 400 });
