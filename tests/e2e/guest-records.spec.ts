@@ -255,3 +255,54 @@ test('customer unit selector lists all unoccupied types across the property and 
   await expect(editing.getByLabel('Assigned site (optional)').locator('option[value="RV-15"]')).toBeEnabled();
   expect(apiWrites).toEqual([]);
 });
+
+
+
+test('Add Customer links a typed Space 88 to its available unit and blocks occupied or reserved numbers', async ({ page }) => {
+  const apiWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) apiWrites.push(request.url());
+  });
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Property layout' }).click();
+  await page.getByLabel('Spaces to add now (1–250 per batch)').fill('68');
+  await page.getByRole('button', { name: 'Add spaces' }).click();
+
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByLabel('Find a space').fill('RV-88');
+  await page.getByRole('button', { name: 'Details and photos for RV-88' }).click();
+  await page.getByLabel('Unit type').selectOption('space');
+  await page.getByRole('button', { name: 'Save sample space' }).click();
+
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  const type = page.getByLabel('Choose unit type');
+  const number = page.getByLabel('Space / unit number');
+  const assignment = page.getByLabel('Assign an available site (optional)');
+  await type.selectOption('space');
+  await number.fill('88');
+  await expect(assignment).toHaveValue('RV-88');
+  await expect(page.getByText('Selected: I live in Space 88')).toBeVisible();
+  await number.fill('Space 88');
+  await expect(assignment).toHaveValue('RV-88');
+
+  await page.getByLabel('Fictional customer name').fill('Example Space 88 Resident');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.locator('.demo-notice[role="status"]')).toContainText('Example Space 88 Resident added');
+  await expect(number).toHaveValue('');
+  await expect(assignment.locator('option[value="RV-88"]')).toHaveCount(0);
+  await number.fill('88');
+  await expect(assignment).toHaveValue('unassigned');
+  await page.getByLabel('Fictional customer name').fill('Another Sample Resident');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.getByRole('alert')).toContainText('Space or unit number not found');
+  await expect(page.getByRole('button', { name: 'Edit customer Another Sample Resident' })).toHaveCount(0);
+
+  // Reserved RV-18 and occupied RV-01 can never be resolved to new assignments.
+  await type.selectOption('site');
+  await number.fill('18');
+  await expect(assignment).toHaveValue('unassigned');
+  await number.fill('1');
+  await expect(assignment).toHaveValue('unassigned');
+  expect(apiWrites).toEqual([]);
+});
