@@ -77,6 +77,21 @@ export function makeDemoCustomer(id: number, name: string, siteId: string | null
 function validName(v: string) { return v.trim().length > 0 && v.trim().length <= 100; }
 function moneyOkay(v: number) { return Number.isFinite(v) && v >= 0 && v <= 10000000; }
 
+// A sample unit has a stable internal ID (RV-88) and may have an independent
+// display number/name (88, A-4, Lot 25). Never use a typed value as a new ID.
+function unitNumber(site: DemoSite): string {
+  const autoNumber = site.label === site.id && /^RV-(\d+)$/i.exec(site.id);
+  return autoNumber ? String(Number(autoNumber[1])) : site.label;
+}
+function unitNumberMatches(site: DemoSite, typed: string): boolean {
+  const text = typed.trim().toLowerCase().replace(
+    /^(?:site|space|apartment|mobile home|campground)\s*(?:#|no\.?|number|:|-)?\s*/i, ''
+  );
+  if (!text) return false;
+  const number = unitNumber(site).toLowerCase();
+  return text === number || text === site.label.toLowerCase() || text === site.id.toLowerCase();
+}
+
 export function GuestSiteEditor({
   site, onSave, onClose,
 }: { site: DemoSite; onSave: (updated: DemoSite) => void; onClose: () => void }) {
@@ -186,6 +201,9 @@ export function GuestCustomerForm({
   );
   const [browseOpen, setBrowseOpen] = useState(false);
   const [availableSearch, setAvailableSearch] = useState('');
+  const [unitNumberText, setUnitNumberText] = useState(
+    () => customer?.siteId ? unitNumber(sites.find((site) => site.id === customer.siteId) ?? makeDemoSite(customer.siteId)) : ''
+  );
   // This is the actual full inventory, not the 60-per-page directory or the
   // separately configured *planned* capacity. Newly added units appear here.
   const availableAcrossProperty = sites.filter((site) => site.status === 'available');
@@ -199,16 +217,47 @@ export function GuestCustomerForm({
   const matchingSites = unoccupiedSites.filter((site) => unitFilter === 'all' || site.designation === unitFilter);
   const readySites = matchingSites.filter((site) => site.status === 'available' || (editing && site.id === customer?.siteId));
   const heldSites = matchingSites.filter((site) => site.status === 'reserved' && site.id !== customer?.siteId);
+  const exactNumberMatches = unitNumberText.trim()
+    ? readySites.filter((site) => unitNumberMatches(site, unitNumberText))
+    : [];
+  const selectedUnit = sites.find((site) => site.id === draft.siteId);
+  function chooseUnit(siteId: string | null) {
+    const selected = sites.find((site) => site.id === siteId);
+    edit({ siteId: selected?.id ?? null });
+    setUnitNumberText(selected ? unitNumber(selected) : '');
+    setError('');
+  }
+  function typeUnitNumber(text: string) {
+    setUnitNumberText(text);
+    const matches = readySites.filter((site) => unitNumberMatches(site, text));
+    // Auto-link only one actual available unit. An ambiguous or nonexistent
+    // number must not silently assign somebody else's space.
+    edit({ siteId: matches.length === 1 ? matches[0].id : null });
+    setError('');
+  }
   function selectUnitFilter(next: UnitDesignation | 'all') {
     setUnitFilter(next);
     // Never submit a site hidden by a newly chosen type.
     if (draft.siteId && next !== 'all' && sites.find((site) => site.id === draft.siteId)?.designation !== next) {
       edit({ siteId: null });
     }
+    if (unitNumberText.trim()) {
+      const filtered = sites.filter((site) =>
+        (next === 'all' || site.designation === next) &&
+        (site.status === 'available' || (editing && site.id === customer?.siteId)) &&
+        unitNumberMatches(site, unitNumberText)
+      );
+      edit({ siteId: filtered.length === 1 ? filtered[0].id : null });
+    }
+    setError('');
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const deposit = depositText.trim() === '' ? 0 : Number(depositText);
+    if (unitNumberText.trim() && !draft.siteId) {
+      setError('Space or unit number not found among currently available units. Choose a matching unit from Assigned / Available, or add that unit first in Property layout.');
+      return;
+    }
     if (!validName(draft.name) || !moneyOkay(deposit) ||
       (draft.siteId && !readySites.some((s) => s.id === draft.siteId))) {
       setError('Enter a sample name, a valid deposit, and a space that is available.');
@@ -228,6 +277,7 @@ export function GuestCustomerForm({
     if (!editing) {
       setDraft(makeDemoCustomer(0, ''));
       setDepositText('');
+      setUnitNumberText('');
     }
     setError('');
   }
@@ -238,7 +288,7 @@ export function GuestCustomerForm({
     </div>
     <form onSubmit={submit}>
       <div className="demo-record-grid">
-        <label htmlFor={fieldId('name')}>{editing ? 'Customer name' : 'Fictional customer name'}
+        <label className="demo-customer-name" htmlFor={fieldId('name')}>{editing ? 'Customer name' : 'Fictional customer name'}
           <input id={fieldId('name')} required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
         </label>
         <label htmlFor={fieldId('type')}>Choose unit type
@@ -247,8 +297,20 @@ export function GuestCustomerForm({
             {unitDesignations.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </select>
         </label>
-        <label htmlFor={fieldId('site')}>{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
-          <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => edit({ siteId: e.target.value === 'unassigned' ? null : e.target.value })}>
+        <label htmlFor={fieldId('unit-number')}>Space / unit number
+          <input id={fieldId('unit-number')} inputMode="text" maxLength={100}
+            value={unitNumberText} placeholder="Example: 88, A-4, Lot 25"
+            onChange={(event) => typeUnitNumber(event.target.value)}/>
+          <small aria-live="polite">{selectedUnit
+            ? 'Selected: I live in ' + designationLabel(selectedUnit.designation) + ' ' + unitNumber(selectedUnit)
+            : !unitNumberText.trim()
+              ? 'Enter an existing available unit number, or choose it below.'
+              : exactNumberMatches.length > 1
+                ? 'Multiple units share that number. Choose the exact one below.'
+                : 'No available unit matches that number and type. Choose an existing unit below or create it first.'}</small>
+        </label>
+        <label className="demo-assignment-field" htmlFor={fieldId('site')}>{editing ? 'Assigned site (optional)' : 'Assign an available site (optional)'}
+          <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => chooseUnit(e.target.value === 'unassigned' ? null : e.target.value)}>
             <option value="unassigned">Waitlist / not assigned</option>
             {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
             {heldSites.map((site) => <option key={site.id} value={site.id} disabled>{designationLabel(site.designation)} · {site.label} ({site.id}) — Reserved / held</option>)}
@@ -282,7 +344,7 @@ export function GuestCustomerForm({
                 aria-label={'Assign ' + designationLabel(site.designation) + ' ' + site.label + ' (' + site.id + ')'}
                 onClick={() => {
                   setUnitFilter('all');
-                  edit({ siteId: site.id });
+                  chooseUnit(site.id);
                 }}>
                 <span><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></span>
                 <span className="demo-available-choose">{draft.siteId === site.id ? 'Selected' : 'Select'}</span>
