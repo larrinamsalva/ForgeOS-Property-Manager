@@ -91,3 +91,42 @@ test('photos and vehicle types remain grouped under the correct space, and reset
   await expect(page.getByText('Example touring motorcycle', { exact: true })).toHaveCount(0);
   expect(writes).toEqual([]);
 });
+
+
+test('RV site length, width, rent and electrical fields can be cleared and retyped without sticky zeros', async ({ page }) => {
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByLabel('Find a space').fill('RV-15');
+  await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
+
+  const fields = [
+    { label: 'Length (feet)', value: '40' },
+    { label: 'Width (feet)', value: '12.5' },
+    { label: 'Monthly rent ($)', value: '795.50' },
+    { label: 'Electrical service (amps)', value: '50' },
+  ];
+  for (const field of fields) {
+    const input = page.getByLabel(field.label);
+    await input.fill('');
+    await expect(input, field.label + ' can be cleared').toHaveValue('');
+    await input.pressSequentially(field.value);
+    await expect(input, field.label + ' retypes without a leading zero').toHaveValue(field.value);
+  }
+  await page.getByRole('button', { name: 'Save sample space' }).click();
+  await expect(page.locator('p.demo-notice[role="status"]')).toContainText('RV-15 details updated');
+
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  const deposit = page.getByLabel('Deposit amount ($)');
+  await deposit.fill('250');
+  await deposit.fill('');
+  await expect(deposit).toHaveValue('');
+  await deposit.pressSequentially('175.25');
+  await expect(deposit).toHaveValue('175.25');
+
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
+  for (const field of fields) {
+    await expect(page.getByLabel(field.label), field.label + ' saved correctly').toHaveValue(field.value);
+  }
+});
