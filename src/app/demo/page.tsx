@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { GuestDemo } from '@/components/guest-demo';
 import './demo.css';
+import './planner.css';
 
 export const metadata: Metadata = {
   title: 'Try ForgeOS · Free Guest Demo',
