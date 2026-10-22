@@ -481,8 +481,11 @@ export function Overview({
             <ArrowRight size={15} />
           </Link>
           <div className="roadmap-note">
-            <span className="eyebrow">Coming in later milestones</span>
-            <p>Meter routes, billing, and maintenance will connect here as they are built.</p>
+            <span className="eyebrow">Daily operations</span>
+            <p>Review repairs, recurring checklists, low stock and equipment service.</p>
+            <Link className="text-button" href={href('operations')}>
+              Open daily operations
+            </Link>
           </div>
         </section>
       </div>

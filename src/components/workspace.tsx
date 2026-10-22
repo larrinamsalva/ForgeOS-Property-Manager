@@ -59,6 +59,9 @@ const BillingWorkspace = dynamic(() =>
 const CollectionsWorkspace = dynamic(() =>
   import('./collections-workspace').then((module) => module.CollectionsWorkspace)
 );
+const OperationsWorkspace = dynamic(() =>
+  import('./operations-workspace').then((module) => module.OperationsWorkspace)
+);
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
@@ -73,12 +76,11 @@ const navigation = [
   { id: 'meters', label: 'Meters & reader', icon: Gauge },
   { id: 'billing', label: 'Utilities & billing', icon: Receipt },
   { id: 'collections', label: 'Payments & collections', icon: Receipt },
+  { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+  { id: 'inventory', label: 'Inventory & purchasing', icon: Package },
+  { id: 'operations', label: 'Team & daily operations', icon: CheckCircle2 },
 ];
-const upcoming = [
-  { label: 'Maintenance', icon: Wrench, milestone: 6 },
-  { label: 'Inventory & operations', icon: Package, milestone: 6 },
-  { label: 'Communications & reports', icon: MessageSquare, milestone: 7 },
-];
+const upcoming = [{ label: 'Communications & reports', icon: MessageSquare, milestone: 7 }];
 type Entity = 'property' | 'site' | 'customer';
 type Editor =
   | { type: Entity; id?: string }
@@ -611,8 +613,8 @@ export function Workspace({
           />
         )}
         <p className="future-caption">
-          Meter captures and billing connect to each stay. Documents and maintenance arrive in later
-          milestones.
+          Use Maintenance for repair requests linked to a property, site or customer. General document
+          attachments are planned.
         </p>
       </Modal>
     );
@@ -677,7 +679,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Payments & collections release<small>Milestone 5 of 7</small>
+              Operations release<small>Milestone 6 of 7</small>
             </div>
           </div>
         </div>
@@ -839,7 +841,10 @@ export function Workspace({
                 }}
               />
             </section>
-          ) : !operatingAccess && !['properties', 'access', 'meters'].includes(section) ? (
+          ) : !operatingAccess &&
+            !['properties', 'access', 'meters', 'maintenance', 'inventory', 'operations'].includes(
+              section
+            ) ? (
             <section className="panel">
               <Empty title="Your role has limited access">
                 Your assigned properties appear in the property directory. Operational, customer, and
@@ -857,6 +862,13 @@ export function Workspace({
             />
           ) : section === 'meters' ? (
             <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
+          ) : ['maintenance', 'inventory', 'operations'].includes(section) ? (
+            <OperationsWorkspace
+              snapshot={snapshot}
+              propertyId={propertyId}
+              section={section}
+              navigationPending={isPending}
+            />
           ) : section === 'collections' ? (
             <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'billing' ? (

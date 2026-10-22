@@ -1,4 +1,4 @@
-# ForgeOS architecture — Milestones 1–5
+# ForgeOS architecture — Milestones 1–6
 
 ForgeOS stores property records in a dedicated Supabase PostgreSQL database. Next.js App Router supplies the authenticated UI and JSON mutation endpoint. The app uses React, strict TypeScript, Tailwind, explicit accessible CSS components, Lucide icons, Zod validation, and the Supabase SSR package. Dependencies and the lockfile are pinned. TypeScript uses the supported 6.x API because the current Next.js lint integration does not support TypeScript 7.
 
@@ -11,7 +11,7 @@ ForgeOS stores property records in a dedicated Supabase PostgreSQL database. Nex
 5. PostgreSQL policies, composite foreign keys, triggers, and exclusion constraints enforce authorization and integrity. No service-role key is used.
 6. A successful mutation refreshes the server data. Failures preserve the form and show a safe error.
 
-Personal data is never written to localStorage; only the light/dark theme preference is stored there. Offline meter entry is isolated in the encrypted tablet reader; financial screens remain online only. Authenticated responses are private and not cached. Database failures produce an error screen rather than misleading zero totals.
+Personal data is never written to localStorage; only the light/dark theme preference is stored there. Offline meter entry is isolated in the encrypted tablet reader; financial and operations screens remain online only. Authenticated responses are private and not cached. Database failures produce an error screen rather than misleading zero totals.
 
 ## Current entities
 
@@ -28,7 +28,7 @@ Personal data is never written to localStorage; only the light/dark theme prefer
 | lease_terms              | Immutable reviewed agreement terms, renewals and void corrections                            |
 | audit_events             | Append-only actor, timestamp, and before/after record history                                |
 
-All 37 public application tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
+All 57 public application tables have RLS and explicit grants. Organization, property, and record identity are immutable after insertion. Composite keys prevent a stay from referring to another property's customer or site. No application role can delete customers, properties, sites, stays, or audit events.
 
 Customers are property-scoped in this release to keep staff access explicit. A later cross-property customer identity model should add an effective-dated customer/property relationship and a reviewed migration, rather than moving or rewriting historical records. Separate vehicle/occupant entities, general document uploads and payment processing remain later work. Supervised billing is implemented in Milestone 4. Meter collection and private photographs are implemented in Milestone 3.
 
@@ -43,7 +43,7 @@ Customers are property-scoped in this release to keep staff access explicit. A l
 | Maintenance / meter technician     | Assigned properties; read         | No rows in this release         | No rows                                             | Own role only                        |
 | Resident / unauthenticated visitor | None                              | None                            | None                                                | None                                 |
 
-Meter technicians receive meter data for their assigned routes; customer and financial rows remain denied. Maintenance workflows remain later work. Hiding a menu does not supply authorization: the database blocks direct requests as well. Only owners/administrators can read audit events because those snapshots may include private contact information.
+Meter technicians receive meter data for their assigned routes; customer and financial rows remain denied. Maintenance employees with an active staff profile receive only their assigned work/checklists, limited site labels, sanitized part availability and authorized equipment history. Supplier costs, customer contacts and financial rows remain denied. Hiding a menu does not supply authorization: the database blocks direct requests as well. Only owners/administrators can read audit events because those snapshots may include private contact information.
 
 Private membership lookups and narrow transactional functions use `SECURITY DEFINER` with an empty search path and explicit `auth.uid()` checks. They live in a non-exposed `private` schema, and public wrappers are `SECURITY INVOKER`. Anonymous execution is revoked. Elevated writes are restricted to owner bootstrap, owner-only property assignment/revocation, reservation check-in, stay planning/transfer/completion, internal availability synchronization, scoped meter/route capture and review, photo completion, conflict reconciliation, and audit recording; no generic elevated write endpoint exists.
 
@@ -63,7 +63,7 @@ Automated PostgreSQL tests use PGlite with the actual migration, real RLS roles,
 
 ## Expansion path
 
-Follow [the roadmap](roadmap.md). Meter collection and private photo policies are described below. Utility calculations and draft invoice approval are implemented in Milestone 4. Continue with payment recording and reconciliation after review. The tablet route permits same-origin camera use; microphone and geolocation remain disabled. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
+Follow [the roadmap](roadmap.md). Meter collection and private photo policies are described below. Utility calculations and draft invoice approval are implemented in Milestone 4. Manual payments and reconciliation are implemented in Milestone 5; assigned property operations are implemented in Milestone 6. Continue with commercial readiness after review. The tablet route permits same-origin camera use; microphone and geolocation remain disabled. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
 
 ## Reservation availability and lease foundations
 
@@ -75,7 +75,7 @@ Check-in locks the reservation, validates role, property, customer, readiness an
 
 Departure changes preserve the original booking dates and append an audit record. Transfers atomically close the earlier stay, prepare its site, and create a linked stay at another compatible site in the same property. Any failure rolls back all parts. Completed stay identity/rates/handovers remain immutable. A departure plan is an expectation; `ends_on` is the actual recorded departure. The Milestone 4 billing engine uses these recorded period/rate terms; custom amounts require explicit agreement authorization.
 
-Lease terms record reviewed business agreements; they do not allocate space or sign documents. Billing uses their effective rates without changing the original stay agreement. A renewal starts at the earlier term's end. Recorded terms cannot be edited; voiding retains a reason, and a partial unique index allows a corrected renewal after the earlier mistaken renewal is voided. Later active renewals must be voided before an earlier term. Change the stay's planned departure separately when extending occupancy. Legal document execution, general private file attachments, work orders and invoice/deposit reconciliation remain later work. Meter readings and their photographs are implemented separately from the occupancy handover notes.
+Lease terms record reviewed business agreements; they do not allocate space or sign documents. Billing uses their effective rates without changing the original stay agreement. A renewal starts at the earlier term's end. Recorded terms cannot be edited; voiding retains a reason, and a partial unique index allows a corrected renewal after the earlier mistaken renewal is voided. Later active renewals must be voided before an earlier term. Change the stay's planned departure separately when extending occupancy. Legal document execution and general private file attachments remain later work. Work orders and invoice/deposit reconciliation have separate retained workflows. Meter readings and their photographs are implemented separately from the occupancy handover notes.
 
 Booking edits and lifecycle actions use the last-read `updated_at` value as an optimistic-concurrency condition; a stale form receives a reload message instead of overwriting another edit. Transactional check-in, plan changes and transfers independently re-check database state. Calendar/search results are snapshots: the write-side exclusion constraint is the final conflict authority. Property/site row locks serialize updates against archive transitions. Real concurrent load and a hosted PostgreSQL/Supabase deployment still require staging acceptance; PGlite tests do not certify those environments.
 
@@ -112,3 +112,15 @@ Receipt creation freezes the customer/property/source snapshot. Reversals and vo
 Reconciliation snapshots select immutable cash sources rather than treating allocations as cash. Unique active claims prevent double matching; overlapping periods are refused and adjacent same-method balances carry forward. Older unmatched entries can be carried into later reviews. Variances remain explicit discrepancies; no balancing money is invented. Void records release claims while retaining the old review.
 
 Optional tenant and SaaS processor contracts are separate and disabled. No payment SDK, merchant account, card fields, checkout endpoint or webhook has been provisioned. Detailed workflows, permissions, limits and pending hosted acceptance: [phase-5-report.md](phase-5-report.md).
+
+## Milestone 6 operations boundaries
+
+`/api/operations` loads RLS-scoped work, inventory, purchasing, equipment and daily-checklist data and dispatches strict commands through the ordinary caller's `operations_command` wrapper. A separate scoped context function supplies assigned maintenance workers with site labels and sanitized part/equipment availability while keeping customer contacts, supplier prices, financial costs and raw stock movements inaccessible. Staff profiles reference registered accounts; actual organization/property memberships remain the sole role authority.
+
+Twenty public tables retain work/events/costs/materials/photos, staff/catalogs/stock movements, recurring plans/checklists, equipment/loans/service, purchase requests/orders/lines/receipts and recipient-private notifications. Four private tables hold exact operation results, WO/PO counters, unique plan/date occurrences and active purchase-request claims. Totals across all milestones are 57 public and 15 private RLS tables. Application roles have SELECT grants only on new public tables; narrow authenticated transactions write under explicit current-role/property checks. No private schema is exposed through the Data API.
+
+Property-first locks serialize operations; transfers lock both properties in UUID order before dependent items. Stock totals derive from signed immutable milliunit movements, with both current and cumulative daily nonnegative checks. Partial material returns and order receipts/returns allocate the original rounded source cost cumulatively, preserving exact total reversals. Work costs use standard material prices at issue and explicit expenses; they do not issue tenant charges or supply accounting inventory valuation. Stale definition/status versions conflict. Equipment has one active loan, and occurrence/request claims prevent duplicate generation or ordering.
+
+Plans use calendar-day recurrence and explicit generation, freezing work plan and checklist item snapshots. Item outcomes, notes/time, costs, stock, receipt and service histories append; lifecycle/catalog/profile edits retain audit snapshots. Checklist runs require all items done/skipped before closure. Only supervisors approve completed work, purchasing or stock adjustments/transfers. Current membership, active profiles and assigned scope constrain employee operations.
+
+`work-photos` is a private 5 MB JPEG/PNG/WebP bucket. Metadata reserves an actor-bound path, ordinary-session uploads validate signature/size/SHA-256 without upsert, and authorized reads receive 60-second signed URLs. Pending identical uploads can finish interrupted completion; voiding retains evidence while denying future signed access. Operations screens are online only. Notifications remain recipient-private in-app records. No cron, supplier dispatch, payment, email or SMS runs. Workflow, limits, local verification and pending hosted concurrency/Storage acceptance: [phase-6-report.md](phase-6-report.md).

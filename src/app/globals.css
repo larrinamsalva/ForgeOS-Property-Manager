@@ -1348,6 +1348,7 @@ select option {
   color: var(--text);
 }
 .modal {
+  margin: auto;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -3033,4 +3034,57 @@ table summary {
 .collections-workspace .badge[data-state='partially_paid'] {
   color: var(--amber);
   background: var(--amber-bg);
+}
+
+.ops-record {
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+  overflow-wrap: anywhere;
+}
+.ops-record h3 {
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+.ops-history {
+  border-left: 3px solid var(--line);
+  padding: 8px 14px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.ops-actions {
+  margin: 18px 0;
+}
+.ops-overdue {
+  color: var(--danger);
+  font-weight: 700;
+}
+.ops-workspace .badge[data-priority='urgent'],
+.ops-workspace .badge[data-priority='high'] {
+  color: var(--danger);
+  background: var(--surface-2);
+}
+.ops-purchase-lines {
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+  min-width: 0;
+}
+.ops-purchase-lines legend {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.ops-line {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.ops-photo-view {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ops-alerts {
+  padding-bottom: 16px;
 }
