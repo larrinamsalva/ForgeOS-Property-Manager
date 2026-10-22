@@ -78,7 +78,7 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
             'x-forgeos-customer':customerId,
             'x-forgeos-site':siteId,
             'x-forgeos-category':category,
-            'x-forgeos-title':(title.trim() || file.name).slice(0,160),
+            'x-forgeos-title':encodeURIComponent((title.trim() || file.name).slice(0,160)),
           },
           body:file,
         });
