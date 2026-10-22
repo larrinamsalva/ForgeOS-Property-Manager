@@ -89,8 +89,13 @@ export function GuestSiteMedia({
           {photoCategories.map((x) => <option value={x.value} key={x.value}>{x.label}</option>)}
         </select>
       </label>
+      <label className="demo-photo-upload" htmlFor="demo-space-camera">
+        <Camera size={18}/> Take a photo
+      </label>
+      <input id="demo-space-camera" className="sr-only" aria-label="Take photo for this space" type="file"
+        accept="image/*" capture="environment" onChange={upload}/>
       <label className="demo-photo-upload" htmlFor="demo-space-photos">
-        <ImagePlus size={18}/> Add pictures
+        <ImagePlus size={18}/> Choose existing photos
       </label>
       <input id="demo-space-photos" className="sr-only" aria-label="Upload photos for this space" type="file"
         accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple onChange={upload}/>
