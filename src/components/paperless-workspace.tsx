@@ -34,9 +34,6 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
   const customers = snapshot.customers.filter((c) => c.property_id===selectedProperty && !c.archived_at);
   const sites = snapshot.sites.filter((s) => s.property_id===selectedProperty && !s.archived_at);
   const chosen = filter === 'customer' ? customerId : siteId;
-  const chosenLabel = filter === 'customer'
-    ? customers.find((c)=>c.id===customerId)
-    : sites.find((s)=>s.id===siteId);
 
   useEffect(() => {
     if (!selectedProperty || !chosen) return;
