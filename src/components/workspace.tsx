@@ -56,6 +56,9 @@ import { MeterWorkspace } from './meter-workspace';
 const BillingWorkspace = dynamic(() =>
   import('./billing-workspace').then((module) => module.BillingWorkspace)
 );
+const CollectionsWorkspace = dynamic(() =>
+  import('./collections-workspace').then((module) => module.CollectionsWorkspace)
+);
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
@@ -69,9 +72,9 @@ const navigation = [
   { id: 'leases', label: 'Leases & renewals', icon: FileText },
   { id: 'meters', label: 'Meters & reader', icon: Gauge },
   { id: 'billing', label: 'Utilities & billing', icon: Receipt },
+  { id: 'collections', label: 'Payments & collections', icon: Receipt },
 ];
 const upcoming = [
-  { label: 'Payments & receipts', icon: Receipt, milestone: 5 },
   { label: 'Maintenance', icon: Wrench, milestone: 6 },
   { label: 'Inventory & operations', icon: Package, milestone: 6 },
   { label: 'Communications & reports', icon: MessageSquare, milestone: 7 },
@@ -674,7 +677,7 @@ export function Workspace({
           <div className="release-badge">
             <span className="status-dot" />
             <div>
-              Utilities & billing release<small>Milestone 4 of 7</small>
+              Payments & collections release<small>Milestone 5 of 7</small>
             </div>
           </div>
         </div>
@@ -854,6 +857,8 @@ export function Workspace({
             />
           ) : section === 'meters' ? (
             <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
+          ) : section === 'collections' ? (
+            <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'billing' ? (
             <BillingWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'reservations' || section === 'leases' ? (

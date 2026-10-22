@@ -144,6 +144,7 @@ export interface LedgerEntry {
   created_by: string;
 }
 export interface BillingSnapshot {
+  accounts: import('./collections-domain').CollectionAccount[];
   policies: BillingPolicy[];
   rates: RatePlan[];
   events: RegisterEvent[];
@@ -170,6 +171,7 @@ export function ledgerBalance(entries: LedgerEntry[], invoiceId?: string): strin
     .toString();
 }
 export interface BillingStatement {
+  collection?: import('./collections-domain').CollectionAccount;
   invoice: Invoice;
   revision: InvoiceRevision;
   ledger: LedgerEntry[];

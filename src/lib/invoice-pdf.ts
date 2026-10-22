@@ -1,12 +1,19 @@
+import type { CollectionAccount } from './collections-domain';
+import { stateLabel } from './collections-domain';
 import fontkit from '@pdf-lib/fontkit';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PDFDocument, rgb, type PDFPage } from 'pdf-lib';
 import { cents, ledgerBalance, type Invoice, type InvoiceRevision, type LedgerEntry } from './billing-domain';
 export class StatementCharacterError extends Error {}
-export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, ledger: LedgerEntry[]) {
+export async function invoicePdf(
+  invoice: Invoice,
+  revision: InvoiceRevision,
+  ledger: LedgerEntry[],
+  collection?: CollectionAccount
+) {
   const pdf = await PDFDocument.create();
-  pdf.setTitle(`${invoice.number} - Internal review statement`);
+  pdf.setTitle(`${invoice.number} - ${collection?.issued_on ? 'Invoice' : 'Internal review statement'}`);
   pdf.setAuthor('ForgeOS');
   pdf.registerFontkit(fontkit);
   const [regularBytes, boldBytes] = await Promise.all([
@@ -26,7 +33,11 @@ export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, le
   let page: PDFPage;
   let y = 0;
   let tableHeader: [string, string, string] | null = null;
-  const status = invoice.status === 'approved' ? 'APPROVED - NOT ISSUED' : invoice.status.toUpperCase();
+  const status = collection?.issued_on
+    ? stateLabel(collection.state).toUpperCase()
+    : invoice.status === 'approved'
+      ? 'APPROVED - NOT ISSUED'
+      : invoice.status.toUpperCase();
   function clean(text: string) {
     return text.replace(/\s+/g, ' ').trim();
   }
@@ -72,13 +83,18 @@ export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, le
     y -= 24;
     page.drawText(status, { x: margin, y, size: 11, font: bold, color: ink });
     y -= 18;
-    page.drawText('Internal review copy. Not a payment request.', {
-      x: margin,
-      y,
-      size: 9,
-      font: regular,
-      color: muted,
-    });
+    page.drawText(
+      collection?.issued_on
+        ? `Issued ${collection.issued_on} | Due ${collection.due_on}`
+        : 'Internal review copy. Not a payment request.',
+      {
+        x: margin,
+        y,
+        size: 9,
+        font: regular,
+        color: muted,
+      }
+    );
     y -= 24;
     page.drawLine({
       start: { x: margin, y: y + 10 },
@@ -147,7 +163,9 @@ export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, le
   if (calc.customer.email) text(calc.customer.email);
   text(`Site / unit ${calc.site.label} | Revision ${revision.revision}`);
   text(`Service dates: ${calc.starts_on} to ${calc.ends_on} (end exclusive)`);
-  text(`Planned due date: ${calc.due_on} | Currency: USD`);
+  text(
+    `${collection?.issued_on ? 'Actual due date: ' + collection.due_on : 'Planned due date: ' + calc.due_on} | Currency: USD`
+  );
   heading('Itemized charges');
   row('Description', 'Quantity', 'Amount', true);
   tableHeader = ['Description', 'Quantity', 'Amount'];
@@ -165,7 +183,26 @@ export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, le
   row('Statement total', '', cents(calc.total_cents), true);
   tableHeader = null;
   if (invoice.status !== 'draft') {
-    row('Approved / unissued internal balance', '', cents(ledgerBalance(ledger, invoice.id)), true);
+    row(
+      collection?.issued_on ? 'Current outstanding' : 'Approved / unissued internal balance',
+      '',
+      cents(collection?.outstanding_cents ?? ledgerBalance(ledger, invoice.id)),
+      true
+    );
+  }
+  if (collection?.issued_on) {
+    text(`Balances as of ${collection.as_of} | Grace through ${collection.grace_ends_on}`, 9);
+    text(
+      `Charges after credits ${cents(collection.adjusted_cents)} | Allocated ${cents(collection.allocated_cents)}`,
+      9
+    );
+    heading('Payment and deposit history');
+    if (!collection.history.length) text('No allocations recorded.', 9);
+    for (const e of collection.history) {
+      text(`${e.effective_on} | ${e.source} | ${stateLabel(e.kind)} | ${cents(e.amount_cents)}`, 9);
+      text(`${e.reason} | ${e.reference}`, 9);
+      text(`Source ${e.source_id}`, 8);
+    }
   }
   text(calc.rounding, 9, false, muted);
   if (calc.utilities_reason) text(`Utility decision: ${calc.utilities_reason}`, 9);
@@ -226,10 +263,12 @@ export async function invoicePdf(invoice: Invoice, revision: InvoiceRevision, le
   }
   const entries = ledger.filter((e) => e.invoice_id === invoice.id);
   if (entries.length) {
+    space(110);
     heading('Internal ledger history');
     row('Event', 'Date', 'Amount', true);
     tableHeader = ['Event', 'Date', 'Amount'];
     for (const entry of entries) {
+      space(70);
       row(entry.kind.replaceAll('_', ' '), entry.created_at.slice(0, 10), cents(entry.amount_cents));
       text(`${entry.reason}${entry.reference ? ` | ${entry.reference}` : ''}`, 9);
     }

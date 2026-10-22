@@ -1,3 +1,5 @@
+import type { CollectionAccount } from '@/lib/collections-domain';
+import { stateLabel } from '@/lib/collections-domain';
 import {
   cents,
   ledgerBalance,
@@ -9,10 +11,12 @@ export function InvoiceStatement({
   invoice,
   revision,
   ledger,
+  collection,
 }: {
   invoice: Invoice;
   revision: InvoiceRevision;
   ledger: LedgerEntry[];
+  collection?: CollectionAccount;
 }) {
   const calc = revision.calculation;
   return (
@@ -27,16 +31,27 @@ export function InvoiceStatement({
           .join(', ')}
       </p>
       <p className="statement-status">
-        {invoice.status === 'approved' ? 'Approved · Not issued' : invoice.status.toUpperCase()}
+        {collection?.issued_on
+          ? stateLabel(collection.state)
+          : invoice.status === 'approved'
+            ? 'Approved · Not issued'
+            : invoice.status.toUpperCase()}
       </p>
-      <p>Internal review copy. Not a payment request.</p>
+      <p>
+        {collection?.issued_on
+          ? `Issued ${collection.issued_on} · Due ${collection.due_on} · Grace through ${collection.grace_ends_on}`
+          : 'Internal review copy. Not a payment request.'}
+      </p>
       <h2>{calc.customer.name}</h2>
       <p className="preserve-lines">{calc.customer.mailing_address}</p>
       <p>{calc.customer.email}</p>
       <p>
         Site / unit {calc.site.label} · {calc.starts_on} to {calc.ends_on} (end exclusive)
       </p>
-      <p>Planned due date {calc.due_on} · USD</p>
+      <p>
+        {collection?.issued_on ? 'Actual due date ' + collection.due_on : 'Planned due date ' + calc.due_on} ·
+        USD
+      </p>
       <div className="table-wrap" role="region" aria-label="Statement items" tabIndex={0}>
         <table>
           <thead>
@@ -72,7 +87,33 @@ export function InvoiceStatement({
       </div>
       <p className="statement-total">Statement total {cents(calc.total_cents)}</p>
       {invoice.status !== 'draft' && (
-        <p>Approved / unissued internal balance {cents(ledgerBalance(ledger, invoice.id))}</p>
+        <p>
+          {collection?.issued_on ? 'Current outstanding' : 'Approved / unissued internal balance'}{' '}
+          {cents(collection?.outstanding_cents ?? ledgerBalance(ledger, invoice.id))}
+          {collection?.issued_on ? ` as of ${collection.as_of}` : ''}
+        </p>
+      )}
+      {collection?.issued_on && (
+        <>
+          <p>
+            Charges after credits {cents(collection.adjusted_cents)} · Allocated payments and deposits{' '}
+            {cents(collection.allocated_cents)}
+          </p>
+          <h2>Payment & deposit history</h2>
+          {collection.history.length ? (
+            collection.history.map((e) => (
+              <p key={e.id}>
+                {e.effective_on} · {e.source} · {stateLabel(e.kind)} · {cents(e.amount_cents)}
+                <br />
+                {e.reason} · {e.reference}
+                <br />
+                Source {e.source_id}
+              </p>
+            ))
+          ) : (
+            <p>No allocations recorded.</p>
+          )}
+        </>
       )}
       <p>{calc.rounding}</p>
       {calc.utilities_reason && <p>Utility decision: {calc.utilities_reason}</p>}

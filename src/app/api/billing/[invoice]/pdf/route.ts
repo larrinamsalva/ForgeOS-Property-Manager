@@ -18,8 +18,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ inv
   try {
     const statement = await loadBillingStatement(client, id);
     if (!statement) return NextResponse.json({ error: 'Statement not found.' }, { status: 404 });
-    const { invoice, revision, ledger } = statement;
-    const bytes = await invoicePdf(invoice, revision, ledger ?? []);
+    const { invoice, revision, ledger, collection } = statement;
+    const bytes = await invoicePdf(invoice, revision, ledger ?? [], collection);
     return new Response(new Uint8Array(bytes), {
       headers: {
         'Content-Type': 'application/pdf',

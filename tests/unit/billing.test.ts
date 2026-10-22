@@ -165,4 +165,12 @@ describe('billing input, money and statements', () => {
       )
     ).rejects.toBeInstanceOf(StatementCharacterError);
   });
+  it('renders an issued invoice with its actual due date and allocation-adjusted balance',async()=>{
+    const bytes=await invoicePdf({...invoice,status:'approved'},revision,[{id,property_id:id,customer_id:id,invoice_id:id,kind:'approval',amount_cents:'65000',reverses_id:null,reason:'Reviewed fictional charges',reference:'',created_at:'2024-03-01T12:00:00Z',created_by:id}],{
+      invoice_id:id,property_id:id,customer_id:id,number:invoice.number,issued_on:'2024-03-02',due_on:'2024-03-20',grace_days:3,grace_ends_on:'2024-03-23',as_of:'2024-03-21',adjusted_cents:'65000',allocated_cents:'50000',outstanding_cents:'15000',days_past_due:1,state:'partially_paid',aging_bucket:'1_30',history:[{id,source:'payment',source_id:id,kind:'allocation',amount_cents:'50000',effective_on:'2024-03-10',reference:'Fictional payment 001',reason:'Office allocation to issued invoice'}]
+    });
+    expect((await PDFDocument.load(bytes)).getTitle()).toBe(`${invoice.number} - Invoice`);
+    if(process.env.FORGEOS_ISSUED_PDF_QA_PATH)await writeFile(process.env.FORGEOS_ISSUED_PDF_QA_PATH,bytes);
+  });
+
 });

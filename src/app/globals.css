@@ -2953,3 +2953,84 @@ table summary {
     margin: 16mm;
   }
 }
+
+.collection-totals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.collection-total {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  display: grid;
+  gap: 8px;
+}
+.collection-total small {
+  color: var(--muted);
+}
+.collection-total strong {
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.collection-record {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.collection-record .panel-heading {
+  padding: 0 0 12px;
+}
+.collection-history-row {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.collection-history-row h3 {
+  font-size: 1rem;
+}
+.collection-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.collection-review dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.collection-source-list {
+  max-height: 300px;
+  overflow: auto;
+  margin: 16px 0;
+}
+.record-id {
+  overflow-wrap: anywhere;
+  max-width: 350px;
+}
+@media (max-width: 900px) {
+  .collection-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 540px) {
+  .collection-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .collection-total {
+    padding: 12px;
+  }
+}
+
+.collections-workspace .badge[data-state='overdue'] {
+  color: var(--danger);
+  background: var(--surface-2);
+}
+.collections-workspace .badge[data-state='paid'] {
+  color: var(--green);
+  background: var(--green-bg);
+}
+.collections-workspace .badge[data-state='partially_paid'] {
+  color: var(--amber);
+  background: var(--amber-bg);
+}

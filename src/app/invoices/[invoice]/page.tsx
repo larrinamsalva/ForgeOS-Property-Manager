@@ -17,7 +17,7 @@ export default async function Statement({ params }: { params: Promise<{ invoice:
   if (error || !user) redirect('/login');
   const statement = await loadBillingStatement(client, id);
   if (!statement) notFound();
-  const { invoice, revision, ledger } = statement;
+  const { invoice, revision, ledger, collection } = statement;
   return (
     <main className="statement-page">
       <nav className="print-hidden statement-actions" aria-label="Statement actions">
@@ -29,7 +29,7 @@ export default async function Statement({ params }: { params: Promise<{ invoice:
         </Link>
         <PrintButton />
       </nav>
-      <InvoiceStatement invoice={invoice} revision={revision} ledger={ledger ?? []} />
+      <InvoiceStatement invoice={invoice} revision={revision} ledger={ledger ?? []} collection={collection} />
     </main>
   );
 }
