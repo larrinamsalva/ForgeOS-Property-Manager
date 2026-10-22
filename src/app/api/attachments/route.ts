@@ -131,3 +131,49 @@ export async function POST(request: NextRequest) {
     return errorJson('Photo upload needs review before it appears in the record. Contact the owner.', 503);
   return NextResponse.json({ ok:true,id:pending.data.id,attachedTo:{customer_id:customer,site_id:site} },{headers:noStore});
 }
+
+
+// Two-phase removal keeps an audit tombstone while deleting physical bytes using the Storage API.
+// If network access fails after the first phase, authorized staff can retry the same file.
+export async function DELETE(request: NextRequest) {
+  if (!sameOrigin(request)) return errorJson('Request origin is not allowed.', 403);
+  if (!configured()) return errorJson('Files are not configured yet.', 503);
+  const client = await serverClient();
+  const { data: { user }, error: authError } = await client.auth.getUser();
+  if (authError || !user) return errorJson('Sign in to remove a file.', 401);
+  const fileId = request.nextUrl.searchParams.get('file');
+  if (!uuid.safeParse(fileId).success) return errorJson('Choose a valid photo to remove.', 400);
+
+  const result = await client.from('record_attachments')
+    .select('id,status,object_path,organization_id,property_id,title,mime')
+    .eq('id',fileId!).in('status',['uploaded','deleting']).maybeSingle();
+  if (result.error || !result.data) return errorJson('File not found or permission denied.', 404);
+  const file = result.data;
+  const [orgRole, propertyRole, propertyRecord] = await Promise.all([
+    client.from('organization_memberships').select('role').eq('organization_id',file.organization_id).eq('user_id',user.id).maybeSingle(),
+    client.from('property_memberships').select('role').eq('organization_id',file.organization_id).eq('property_id',file.property_id).eq('user_id',user.id).maybeSingle(),
+    client.from('properties').select('id,archived_at,operating_status').eq('organization_id',file.organization_id).eq('id',file.property_id).maybeSingle(),
+  ]);
+  if (orgRole.error || propertyRole.error || propertyRecord.error ||
+      !(orgRole.data && ['owner','admin'].includes(orgRole.data.role) ||
+        propertyRole.data && ['manager','office'].includes(propertyRole.data.role)) ||
+      !propertyRecord.data || propertyRecord.data.archived_at || propertyRecord.data.operating_status !== 'active') {
+    return errorJson('You need owner, manager or office permission to remove this file.', 403);
+  }
+  if (file.status === 'uploaded') {
+    const staged = await client.from('record_attachments')
+      .update({status:'deleting'}).eq('id',file.id).eq('status','uploaded').select('id').maybeSingle();
+    if (staged.error || !staged.data) return errorJson('Could not begin removal. Refresh and retry.', 409);
+  }
+  // Never delete directly from storage.objects with SQL: the Storage API removes the actual bytes.
+  const removed = await client.storage.from('record-attachments').remove([file.object_path]);
+  if (removed.error) {
+    return errorJson('Deletion started but storage removal was interrupted. Use Retry deletion on this file.', 503);
+  }
+  const finalized = await client.from('record_attachments').update({status:'deleted'})
+    .eq('id',file.id).eq('status','deleting').select('id,deleted_at').maybeSingle();
+  if (finalized.error || !finalized.data) {
+    return errorJson('Deletion is not finished yet. Refresh and retry. No other records were changed.', 503);
+  }
+  return NextResponse.json({ok:true,removed:true,id:file.id},{headers:noStore});
+}
