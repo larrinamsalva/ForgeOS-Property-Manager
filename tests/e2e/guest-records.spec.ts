@@ -205,7 +205,7 @@ test('customer unit selector lists all unoccupied types across the property and 
   expect(assignedBox!.y).toBeGreaterThan(nameBox!.y);
   expect(assignedBox!.y).toBeLessThan(typeBox!.y);
   await expect(type.locator('option')).toHaveText([
-    'All sites, spaces, apartments, mobile homes & campgrounds',
+    'All types',
     'Site', 'Space', 'Apartment', 'Mobile Home', 'Campground'
   ]);
 
@@ -285,6 +285,15 @@ test('Add Customer links a typed Space 88 to its available unit and blocks occup
   const type = page.getByLabel('Choose unit type');
   const number = page.getByLabel('Space / unit number');
   const assignment = page.getByLabel('Assign an available site (optional)');
+  // The compact type selector must sit beside (and be narrower than) the number
+  // input on desktop, tablet and phone, with no big multi-line "All types" label.
+  await expect(type.locator('option').first()).toHaveText('All types');
+  const typeBox = await type.boundingBox();
+  const numberBox = await number.boundingBox();
+  expect(typeBox && numberBox).toBeTruthy();
+  expect(Math.abs(typeBox!.y - numberBox!.y)).toBeLessThan(12);
+  expect(numberBox!.x).toBeGreaterThan(typeBox!.x + typeBox!.width - 2);
+  expect(typeBox!.width).toBeLessThan(numberBox!.width);
   await type.selectOption('space');
   await number.fill('88');
   await expect(assignment).toHaveValue('RV-88');
