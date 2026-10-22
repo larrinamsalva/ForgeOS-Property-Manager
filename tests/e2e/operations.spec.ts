@@ -289,7 +289,13 @@ test('purchase requests become reviewed orders with partial receipts and retaine
   }
   await expect(page.getByRole('region', { name: 'Purchase orders' })).toContainText('Received');
   await page.getByRole('button', { name: 'PO-000001', exact: true }).click();
-  await page.getByRole('button', { name: 'Return received stock', exact: true }).first().click();
+  const returnedLine = page
+    .getByRole('dialog')
+    .locator('article')
+    .filter({
+      has: page.getByRole('heading', { name: /^PVC-01/ }),
+    });
+  await returnedLine.getByRole('button', { name: 'Return received stock', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Quantity', exact: true }).fill('1');
   await note(page);
   await submit(page);
@@ -300,6 +306,9 @@ test('purchase requests become reviewed orders with partial receipts and retaine
   expect(final.orders.find((p) => p.id === order.id)?.status).toBe('ordered');
   expect(final.receipts).toHaveLength(4);
   expect(final.summary.stock.find((i) => i.id === c.items[0])?.quantity_milli).toBe('2000');
+  expect(final.summary.stock.find((i) => i.id === c.items[1])?.quantity_milli).toBe('2000');
+  const returned = final.receipts.find((r) => BigInt(r.quantity_milli) < 0);
+  expect(final.lines.find((l) => l.id === returned?.line_id)?.item_id).toBe(c.items[0]);
   expect(final.requests[0].status).toBe('ordered');
 });
 test('recurring checklists retain dated employee results and private notifications', async ({
