@@ -29,8 +29,16 @@ test('guest can expand to 700+ spaces, add customers as they arrive, and search 
   await expect(page.locator('.demo-map-space')).toHaveCount(1);
 
   await nav.getByRole('button', { name: 'Customers' }).click();
+  // Availability spans all 701 sites, even though the site directory was filtered.
+  const filter = page.getByLabel('Choose unit type');
+  const assignment = page.getByLabel('Assign an available site (optional)');
+  await expect(assignment.locator('option[value="RV-701"]')).toBeEnabled();
+  await filter.selectOption('apartment');
+  await expect(assignment.locator('option[value="RV-701"]')).toHaveCount(0);
+  await filter.selectOption('site');
+  await expect(assignment.locator('option[value="RV-701"]')).toBeEnabled();
   await page.getByLabel('Fictional customer name').fill('Example New Arrival');
-  await page.getByLabel('Assign an available site (optional)').selectOption('RV-701');
+  await assignment.selectOption('RV-701');
   await page.getByRole('button', { name: 'Add example customer' }).click();
   await expect(page.getByRole('status')).toContainText('Example New Arrival added');
   await page.getByLabel('Search', { exact: true }).fill('Example New Arrival');
