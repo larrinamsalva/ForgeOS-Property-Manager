@@ -8,7 +8,7 @@ export class BodyError extends Error {
 }
 /** Bound actual UTF-8 bytes even when Content-Length is absent or forged. */
 export async function readJson(request: Request, limit = 131072): Promise<unknown> {
-  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))
+  if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json')
     throw new BodyError('Use a JSON request.', 415);
   const claimed = Number(request.headers.get('content-length'));
   if (Number.isFinite(claimed) && claimed > limit) throw new BodyError('Request is too large.', 413);
