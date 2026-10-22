@@ -167,7 +167,7 @@ export function GuestDemo() {
                 <div>
                   <span className="demo-eyebrow">PROPERTY OVERVIEW</span>
                   <h2>One system. Every site. Total control.</h2>
-                  <p>See availability, utility readings, billing and your team's work in one place.</p>
+                  <p>See availability, utility readings, billing and your team&apos;s work in one place.</p>
                   <button className="demo-hero-button" type="button" onClick={() => setTab('sites')}>Explore the site map <ArrowRight size={17}/></button>
                 </div>
                 <div className="demo-welcome-icon" aria-hidden="true"><MapPinned size={58}/></div>
