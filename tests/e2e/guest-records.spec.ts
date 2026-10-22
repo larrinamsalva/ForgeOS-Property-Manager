@@ -196,6 +196,14 @@ test('customer unit selector lists all unoccupied types across the property and 
   await nav.getByRole('button', { name: 'Customers' }).click();
   const type = page.getByLabel('Choose unit type');
   const assignment = page.getByLabel('Assign an available site (optional)');
+  const nameInput = page.getByLabel('Fictional customer name');
+  // 'Assigned' is immediately below the name, before type/number fields.
+  const nameBox = await nameInput.boundingBox();
+  const assignedBox = await assignment.boundingBox();
+  const typeBox = await type.boundingBox();
+  expect(nameBox && assignedBox && typeBox).toBeTruthy();
+  expect(assignedBox!.y).toBeGreaterThan(nameBox!.y);
+  expect(assignedBox!.y).toBeLessThan(typeBox!.y);
   await expect(type.locator('option')).toHaveText([
     'All sites, spaces, apartments, mobile homes & campgrounds',
     'Site', 'Space', 'Apartment', 'Mobile Home', 'Campground'
@@ -205,10 +213,8 @@ test('customer unit selector lists all unoccupied types across the property and 
   await expect(assignment.locator('option[value="RV-15"]')).toContainText('Apartment · A-15');
   await expect(assignment.locator('option[value="RV-16"]')).toContainText('Campground · Camp 16');
   await expect(assignment.locator('option[value="RV-17"]')).toContainText('Mobile Home · MH 17');
-  await expect(assignment.locator('option[value="RV-18"]')).toContainText('Space · Space 18');
-  // Playwright's toBeDisabled() does not recognize disabled native <option>
-  // consistently on Chromium mobile emulation. Assert the actual DOM state.
-  await expect(assignment.locator('option[value="RV-18"]')).toHaveAttribute('disabled', '');
+  // Reserved units are deliberately absent from the assignment dropdown.
+  await expect(assignment.locator('option[value="RV-18"]')).toHaveCount(0);
   await expect(assignment.locator('option[value="RV-01"]')).toHaveCount(0); // Already occupied.
 
   // The separate complete-availability browser shows ALL actual vacant units,
