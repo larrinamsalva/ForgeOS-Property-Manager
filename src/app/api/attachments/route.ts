@@ -66,7 +66,9 @@ export async function POST(request: NextRequest) {
   const property = request.headers.get('x-forgeos-property');
   const customer = request.headers.get('x-forgeos-customer') || null;
   const site = request.headers.get('x-forgeos-site') || null;
-  const label = request.headers.get('x-forgeos-title')?.trim() ?? '';
+  let label = '';
+  try { label = decodeURIComponent(request.headers.get('x-forgeos-title') ?? '').trim(); }
+  catch { return errorJson('Invalid file label.', 400); }
   const checkedCategory = category.safeParse(request.headers.get('x-forgeos-category'));
   if (!uuid.safeParse(organization).success || !uuid.safeParse(property).success ||
       (customer && !uuid.safeParse(customer).success) || (site && !uuid.safeParse(site).success) ||
@@ -91,8 +93,8 @@ export async function POST(request: NextRequest) {
   }
   const scoped = { organization_id: organization!, property_id: property! };
   const [customerRecord,siteRecord] = await Promise.all([
-    customer ? client.from('customers').select('id').match({ ...scoped, id: customer, archived_at: null }).maybeSingle() : null,
-    site ? client.from('sites_units').select('id').match({ ...scoped, id: site, archived_at: null }).maybeSingle() : null,
+    customer ? client.from('customers').select('id').match({ ...scoped, id: customer }).is('archived_at',null).maybeSingle() : null,
+    site ? client.from('sites_units').select('id').match({ ...scoped, id: site }).is('archived_at',null).maybeSingle() : null,
   ]);
   if (customer && (!customerRecord || customerRecord.error || !customerRecord.data) ||
       site && (!siteRecord || siteRecord.error || !siteRecord.data)) {
