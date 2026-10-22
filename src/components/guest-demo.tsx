@@ -70,20 +70,17 @@ export function GuestDemo() {
   const sampleUsage = readings.reduce((total, r) => total + r.usage, 0);
 
   function updateSite(id: string) {
-    let changed = '';
+    const original = sites.find((site) => site.id === id);
+    if (!original) return;
+    const next: Status =
+      original.status === 'available' ? 'reserved' :
+      original.status === 'reserved' ? 'occupied' : 'available';
+    const changed =
+      next === 'reserved' ? 'Reserved' : next === 'occupied' ? 'Checked in' : 'Checked out';
     setSites((old) =>
-      old.map((site) => {
-        if (site.id !== id) return site;
-        const next: Status =
-          site.status === 'available' ? 'reserved' : site.status === 'reserved' ? 'occupied' : 'available';
-        changed =
-          next === 'reserved' ? 'Reserved' : next === 'occupied' ? 'Checked in' : 'Checked out';
-        return {
-          ...site,
-          status: next,
-          resident: next === 'occupied' ? 'Example Walk-in' : '',
-        };
-      })
+      old.map((site) =>
+        site.id === id ? { ...site, status: next, resident: next === 'occupied' ? 'Example Walk-in' : '' } : site
+      )
     );
     setNotice(id + ' — ' + changed + ' in this sample only. No actual booking was made.');
   }
