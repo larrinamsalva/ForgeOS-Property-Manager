@@ -21,6 +21,7 @@ export default async function Page({
       'properties',
       'sites',
       'customers',
+      'paperless',
       'occupancy',
       'map',
       'access',
