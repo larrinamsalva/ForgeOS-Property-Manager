@@ -1,4 +1,5 @@
 import { Flame, Database, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { ThemeButton } from '@/components/theme-button';
 export default function Setup() {
   return (
@@ -49,6 +50,7 @@ export default function Setup() {
             </p>
           </div>
         </div>
+        <p><Link className="button secondary" href="/demo">Explore the sample demo without signing in</Link></p>
         <p className="privacy-note">
           <ShieldCheck size={19} />
           Your records stay scoped to your organization and authorized properties.
