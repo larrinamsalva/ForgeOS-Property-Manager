@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
     return errorJson('Choose a valid customer or space.', 400);
   }
   let query = client.from('record_attachments')
-    .select('id,customer_id,site_id,category,title,mime,byte_size,created_at,created_by')
-    .eq('organization_id',orgId!).eq('property_id',propertyId!).eq('status','uploaded')
+    .select('id,customer_id,site_id,category,title,mime,byte_size,created_at,created_by,status')
+    .eq('organization_id',orgId!).eq('property_id',propertyId!).in('status',['uploaded','deleting'])
     .order('created_at',{ascending:false}).limit(100);
   query = kind === 'customer' ? query.eq('customer_id',targetId!) : query.eq('site_id',targetId!);
   const files = await query;
