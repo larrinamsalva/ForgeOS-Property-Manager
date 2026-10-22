@@ -19,7 +19,7 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
   await page.getByLabel('Monthly rent ($)').fill('950');
   await page.getByLabel('Site information / notes').fill('Example: Covered parking and accessible doorway');
   await page.getByRole('button', { name: 'Save sample space' }).click();
-  await expect(page.getByRole('status')).toContainText('RV-15 details updated');
+  await expect(page.locator('p.demo-notice[role="status"]')).toContainText('RV-15 details updated');
 
   await nav.getByRole('button', { name: 'Customers' }).click();
   await page.getByLabel('Fictional customer name').fill('Example Apartment Tenant');
@@ -73,7 +73,7 @@ test('photos and vehicle types remain grouped under the correct space, and reset
   await page.getByLabel('Description / make / model').fill('Example touring motorcycle');
   await page.getByLabel('Sample identifier (optional)').fill('Motorcycle A');
   await page.getByRole('button', { name: 'Add vehicle', exact: true }).click();
-  await expect(page.getByText('Example touring motorcycle')).toBeVisible();
+  await expect(page.getByText('Example touring motorcycle', { exact: true })).toBeVisible();
 
   await nav.getByRole('button', { name: 'Customers' }).click();
   await nav.getByRole('button', { name: 'Sites & map' }).click();
@@ -88,6 +88,6 @@ test('photos and vehicle types remain grouped under the correct space, and reset
   await page.getByLabel('Find a space').fill('RV-02');
   await page.getByRole('button', { name: 'Details and photos for RV-02' }).click();
   await expect(page.getByText('0 / 12 photos')).toBeVisible();
-  await expect(page.getByText('Example touring motorcycle')).toHaveCount(0);
+  await expect(page.getByText('Example touring motorcycle', { exact: true })).toHaveCount(0);
   expect(writes).toEqual([]);
 });
