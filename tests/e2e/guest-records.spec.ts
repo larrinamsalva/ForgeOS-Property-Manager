@@ -34,7 +34,7 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
   await page.getByRole('button', { name: 'Edit customer Example Apartment Tenant' }).click();
   await expect(page.getByRole('region', { name: 'Edit customer Example Apartment Tenant' })).toBeVisible();
   await expect(page.getByLabel('Phone number').last()).toHaveValue('555-0100');
-  await page.getByLabel('Customer name').fill('Example Tenant Updated');
+  await page.getByLabel('Customer name', { exact: true }).fill('Example Tenant Updated');
   await page.getByRole('button', { name: 'Save sample customer' }).click();
   await expect(page.getByRole('status')).toContainText('Example Tenant Updated updated');
 
