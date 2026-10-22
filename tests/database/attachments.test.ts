@@ -29,7 +29,6 @@ describe('paperless customer and property photo RLS', () => {
         [a.org,a.property,customer,site,path]
       )).rows[0].id
     ));
-    console.info('attachment-test: metadata created');
     await asUser(db,identities.office,async (tx)=>{
       expect((await tx.query('select id from record_attachments where id=$1',[attachment])).rows).toHaveLength(1);
     });
@@ -52,11 +51,11 @@ describe('paperless customer and property photo RLS', () => {
       const result=await tx.query<{status:string}>("select status from record_attachments where id=$1",[attachment]);
       expect(result.rows[0].status).toBe('uploaded');
     });
-    console.info('attachment-test: uploaded object finalized');
-    // Uploaded metadata is immutable: UPDATE is denied by RLS, which correctly affects zero rows.
-    const attempted = await asUser(db,identities.owner,(tx)=>tx.query(
-      "update record_attachments set object_path='tampered' where id=$1 returning id",[attachment]));
-    expect(attempted.rows).toHaveLength(0);
+    // Uploaded records are now visible for permitted DELETE transitions, so the
+    // immutability trigger explicitly rejects attempts to edit a stored object path.
+    await expect(asUser(db,identities.owner,(tx)=>tx.query(
+      "update record_attachments set object_path='tampered' where id=$1 returning id",[attachment])
+    )).rejects.toThrow('insufficient_privilege');
     const originalPath = (await db.query<{object_path:string}>(
       'select object_path from record_attachments where id=$1',[attachment]
     )).rows[0].object_path;
@@ -64,7 +63,6 @@ describe('paperless customer and property photo RLS', () => {
     await asUser(db,identities.other,async (tx)=>{
       expect((await tx.query("select name from storage.objects where bucket_id='record-attachments' and name=$1",[path])).rows).toHaveLength(0);
     });
-    console.info('attachment-test: privacy checks passed');
     // Simulates Storage.remove() at SQL level in isolated PGlite only; production always uses Storage API.
     await expect(asUser(db,identities.owner,(tx)=>tx.query(
       "delete from record_attachments where id=$1",[attachment]
@@ -72,7 +70,6 @@ describe('paperless customer and property photo RLS', () => {
     const unauthorized=await asUser(db,identities.technician,(tx)=>tx.query(
       "update record_attachments set status='deleting' where id=$1 returning id",[attachment]));
     expect(unauthorized.rows).toHaveLength(0);
-    console.info('attachment-test: begin delete transition');
     await asUser(db,identities.office,async (tx)=>{
       const started=await tx.query<{status:string,deleted_by:string,deleted_at:string|null}>(
         "update record_attachments set status='deleting' where id=$1 returning status,deleted_by,deleted_at",[attachment]);
@@ -80,13 +77,11 @@ describe('paperless customer and property photo RLS', () => {
       expect(started.rows[0].deleted_by).toBe(identities.office);
       expect(started.rows[0].deleted_at).toBeNull();
     });
-    console.info('attachment-test: marked deleting');
     await expect(asUser(db,identities.office,(tx)=>tx.query(
       "update record_attachments set status='deleted' where id=$1",[attachment]))).rejects.toThrow('attachment_still_present');
     const unauthorizedStorage=await asUser(db,identities.technician,(tx)=>tx.query(
       "delete from storage.objects where bucket_id='record-attachments' and name=$1 returning name",[path]));
     expect(unauthorizedStorage.rows).toHaveLength(0);
-    console.info('attachment-test: storage delete authorization checked');
     // PGlite has no file bytes; deleting this fixture metadata row simulates the Storage API.
     await asUser(db,identities.office,async (tx)=>{
       const removed=await tx.query(
@@ -97,7 +92,6 @@ describe('paperless customer and property photo RLS', () => {
       expect(done.rows[0].status).toBe('deleted');
       expect(done.rows[0].deleted_at).toBeTruthy();
     });
-    console.info('attachment-test: object removed and tombstoned');
     const tombstone=await db.query<{status:string,deleted_by:string}>(
       'select status,deleted_by from record_attachments where id=$1',[attachment]);
     expect(tombstone.rows).toEqual([{status:'deleted',deleted_by:identities.office}]);
