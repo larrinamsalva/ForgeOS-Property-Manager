@@ -18,7 +18,7 @@ export async function proxy(request: NextRequest) {
     return result;
   };
   let response = next();
-  if (!configured()) return response;
+  if (!configured() || request.nextUrl.pathname === '/demo') return response;
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
