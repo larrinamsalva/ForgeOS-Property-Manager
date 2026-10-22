@@ -43,7 +43,7 @@ export default async function Page({
     data: { user },
     error,
   } = await client.auth.getUser();
-  if (error || !user) redirect('/login');
+  if (error || !user) redirect('/demo');
   const query = await searchParams;
   const snapshot = await loadSnapshot(client, user, query.organization);
   const property = snapshot.properties.some((p) => p.id === query.property) ? (query.property ?? '') : '';
