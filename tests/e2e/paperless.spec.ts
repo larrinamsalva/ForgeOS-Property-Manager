@@ -43,7 +43,7 @@ test('owner can reach phone camera auto-filing once a property and person are se
   await page.getByRole('button',{name:'Sign in to ForgeOS'}).click();
   await page.getByLabel('Organization name').fill('Sample Paperless Park');
   await page.getByRole('button',{name:'Create organization',exact:true}).click();
-  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Properties'}).click();
+  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Properties',exact:true}).click();
   await page.getByRole('button',{name:'Add property',exact:true}).click();
   await page.getByLabel('Property name').fill('Private Park Example');
   await page.getByLabel('City',{exact:true}).fill('Corning');
