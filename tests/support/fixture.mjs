@@ -64,6 +64,15 @@ const tableNames = [
   'checklist_runs',
   'checklist_entries',
   'operations_notifications',
+  'portal_memberships',
+  'communication_preferences',
+  'message_templates',
+  'communications',
+  'communication_recipients',
+  'communication_notes',
+  'portal_contact_requests',
+  'portal_maintenance_requests',
+  'account_exports',
 ];
 const columns = new Map();
 for (const table of tableNames)
@@ -306,8 +315,10 @@ const server = createServer(async (request, response) => {
   function send(status, data, headers = {}) {
     response.writeHead(status, { 'Content-Type': 'application/json', ...headers });
     response.end(
-      JSON.stringify(data, (key, value) =>
-        [
+      JSON.stringify(data, function (key, value) {
+        if (key === 'scheduled_for' && this.language) return value;
+        return [
+          'expires_on',
           'starts_on',
           'ends_on',
           'planned_ends_on',
@@ -331,8 +342,8 @@ const server = createServer(async (request, response) => {
           'scheduled_for',
         ].includes(key) && typeof value === 'string'
           ? value.slice(0, 10)
-          : value
-      )
+          : value;
+      })
     );
   }
   if (request.method === 'OPTIONS') {
@@ -475,6 +486,15 @@ const server = createServer(async (request, response) => {
           complete_stay_checklist: ['stay', 'departure', 'details'],
           change_stay_plan: ['stay', 'departure', 'reason'],
           transfer_stay: ['stay', 'destination', 'transfer_on', 'rate_cents', 'reason'],
+          commercial_command: ['command', 'payload'],
+          resident_command: ['command', 'payload'],
+          portal_accounts: [],
+          portal_snapshot: ['membership_id', 'history_page'],
+          portal_invoice_statement: ['invoice_id'],
+          portal_receipt_statement: ['receipt_id'],
+          reports_summary: ['org', 'starts_on', 'ends_on'],
+          report_records: ['org', 'report_kind', 'filters', 'page_number', 'page_size'],
+          account_export_snapshot: ['org', 'export_id'],
           meter_command: ['command', 'payload'],
           billing_command: ['command', 'payload'],
           billing_sources: ['org'],
@@ -506,6 +526,15 @@ const server = createServer(async (request, response) => {
             'create_organization',
             'check_in_reservation',
             'transfer_stay',
+            'commercial_command',
+            'resident_command',
+            'portal_accounts',
+            'portal_snapshot',
+            'portal_invoice_statement',
+            'portal_receipt_statement',
+            'reports_summary',
+            'report_records',
+            'account_export_snapshot',
             'meter_command',
             'billing_command',
             'billing_sources',

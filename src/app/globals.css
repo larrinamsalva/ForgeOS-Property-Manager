@@ -3088,3 +3088,159 @@ table summary {
 .ops-alerts {
   padding-bottom: 16px;
 }
+
+/* Commercial reports and the independent resident workspace. */
+.commercial-stack {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.commercial-stack > .panel:not(:has(.panel-heading)),
+.commercial-panel {
+  padding: 24px;
+}
+.commercial-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.commercial-heading h2,
+.commercial-heading h1 {
+  margin: 0;
+}
+.commercial-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.commercial-metrics .metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+}
+.commercial-metrics strong {
+  font-size: 1.65rem;
+}
+.report-filters {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+.commercial-card,
+.message-preview {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-block: 16px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.commercial-card h3 {
+  margin-top: 0;
+}
+.audience-picker {
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 20px;
+}
+.checksum,
+.commercial-stack code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.portal-shell {
+  width: min(1180px, 100%);
+  margin-inline: auto;
+  padding: 28px;
+}
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-bottom: 28px;
+  align-items: center;
+}
+.portal-header .brand {
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 750;
+  font-size: 1.5rem;
+}
+.portal-header .brand small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.portal-os {
+  color: var(--primary);
+}
+.portal-shell .field {
+  max-width: 600px;
+}
+.portal-shell main {
+  min-width: 0;
+}
+.portal-shell .statement {
+  border: 0;
+  padding: 16px 0;
+}
+@media (max-width: 900px) {
+  .report-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .commercial-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .portal-shell {
+    padding: 16px;
+  }
+  .portal-header .brand {
+    flex-wrap: wrap;
+  }
+  .report-filters {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+  .commercial-panel,
+  .commercial-stack > .panel:not(:has(.panel-heading)) {
+    padding: 16px;
+  }
+  .commercial-metrics {
+    gap: 10px;
+  }
+  .commercial-metrics .metric-card {
+    padding: 14px;
+  }
+  .commercial-heading > .row-actions {
+    width: 100%;
+  }
+}

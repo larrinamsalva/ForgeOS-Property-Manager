@@ -32,6 +32,9 @@ export default async function Page({
       'maintenance',
       'inventory',
       'operations',
+      'reports',
+      'communications',
+      'commercial',
     ].includes(section)
   )
     notFound();
