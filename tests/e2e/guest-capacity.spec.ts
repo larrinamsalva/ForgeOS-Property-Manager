@@ -34,7 +34,7 @@ test('guest can expand to 700+ spaces, add customers as they arrive, and search 
   await page.getByRole('button', { name: 'Add example customer' }).click();
   await expect(page.getByRole('status')).toContainText('Example New Arrival added');
   await page.getByLabel('Search', { exact: true }).fill('Example New Arrival');
-  await expect(page.getByRole('cell', { name: 'Example New Arrival' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Example New Arrival', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'RV-701' })).toBeVisible();
   expect(writes).toEqual([]);
 });
