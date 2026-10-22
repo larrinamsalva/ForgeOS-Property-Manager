@@ -206,7 +206,9 @@ test('customer unit selector lists all unoccupied types across the property and 
   await expect(assignment.locator('option[value="RV-16"]')).toContainText('Campground · Camp 16');
   await expect(assignment.locator('option[value="RV-17"]')).toContainText('Mobile Home · MH 17');
   await expect(assignment.locator('option[value="RV-18"]')).toContainText('Space · Space 18');
-  await expect(assignment.locator('option[value="RV-18"]')).toBeDisabled();
+  // Playwright's toBeDisabled() does not recognize disabled native <option>
+  // consistently on Chromium mobile emulation. Assert the actual DOM state.
+  await expect(assignment.locator('option[value="RV-18"]')).toHaveAttribute('disabled', '');
   await expect(assignment.locator('option[value="RV-01"]')).toHaveCount(0); // Already occupied.
 
   await type.selectOption('apartment');
