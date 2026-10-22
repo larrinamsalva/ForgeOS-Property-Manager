@@ -13,18 +13,18 @@ This branch implements Milestone 7 for review. It does not deploy ForgeOS, apply
 
 ## Release gates requiring recorded acceptance
 
-| Gate | Required evidence | Current status |
-| --- | --- | --- |
-| Authorization | Merged reviewed release and explicit deployment/launch authorization | Pending |
-| Hosted security | Supabase security/performance advisors; cross-role/org/property and revoked resident tests through real Auth | Pending |
-| Recovery | Full DB/Auth/private state plus independent Storage-byte restore rehearsal meeting approved RPO/RTO | Pending |
-| Accounting | Supervisor-reviewed rates/proration/taxes/fees/deposits and reconciliation against existing statements | Pending |
-| Communications | Identity/consent/language review and approved content; explicit due in-app publication only | Local workflow implemented; real notices unauthorized |
-| Accessibility | Actual keyboard/screen reader, touch and low-vision review on target hardware | Automated checks supplemented by pending human acceptance |
-| Performance | Representative tenant counts, realistic concurrent stock/billing operations, report query plans and production latency budgets | Pending hosted load acceptance |
-| Operations | Support owner, incident contacts, monitoring, retention/deletion policy and rollback/cutover plan | Pending |
-| Dependency exception | Review documented unpatched development-only braces advisory and patch upstream when available | Open; owner review required before launch |
-| Payments/SaaS | Separate approved provider implementation, sandbox verification and live authorization | Disabled |
+| Gate                 | Required evidence                                                                                                              | Current status                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Authorization        | Merged reviewed release and explicit deployment/launch authorization                                                           | Pending                                                   |
+| Hosted security      | Supabase security/performance advisors; cross-role/org/property and revoked resident tests through real Auth                   | Pending                                                   |
+| Recovery             | Full DB/Auth/private state plus independent Storage-byte restore rehearsal meeting approved RPO/RTO                            | Pending                                                   |
+| Accounting           | Supervisor-reviewed rates/proration/taxes/fees/deposits and reconciliation against existing statements                         | Pending                                                   |
+| Communications       | Identity/consent/language review and approved content; explicit due in-app publication only                                    | Local workflow implemented; real notices unauthorized     |
+| Accessibility        | Actual keyboard/screen reader, touch and low-vision review on target hardware                                                  | Automated checks supplemented by pending human acceptance |
+| Performance          | Representative tenant counts, realistic concurrent stock/billing operations, report query plans and production latency budgets | Pending hosted load acceptance                            |
+| Operations           | Support owner, incident contacts, monitoring, retention/deletion policy and rollback/cutover plan                              | Pending                                                   |
+| Dependency exception | Review documented unpatched development-only braces advisory and patch upstream when available                                 | Open; owner review required before launch                 |
+| Payments/SaaS        | Separate approved provider implementation, sandbox verification and live authorization                                         | Disabled                                                  |
 
 ## Post-deployment verification and incident response
 

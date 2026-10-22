@@ -4,15 +4,15 @@ Scope: application source, seven local migrations, actual embedded PostgreSQL te
 
 ## Access and data handling
 
-| Surface | Allowed caller | Enforcement |
-| --- | --- | --- |
-| Staff reports/CSV | Owner/admin or current manager/office for each returned property | Ordinary verified session, RLS and per-property financial gate, including mixed-role accounts |
-| Portal account links | Owner changes; owner/admin inspection | Registered UUID, current database grant, immutable identity, version, inclusive local start/expiry and immediate revocation |
-| Portal history/documents | Explicitly linked resident account | Separate narrow definer DTOs, own customer, issued invoices only; raw staff tables remain inaccessible |
-| Contact proposals | Own resident request; office/manager decision | Allowlisted contact fields, pending/version constraints, customer updated-at baseline, retained decision shown to resident |
-| Maintenance | Own linked resident with current actual stay | Server-derived organization/property/customer/site, bounded rate window, original request text retained separately from later staff edits |
-| In-app messages | Current financial staff prepares/publishes; residents see own published copies | Frozen audience/personalization, versioned due publish, current consent/language, retained cancellation/read history; private notes omitted |
-| JSON archive | Current organization owner only | Actor-bound export receipt, single database snapshot, explicit public-table registry, size/count/rate limits and audited checksum |
+| Surface                  | Allowed caller                                                                 | Enforcement                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Staff reports/CSV        | Owner/admin or current manager/office for each returned property               | Ordinary verified session, RLS and per-property financial gate, including mixed-role accounts                                               |
+| Portal account links     | Owner changes; owner/admin inspection                                          | Registered UUID, current database grant, immutable identity, version, inclusive local start/expiry and immediate revocation                 |
+| Portal history/documents | Explicitly linked resident account                                             | Separate narrow definer DTOs, own customer, issued invoices only; raw staff tables remain inaccessible                                      |
+| Contact proposals        | Own resident request; office/manager decision                                  | Allowlisted contact fields, pending/version constraints, customer updated-at baseline, retained decision shown to resident                  |
+| Maintenance              | Own linked resident with current actual stay                                   | Server-derived organization/property/customer/site, bounded rate window, original request text retained separately from later staff edits   |
+| In-app messages          | Current financial staff prepares/publishes; residents see own published copies | Frozen audience/personalization, versioned due publish, current consent/language, retained cancellation/read history; private notes omitted |
+| JSON archive             | Current organization owner only                                                | Actor-bound export receipt, single database snapshot, explicit public-table registry, size/count/rate limits and audited checksum           |
 
 All 66 public and 17 private application tables have RLS. New raw commercial tables have SELECT grants only; authorized functions perform writes and retain audit. Private schema is unexposed; public wrappers are invokers and trusted definer functions pin an empty search path. Role decisions are rechecked in the database. An authenticated resident is not automatically an organization/staff member. New grants do not infer identity from an unverified email address.
 

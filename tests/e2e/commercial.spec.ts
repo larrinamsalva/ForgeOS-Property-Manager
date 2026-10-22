@@ -96,6 +96,7 @@ test('reports and verified owner archive work across screen sizes', async ({ pag
   const text = await readFile((await d.path())!, 'utf8');
   expect(text).toContain('River Sample');
   await audit(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: info.outputPath('reports.png'), fullPage: true });
   const response = await page.request.get('/portal', { headers: { 'x-nonce': 'forged-client-nonce' } });
   const csp = response.headers()['content-security-policy'];
@@ -276,6 +277,7 @@ test('prepared messages, resident preferences and retained read history stay acc
   await audit(page);
   await save(page, '/api/portal');
   await audit(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: info.outputPath('resident-portal.png'), fullPage: true });
   const forged = await page.request.post('/api/portal', {
     headers: { origin },

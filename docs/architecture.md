@@ -63,7 +63,7 @@ Automated PostgreSQL tests use PGlite with the actual migration, real RLS roles,
 
 ## Expansion path
 
-Follow [the roadmap](roadmap.md). Meter collection and private photo policies are described below. Utility calculations and draft invoice approval are implemented in Milestone 4. Manual payments and reconciliation are implemented in Milestone 5; assigned property operations are implemented in Milestone 6. Continue with commercial readiness after review. The tablet route permits same-origin camera use; microphone and geolocation remain disabled. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
+Follow [the roadmap](roadmap.md). Meter collection and private photo policies are described below. Utility calculations and draft invoice approval are implemented in Milestone 4. Manual payments and reconciliation are implemented in Milestone 5; assigned property operations are implemented in Milestone 6. Milestone 7 adds reporting, resident accounts and communications; commercial launch still requires the documented hosted acceptance gates. The tablet route permits same-origin camera use; microphone and geolocation remain disabled. Billing, live notices, late fees, payment activation, infrastructure, and legal policy choices require explicit configuration/authorization before use.
 
 ## Reservation availability and lease foundations
 

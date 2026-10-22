@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import type { PGlite } from '@electric-sql/pglite';
 import { database, asUser, foundation, identities } from '../support/database.mjs';
 import { addDays } from '../../src/lib/domain';
@@ -423,6 +427,24 @@ describe('scoped reports and owner archives', () => {
         ex.id,
       ]),
       a = createArchive(raw);
+    const temp = mkdtempSync(join(tmpdir(), 'forgeos-archive-'));
+    try {
+      const file = join(temp, 'account.json');
+      writeFileSync(file, a.content);
+      const run = spawnSync(
+        process.execPath,
+        ['scripts/verify-export.mjs', file, '--expected-sha256', a.checksum_sha256],
+        { encoding: 'utf8' }
+      );
+      expect(run.status, run.stderr).toBe(0);
+      expect(run.stdout).toContain('Business data and manifest verified');
+      expect(
+        spawnSync(process.execPath, ['scripts/verify-export.mjs', file, '--expected-sha256', '0'.repeat(64)])
+          .status
+      ).toBe(1);
+    } finally {
+      rmSync(temp, { recursive: true, force: true });
+    }
     const verified = verifyArchive(a.archive, a.checksum_sha256);
     expect(verified.tables).toBe(66);
     expect(verified.provenance_checked).toBe(true);
@@ -545,5 +567,38 @@ describe('scoped reports and owner archives', () => {
       await query(identities.resident2, 'select public.portal_receipt_statement($1) v', [pay.receipt_id])
     ).toBeNull();
     expect((await snapshot(s)).outstanding_cents).toBe('10000');
+    await collect('refund_payment', {
+      payment_id: pay.id,
+      amount_cents: '1000',
+      effective_on: today,
+      method: 'cash',
+      reference: '',
+    });
+    const deposit = await collect('new_deposit', {
+      customer_id: s.customer,
+      kind: 'security',
+      label: 'Security',
+      stay_id: s.stay,
+      reservation_id: null,
+      reference: '',
+    });
+    await collect('record_deposit', {
+      deposit_id: deposit.id,
+      kind: 'received',
+      amount_cents: '2500',
+      effective_on: today,
+      method: 'cash',
+      invoice_id: null,
+      reference: '',
+    });
+    const metrics = await query<ReportsSummary>(
+      identities.owner,
+      'select public.reports_summary($1,$2,$3) v',
+      [s.org, today, addDays(today, 1)]
+    );
+    expect(metrics.properties[0].payment_cash_cents).toBe('4000');
+    expect(metrics.properties[0].deposit_cash_cents).toBe('2500');
+    const cash = await report(s, 'payment_history');
+    expect(JSON.stringify(cash)).toContain('1000');
   });
 });

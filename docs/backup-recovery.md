@@ -4,13 +4,13 @@ Owner: the ForgeOS account owner and the operator of its dedicated Supabase proj
 
 ## Recovery layers
 
-| Layer | Contents | Required recovery source |
-| --- | --- | --- |
-| Application | Source, seven reviewed migrations, dependency lockfile | Private Git history and retained release commit |
-| Full database | Public business records, private idempotency/counters/claims, Auth data and policies | Verified platform backup/PITR or reviewed complete logical backup |
-| Storage | Private meter/work photo objects | Independently retained object bytes plus metadata and policy configuration |
-| Configuration | Auth callback/provider settings, keys, host settings, DNS and backup access | Separate encrypted operational inventory; never commit secrets |
-| Business archive | Owner-scoped public JSON rows and photo manifest | Owner download plus separately retained audited checksum |
+| Layer            | Contents                                                                             | Required recovery source                                                   |
+| ---------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Application      | Source, seven reviewed migrations, dependency lockfile                               | Private Git history and retained release commit                            |
+| Full database    | Public business records, private idempotency/counters/claims, Auth data and policies | Verified platform backup/PITR or reviewed complete logical backup          |
+| Storage          | Private meter/work photo objects                                                     | Independently retained object bytes plus metadata and policy configuration |
+| Configuration    | Auth callback/provider settings, keys, host settings, DNS and backup access          | Separate encrypted operational inventory; never commit secrets             |
+| Business archive | Owner-scoped public JSON rows and photo manifest                                     | Owner download plus separately retained audited checksum                   |
 
 The account JSON is **not a full database backup or an automatic restore format**. It omits Auth users/sessions/credentials, every private-schema retry/counter/source-claim table, Storage bytes and service configuration. It includes sensitive staff notes, contact data and access links; encrypt it and restrict retention/access. Supabase database backups do not include Storage object bytes. Custom database role passwords can need separate recovery. Follow the current [platform backup documentation](https://supabase.com/docs/guides/platform/backups) and [CLI backup/restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore), rather than treating a public-schema-only dump as complete.
 

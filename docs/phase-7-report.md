@@ -20,7 +20,7 @@ Owners must verify each resident’s identity and registered account UUID throug
 
 - Lint and TypeScript checks pass.
 - **130 unit/database tests pass in 15 files**, applying the actual seven migrations. Added tests exercise independent resident RLS, foreign/revoked/expired/archive access, maintenance original-text insulation and exact retries/rate limits, approval/stale contact proposals, frozen message/consent/read/cancel history, all 15 report branches, mixed-role property denial, owner archive verification and own issued invoice/receipt privacy.
-- Browser and production-build results will be recorded after the final candidate checks finish. Browser tests use a loopback-only Supabase-shaped HTTP fixture over real PostgreSQL; they do not certify hosted Auth or Storage.
+- Production build, lint and TypeScript checks pass. All three new desktop browser workflows pass, including both-theme automated accessibility, actual archive download/verification, issued PDF/print and the full resident request/approval/revocation path. The complete regression suite runs 75 desktop/tablet/phone entries with deliberate skips for workflows exercised once; the PR’s required quality check records final results. Browser tests use a loopback-only Supabase-shaped HTTP fixture over real PostgreSQL; they do not certify hosted Auth or Storage.
 - Production dependency audit: **0 vulnerabilities**. Full audit retains **5 high development-chain findings** from the unpatched braces advisory, with scope/mitigation and pending owner exception documented in the audit.
 
 ## Release and recovery
