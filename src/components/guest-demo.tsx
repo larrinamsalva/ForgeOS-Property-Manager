@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
-import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
+import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
@@ -98,7 +98,11 @@ export function GuestDemo() {
   const latest = [...readings].reverse().find((r) => r.site === meterSite);
   const previousRegister = latest?.value ?? startingRegister(meterSite);
   const sampleUsage = readings.reduce((total, r) => total + r.usage, 0);
-  const filteredSites = sites.filter((s) => (siteFilter === 'all' || s.status === siteFilter) && s.id.toLowerCase().includes(siteQuery.toLowerCase().trim()));
+  const filteredSites = sites.filter((s) => {
+    if (siteFilter !== 'all' && s.status !== siteFilter) return false;
+    const search = siteQuery.toLowerCase().trim();
+    return (s.id + ' ' + s.label + ' ' + designationLabel(s.designation)).toLowerCase().includes(search);
+  });
   const sitePages = Math.max(1, Math.ceil(filteredSites.length / 60));
   const visibleSitePage = Math.min(sitePage, sitePages - 1);
   const filteredCustomers = customers.filter((c) => (c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim()));
@@ -319,7 +323,7 @@ export function GuestDemo() {
             <>
               <section className="demo-panel">
                 <div className="demo-section-head">
-                  <div><h2>Site & apartment directory</h2><p>{sites.length.toLocaleString()} created spaces. Use <strong>Details & photos</strong> to add information for any space; tap the site tile to simulate check-in.</p></div>
+                  <div><h2>Sites, spaces, apartments & mobile homes</h2><p>{sites.length.toLocaleString()} created spaces. Use <strong>Details & photos</strong> to add information for any space; tap the site tile to simulate check-in.</p></div>
                   <button className="demo-action" type="button" onClick={() => setTab('layout')}><Plus size={16}/> Add spaces / upload layout</button>
                 </div>
                 <div className="demo-planner-controls">
@@ -334,7 +338,7 @@ export function GuestDemo() {
                 <div className="demo-full-map">
                   {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <div key={site.id} className="demo-space-card">
                     <button type="button" data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}>
-                      <span><Home size={19}/>{site.id}</span><small>{site.label !== site.id ? site.label + ' · ' : ''}{site.kind === 'apartment' ? 'Apartment' : site.kind === 'rv' ? 'RV space' : site.kind}</small><small>{site.status} · {money(site.rent)} / mo</small>
+                      <span><Home size={19}/>{site.id}</span><small>{designationLabel(site.designation)}{site.label !== site.id ? ' · ' + site.label : ''}</small><small>{site.status} · {money(site.rent)} / mo</small>
                     </button>
                     <button type="button" className="demo-site-details-button" aria-label={'Details and photos for ' + site.id} onClick={() => setSelectedSiteId(site.id)}>
                       Details &amp; photos {photos.some((photo) => photo.siteId === site.id) ? '(' + photos.filter((photo) => photo.siteId === site.id).length + ')' : ''}

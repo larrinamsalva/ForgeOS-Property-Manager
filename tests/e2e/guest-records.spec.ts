@@ -13,8 +13,8 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
   await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
   await expect(page.getByRole('region', { name: 'Edit space RV-15' })).toBeVisible();
 
-  await page.getByLabel('Site / apartment name').fill('Apartment 15B');
-  await page.getByLabel('Type of space').selectOption('apartment');
+  await page.getByLabel('Unit number or name').fill('Apartment 15B');
+  await page.getByLabel('Unit type').selectOption('apartment');
   await page.getByLabel('Area / building / row').fill('Building B');
   await page.getByLabel('Monthly rent ($)').fill('950');
   await page.getByLabel('Site information / notes').fill('Example: Covered parking and accessible doorway');
@@ -40,8 +40,8 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
 
   await nav.getByRole('button', { name: 'Sites & map' }).click();
   await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
-  await expect(page.getByLabel('Site / apartment name')).toHaveValue('Apartment 15B');
-  await expect(page.getByLabel('Type of space')).toHaveValue('apartment');
+  await expect(page.getByLabel('Unit number or name')).toHaveValue('Apartment 15B');
+  await expect(page.getByLabel('Unit type')).toHaveValue('apartment');
   await expect(page.getByLabel('Monthly rent ($)')).toHaveValue('950');
   await expect(page.getByLabel('Site information / notes')).toHaveValue('Example: Covered parking and accessible doorway');
   await expect(page.getByText('Example Tenant Updated')).toBeVisible();
@@ -129,4 +129,110 @@ test('RV site length, width, rent and electrical fields can be cleared and retyp
   for (const field of fields) {
     await expect(page.getByLabel(field.label), field.label + ' saved correctly').toHaveValue(field.label === 'Monthly rent ($)' ? '795.5' : field.value);
   }
+});
+
+
+test('choose Site, Space, Apartment, Mobile Home or Campground and keep a separate unit number', async ({ page }) => {
+  const apiWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) {
+      apiWrites.push(request.url());
+    }
+  });
+
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByLabel('Find a space').fill('RV-15');
+  await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
+
+  const unitType = page.getByLabel('Unit type');
+  const typeOptions = unitType.locator('option');
+  await expect(typeOptions).toHaveText(['Site', 'Space', 'Apartment', 'Mobile Home', 'Campground']);
+  for (const designation of ['site', 'space', 'apartment', 'campground', 'mobile']) {
+    await unitType.selectOption(designation);
+    await expect(unitType).toHaveValue(designation);
+  }
+  await page.getByLabel('Unit number or name').fill('Lot 25');
+  await page.getByRole('button', { name: 'Save sample space' }).click();
+  await expect(page.locator('[data-site="RV-15"]')).toContainText('Mobile Home');
+  await expect(page.locator('[data-site="RV-15"]')).toContainText('Lot 25');
+  await expect(page.locator('[data-site="RV-15"]')).toContainText('RV-15');
+
+  // The database-safe internal site ID stays RV-15 even when the display name changes.
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByRole('button', { name: 'Details and photos for RV-15' }).click();
+  await expect(page.getByLabel('Unit type')).toHaveValue('mobile');
+  await expect(page.getByLabel('Unit number or name')).toHaveValue('Lot 25');
+
+  await unitType.selectOption('space');
+  await page.getByRole('button', { name: 'Save sample space' }).click();
+  await expect(page.locator('[data-site="RV-15"]')).toContainText('Space · Lot 25');
+  expect(apiWrites).toEqual([]);
+});
+
+
+test('customer unit selector lists all unoccupied types across the property and protects reserved units', async ({ page }) => {
+  const apiWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) apiWrites.push(request.url());
+  });
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  async function classify(id: string, designation: string, name: string) {
+    await page.getByLabel('Find a space').fill(id);
+    await page.getByRole('button', { name: 'Details and photos for ' + id }).click();
+    await page.getByLabel('Unit type').selectOption(designation);
+    await page.getByLabel('Unit number or name').fill(name);
+    await page.getByRole('button', { name: 'Save sample space' }).click();
+  }
+  await classify('RV-15', 'apartment', 'A-15');
+  await classify('RV-16', 'campground', 'Camp 16');
+  await classify('RV-17', 'mobile', 'MH 17');
+  await classify('RV-18', 'space', 'Space 18'); // Initial status is reserved.
+
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  const type = page.getByLabel('Choose unit type');
+  const assignment = page.getByLabel('Assign an available site (optional)');
+  await expect(type.locator('option')).toHaveText([
+    'All sites, spaces, apartments, mobile homes & campgrounds',
+    'Site', 'Space', 'Apartment', 'Mobile Home', 'Campground'
+  ]);
+
+  // This list contains every type independent of the Sites & map directory search/page.
+  await expect(assignment.locator('option[value="RV-15"]')).toContainText('Apartment · A-15');
+  await expect(assignment.locator('option[value="RV-16"]')).toContainText('Campground · Camp 16');
+  await expect(assignment.locator('option[value="RV-17"]')).toContainText('Mobile Home · MH 17');
+  await expect(assignment.locator('option[value="RV-18"]')).toContainText('Space · Space 18');
+  // Playwright's toBeDisabled() does not recognize disabled native <option>
+  // consistently on Chromium mobile emulation. Assert the actual DOM state.
+  await expect(assignment.locator('option[value="RV-18"]')).toHaveAttribute('disabled', '');
+  await expect(assignment.locator('option[value="RV-01"]')).toHaveCount(0); // Already occupied.
+
+  await type.selectOption('apartment');
+  await expect(assignment.locator('option[value="RV-15"]')).toBeEnabled();
+  await expect(assignment.locator('option[value="RV-16"]')).toHaveCount(0);
+  await page.getByLabel('Fictional customer name').fill('Example Apartment Arrival');
+  await assignment.selectOption('RV-15');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.getByRole('status').last()).toContainText('Example Apartment Arrival added');
+
+  // Occupying the apartment removes it from new-customer availability.
+  await expect(assignment.locator('option[value="RV-15"]')).toHaveCount(0);
+  await type.selectOption('campground');
+  await expect(assignment.locator('option[value="RV-16"]')).toBeEnabled();
+  await page.getByLabel('Fictional customer name').fill('Example Camp Guest');
+  await assignment.selectOption('RV-16');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(assignment.locator('option[value="RV-16"]')).toHaveCount(0);
+
+  // The original customer can still see the assigned apartment during an edit.
+  await page.getByLabel('Search', { exact: true }).fill('Example Apartment Arrival');
+  await page.getByRole('button', { name: 'Edit customer Example Apartment Arrival' }).click();
+  const editing = page.getByRole('region', { name: 'Edit customer Example Apartment Arrival' });
+  await expect(editing.getByLabel('Choose unit type')).toHaveValue('apartment');
+  await expect(editing.getByLabel('Assigned site (optional)').locator('option[value="RV-15"]')).toBeEnabled();
+  expect(apiWrites).toEqual([]);
 });
