@@ -258,7 +258,7 @@ test('customer unit selector lists all unoccupied types across the property and 
   await page.getByRole('button', { name: 'Edit customer Example Apartment Arrival' }).click();
   const editing = page.getByRole('region', { name: 'Edit customer Example Apartment Arrival' });
   await expect(editing.getByLabel('Choose unit type')).toHaveValue('apartment');
-  await expect(editing.getByLabel('Assigned site (optional)').locator('option[value="RV-15"]')).toBeEnabled();
+  await expect(editing.getByLabel('Assigned / available unit').locator('option[value="RV-15"]')).toBeEnabled();
   expect(apiWrites).toEqual([]);
 });
 
