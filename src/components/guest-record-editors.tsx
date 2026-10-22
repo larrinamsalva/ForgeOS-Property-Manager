@@ -68,17 +68,33 @@ export function GuestSiteEditor({
   site, onSave, onClose,
 }: { site: DemoSite; onSave: (updated: DemoSite) => void; onClose: () => void }) {
   const [draft, setDraft] = useState<DemoSite>(site);
+  // Keep input text separate from saved numbers so deleting "0", or typing
+  // a decimal point, never forces the old value back into the field.
+  const [numberText, setNumberText] = useState({
+    rent: String(site.rent),
+    lengthFt: site.lengthFt === 0 ? '' : String(site.lengthFt),
+    widthFt: site.widthFt === 0 ? '' : String(site.widthFt),
+    amperage: site.amperage === 0 ? '' : String(site.amperage),
+  });
   const [error, setError] = useState('');
   const edit = (fields: Partial<DemoSite>) => setDraft((current) => ({ ...current, ...fields }));
+  const editNumber = (field: keyof typeof numberText, text: string) =>
+    setNumberText((current) => ({ ...current, [field]: text }));
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validName(draft.label) || !moneyOkay(draft.rent) ||
-      ![draft.lengthFt, draft.widthFt, draft.amperage].every((v) => Number.isFinite(v) && v >= 0 && v <= 100000)) {
+    const rent = numberText.rent.trim() === '' ? NaN : Number(numberText.rent);
+    const lengthFt = numberText.lengthFt.trim() === '' ? 0 : Number(numberText.lengthFt);
+    const widthFt = numberText.widthFt.trim() === '' ? 0 : Number(numberText.widthFt);
+    const amperage = numberText.amperage.trim() === '' ? 0 : Number(numberText.amperage);
+    if (!validName(draft.label) || !moneyOkay(rent) ||
+      ![lengthFt, widthFt, amperage].every((v) => Number.isFinite(v) && v >= 0 && v <= 100000) ||
+      !Number.isInteger(amperage)) {
       setError('Enter a space name and valid nonnegative rates, dimensions and electrical capacity.');
       return;
     }
     onSave({
-      ...draft, id: site.id, status: site.status, resident: site.resident,
+      ...draft, rent, lengthFt, widthFt, amperage,
+      id: site.id, status: site.status, resident: site.resident,
       label: draft.label.trim(), section: draft.section.trim(), notes: draft.notes.trim(),
     });
   }
@@ -100,16 +116,16 @@ export function GuestSiteEditor({
           <input id="demo-space-section" maxLength={80} placeholder="Example: Building A, Row 2" value={draft.section} onChange={(e) => edit({ section: e.target.value })}/>
         </label>
         <label htmlFor="demo-space-rent">Monthly rent ($)
-          <input id="demo-space-rent" type="number" min="0" max="10000000" step="0.01" required value={draft.rent} onChange={(e) => edit({ rent: Number(e.target.value) })}/>
+          <input id="demo-space-rent" type="number" min="0" max="10000000" step="0.01" required value={numberText.rent} onChange={(e) => editNumber('rent', e.target.value)}/>
         </label>
         <label htmlFor="demo-space-length">Length (feet)
-          <input id="demo-space-length" type="number" min="0" max="100000" step="0.1" value={draft.lengthFt} onChange={(e) => edit({ lengthFt: Number(e.target.value) })}/>
+          <input id="demo-space-length" type="number" min="0" max="100000" step="0.1" value={numberText.lengthFt} placeholder="Example: 40" onChange={(e) => editNumber('lengthFt', e.target.value)}/>
         </label>
         <label htmlFor="demo-space-width">Width (feet)
-          <input id="demo-space-width" type="number" min="0" max="100000" step="0.1" value={draft.widthFt} onChange={(e) => edit({ widthFt: Number(e.target.value) })}/>
+          <input id="demo-space-width" type="number" min="0" max="100000" step="0.1" value={numberText.widthFt} placeholder="Example: 12" onChange={(e) => editNumber('widthFt', e.target.value)}/>
         </label>
         <label htmlFor="demo-space-amps">Electrical service (amps)
-          <input id="demo-space-amps" type="number" min="0" max="100000" step="1" value={draft.amperage} onChange={(e) => edit({ amperage: Number(e.target.value) })}/>
+          <input id="demo-space-amps" type="number" min="0" max="100000" step="1" value={numberText.amperage} onChange={(e) => editNumber('amperage', e.target.value)}/>
         </label>
         <label className="demo-record-meta">Current occupancy
           <output>{site.status} {site.resident ? '· ' + site.resident : ''}</output>
@@ -141,6 +157,7 @@ export function GuestCustomerForm({
   onClose?: () => void;
 }) {
   const [draft, setDraft] = useState<DemoCustomer>(customer ?? makeDemoCustomer(0, ''));
+  const [depositText, setDepositText] = useState(customer?.deposit ? String(customer.deposit) : '');
   const [error, setError] = useState('');
   const editing = !!customer;
   const fieldId = (name: string) => (editing ? 'demo-edit-customer-' : 'demo-new-customer-') + name;
@@ -148,13 +165,15 @@ export function GuestCustomerForm({
   const assignableSites = sites.filter((s) => s.status === 'available' || s.id === customer?.siteId);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validName(draft.name) || !moneyOkay(draft.deposit) ||
+    const deposit = depositText.trim() === '' ? 0 : Number(depositText);
+    if (!validName(draft.name) || !moneyOkay(deposit) ||
       (draft.siteId && !assignableSites.some((s) => s.id === draft.siteId))) {
       setError('Enter a sample name, a valid deposit, and a space that is available.');
       return;
     }
     onSave({
       ...draft,
+      deposit,
       id: customer?.id ?? 0,
       name: draft.name.trim(),
       phone: draft.phone.trim(),
@@ -163,7 +182,10 @@ export function GuestCustomerForm({
       vehicle: draft.vehicle.trim(),
       notes: draft.notes.trim(),
     });
-    if (!editing) setDraft(makeDemoCustomer(0, ''));
+    if (!editing) {
+      setDraft(makeDemoCustomer(0, ''));
+      setDepositText('');
+    }
     setError('');
   }
   return <section className="demo-panel demo-record-editor" aria-label={editing ? 'Edit customer ' + customer.name : 'Add customer information'}>
@@ -198,7 +220,7 @@ export function GuestCustomerForm({
           <input id={fieldId('arrival')} type="date" value={draft.arrivalDate} onChange={(e) => edit({ arrivalDate: e.target.value })}/>
         </label>
         <label htmlFor={fieldId('deposit')}>Deposit amount ($)
-          <input id={fieldId('deposit')} type="number" min="0" max="10000000" step="0.01" value={draft.deposit} onChange={(e) => edit({ deposit: Number(e.target.value) })}/>
+          <input id={fieldId('deposit')} type="number" min="0" max="10000000" step="0.01" value={depositText} onChange={(e) => setDepositText(e.target.value)}/>
         </label>
       </div>
       <label className="demo-record-full" htmlFor={fieldId('notes')}>Additional notes / special requests
