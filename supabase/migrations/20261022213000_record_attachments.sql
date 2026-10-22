@@ -72,13 +72,13 @@ create policy forgeos_record_attachment_select on storage.objects for select to 
 -- Storage.remove() is the ONLY way to remove the physical object; never DELETE files by SQL.
 -- It is permitted only after the authorized user has transitioned metadata to 'deleting'.
 create function private.record_attachment_storage_delete(object_name text)
-returns boolean language sql stable security definer set search_path='' as $
+returns boolean language sql stable security definer set search_path='' as $$
  select (select auth.uid()) is not null and exists (
    select 1 from public.record_attachments f
    where f.object_path = object_name and f.status='deleting'
      and private.property_role(f.organization_id,f.property_id,array['manager','office'])
  );
-$;
+$$;
 revoke all on function private.record_attachment_storage_delete(text) from public;
 grant execute on function private.record_attachment_storage_delete(text) to authenticated;
 create policy forgeos_record_attachment_remove on storage.objects for delete to authenticated
