@@ -16,10 +16,13 @@ test('visitors explore a no-login ForgeOS demo without touching business APIs', 
 
   const menu = page.getByRole('navigation', { name: 'Guest demo navigation' });
   await menu.getByRole('button', { name: 'Sites & map' }).click();
-  const site = page.getByRole('button', { name: /RV-15.*available/i });
+  const site = page.locator('.demo-map-space[data-site="RV-15"]');
+  await expect(site).toContainText('available');
   await site.click();
+  await expect(site).toContainText('reserved');
   await expect(page.getByRole('status')).toContainText('RV-15 — Reserved');
-  await page.getByRole('button', { name: /RV-15.*reserved/i }).click();
+  await site.click();
+  await expect(site).toContainText('occupied');
   await expect(page.getByRole('status')).toContainText('RV-15 — Checked in');
 
   await menu.getByRole('button', { name: 'Meter readings' }).click();
