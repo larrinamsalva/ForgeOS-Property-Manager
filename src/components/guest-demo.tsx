@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
@@ -48,6 +49,7 @@ const money = (amount: number) =>
 const startingRegister = (site: string) => 12500 + Number(site.slice(-2)) * 31;
 
 export function GuestDemo() {
+  const hydrated = useHydrated();
   const [tab, setTab] = useState<Tab>('overview');
   const [sites, setSites] = useState<Site[]>(initialSites);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
@@ -127,7 +129,7 @@ export function GuestDemo() {
       <div className="demo-banner" role="note">
         <strong>DEMO MODE</strong>
         <span>Fictional people, sample balances, and pretend actions. Nothing here is connected to a real property or saved to the database.</span>
-        <button type="button" onClick={resetDemo}><RotateCcw size={15} /> Reset sample</button>
+        <button type="button" disabled={!hydrated} onClick={resetDemo}><RotateCcw size={15} /> Reset sample</button>
       </div>
 
       <div className="demo-body">
@@ -138,7 +140,7 @@ export function GuestDemo() {
             {menu.map((item) => {
               const Icon = item.icon;
               return (
-                <button key={item.id} type="button" className={tab === item.id ? 'demo-nav-item selected' : 'demo-nav-item'} aria-current={tab === item.id ? 'page' : undefined} onClick={() => {setTab(item.id); setNotice('');}}>
+                <button key={item.id} type="button" disabled={!hydrated} className={tab === item.id ? 'demo-nav-item selected' : 'demo-nav-item'} aria-current={tab === item.id ? 'page' : undefined} onClick={() => {setTab(item.id); setNotice('');}}>
                   <Icon size={18} /> {item.label}
                 </button>
               );
@@ -168,7 +170,7 @@ export function GuestDemo() {
                   <span className="demo-eyebrow">PROPERTY OVERVIEW</span>
                   <h2>One system. Every site. Total control.</h2>
                   <p>See availability, utility readings, billing and your team&apos;s work in one place.</p>
-                  <button className="demo-hero-button" type="button" onClick={() => setTab('sites')}>Explore the site map <ArrowRight size={17}/></button>
+                  <button className="demo-hero-button" type="button" disabled={!hydrated} onClick={() => setTab('sites')}>Explore the site map <ArrowRight size={17}/></button>
                 </div>
                 <div className="demo-welcome-icon" aria-hidden="true"><MapPinned size={58}/></div>
               </section>
@@ -180,14 +182,14 @@ export function GuestDemo() {
               </div>
               <div className="demo-two-columns">
                 <section className="demo-panel">
-                  <div className="demo-section-head"><h2>Sites at a glance</h2><button type="button" onClick={() => setTab('sites')}>View map <ArrowRight size={15}/></button></div>
+                  <div className="demo-section-head"><h2>Sites at a glance</h2><button type="button" disabled={!hydrated} onClick={() => setTab('sites')}>View map <ArrowRight size={15}/></button></div>
                   <div className="demo-mini-map">
-                    {sites.slice(0, 12).map((s) => <button type="button" key={s.id} title={s.id + ': ' + s.status} className={'demo-tile ' + s.status} onClick={() => {setTab('sites'); setNotice('Select any space to try a sample check-in or reservation.')}}>{s.id}</button>)}
+                    {sites.slice(0, 12).map((s) => <button type="button" disabled={!hydrated} key={s.id} title={s.id + ': ' + s.status} className={'demo-tile ' + s.status} onClick={() => {setTab('sites'); setNotice('Select any space to try a sample check-in or reservation.')}}>{s.id}</button>)}
                   </div>
                   <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
                 </section>
                 <section className="demo-panel">
-                  <div className="demo-section-head"><h2>Daily operations</h2><button type="button" onClick={() => setTab('maintenance')}>Manage tasks <ArrowRight size={15}/></button></div>
+                  <div className="demo-section-head"><h2>Daily operations</h2><button type="button" disabled={!hydrated} onClick={() => setTab('maintenance')}>Manage tasks <ArrowRight size={15}/></button></div>
                   <div className="demo-tasks">
                     {jobs.map((job) => <div key={job.id} className="demo-task"><span className={job.status === 'Done' ? 'demo-task-icon done' : 'demo-task-icon'}><CheckCircle2 size={19}/></span><span><strong>{job.title}</strong><small>{job.location} · {job.status}</small></span></div>)}
                   </div>
