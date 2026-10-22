@@ -446,11 +446,12 @@ describe('tablet routes, immutable captures, historical attribution and private 
         (await tx.query<Record<string, unknown>>('select * from storage.objects where name=$1', [path])).rows
       ).toHaveLength(0)
     );
-    await expect(
-      asUser(db, identities.technician, (tx) =>
-        tx.query<Record<string, unknown>>('delete from storage.objects where name=$1', [path])
-      )
-    ).rejects.toThrow();
+    // The new authenticated DELETE grant is still denied by storage RLS.
+    // PostgreSQL reports zero rows deleted for an RLS-hidden object rather than throwing.
+    const preventedDelete = await asUser(db, identities.technician, (tx) =>
+      tx.query<Record<string, unknown>>('delete from storage.objects where name=$1 returning name', [path])
+    );
+    expect(preventedDelete.rows).toHaveLength(0);
   });
   it('rejects closed routes, expired captures and assignment history rewrites after capture', async () => {
     const s = await setup();

@@ -22,7 +22,7 @@ export async function database() {
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,metadata jsonb,owner_id text,unique(bucket_id,name));
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated;
-    grant select,insert on storage.objects to authenticated;`);
+    grant select,insert,delete on storage.objects to authenticated;`);
   for (const [name, id] of Object.entries(identities))
     await db.query('insert into auth.users values($1,$2)', [id, `${name}@forgeos.example`]);
   const directory = new URL('../../supabase/migrations/', import.meta.url);

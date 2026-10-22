@@ -22,6 +22,14 @@ The **Property layout** page accepts PNG, JPEG, WebP and PDF files up to 12 MB. 
 
 A persistent layout uploader for real customers is a separate authenticated and RLS-protected follow-up; do not expose plans to anonymous users or reuse demo file handling for production storage without secure validation.
 
+## Secure paperless customer and site filing (review before release)
+
+The authenticated **Paperless photos & files** workspace lets authorized owners, managers and office staff select a property and a customer and/or space, then use **Take photo & auto-file** on a phone or tablet, or choose a JPG/PNG/WebP/PDF. Selecting a photo automatically POSTs its bytes under the selected records; uploads are limited to 5 MB per file. The workspace also lists up to 100 newest documents per customer or site and opens temporary 60-second private Storage URLs. A scanned form or inspection picture can be filed without a printed document. No real file or customer record is exposed to the no-login guest demo.
+
+A **new additive SQL migration** creates `public.record_attachments`, foreign keys to matching scoped customer/site records, strict RLS policies and a **private** `record-attachments` bucket with storage RLS. Only owner/admin or assigned manager/office may upload or retrieve a file. The server uses the user's session, same-origin checks, file signature validation and bounded streaming; upload is considered saved only after private Storage confirms its metadata. No service-role key is exposed.
+
+This requires deploying the migration to the **dedicated ForgeOS** Supabase project and then deploying the application; it must not run against another app's database. A public demo never uploads customer photos. Before marking this commercial-ready, test two different organizations, revoked roles, native camera behavior on Android/iOS, interrupted uploads, full file-size enforcement and deletion/retention policy. This first phase requires an online connection; there is **no offline background auto-sync** or e-signature workflow yet. If upload fails, keep the original photo and retry from the same record.
+
 ## No-account guest demo
 
 Visitors without a verified staff account are sent to `/demo`, a public **fictional-data** exploration of the dashboard, sites, tenant examples, simulated meter readings, invoices, work orders, supplies and resident view. The demo never calls property record or billing APIs, never creates an Auth user, and does not read/write Supabase tables; temporary changes live in React memory and reset on reload. The sign-in screen links to the demo as well. `/login` and `/portal` remain the real authenticated entry points, and all real backend mutations retain existing session, role and RLS checks.
