@@ -14,6 +14,12 @@ Implementation and verification are described in [docs/phase-7-report.md](docs/p
 
 Owner reports, multi-property measures, independent resident accounts, retained English/Spanish in-app communications, bounded CSV and audited owner JSON archives are implemented. No hosted system or live processor is active. Manual issuance and reviewed fee/deposit deduction actions require explicit owner configuration; automated fees and outbound notices remain disabled.
 
+## No-account guest demo
+
+Visitors without a verified staff account are sent to `/demo`, a public **fictional-data** exploration of the dashboard, sites, tenant examples, simulated meter readings, invoices, work orders, supplies and resident view. The demo never calls property record or billing APIs, never creates an Auth user, and does not read/write Supabase tables; temporary changes live in React memory and reset on reload. The sign-in screen links to the demo as well. `/login` and `/portal` remain the real authenticated entry points, and all real backend mutations retain existing session, role and RLS checks.
+
+The demo is safe to share only after the deployment's access policy is reviewed and the authenticated APIs are confirmed to stay protected. For Vercel, enabling public access to the production hostname should not disable preview deployment protection or reveal existing tenant data. Do not describe a sample invoice as a real charge.
+
 ## Run locally
 
 Use Node.js 22 or newer and npm.
