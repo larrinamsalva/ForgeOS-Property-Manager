@@ -244,7 +244,7 @@ export function GuestCustomerForm({
             {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
             {heldSites.map((site) => <option key={site.id} value={site.id} disabled>{designationLabel(site.designation)} · {site.label} ({site.id}) — Reserved / held</option>)}
           </select>
-          <small role="status">{readySites.length} available to assign · {heldSites.length} reserved (shown but not assignable) · {unoccupiedSites.length} total non-occupied units across the property.</small>
+          <small aria-live="polite">{readySites.length} available to assign · {heldSites.length} reserved (shown but not assignable) · {unoccupiedSites.length} total non-occupied units across the property.</small>
         </label>
         <label htmlFor={fieldId('phone')}>Phone number
           <input id={fieldId('phone')} type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
