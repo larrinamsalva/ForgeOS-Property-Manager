@@ -6,6 +6,7 @@ import { stateLabel, type CollectionsSnapshot } from '@/lib/collections-domain';
 import { customerBillingSummary } from '@/lib/customer-billing-file';
 import { customerOverdueReminders } from '@/lib/overdue-reminders';
 import { OverdueReminderPanel } from './overdue-reminder-panel';
+import { ResidentContactHistory } from './resident-contact-history';
 
 export function CustomerBillingFile({
   organizationId, propertyId, customerId, residentName, propertyName,
@@ -30,6 +31,7 @@ export function CustomerBillingFile({
   const current = loaded?.key === key ? loaded : null;
   const summary = current?.data ? customerBillingSummary(current.data, customerId, propertyId) : null;
   const overdue = current?.data ? customerOverdueReminders(current.data, propertyId, customerId) : [];
+  const refreshHistory = () => {setLoaded(null);setRefresh(v => v+1);};
   const financialUrl = '/collections?' + new URLSearchParams({ organization: organizationId, property: propertyId });
   return (
     <section className="customer-billing-file" aria-label="Customer monthly bills, payments and receipts">
@@ -38,7 +40,11 @@ export function CustomerBillingFile({
           <h3>Monthly bills, payments &amp; receipts</h3>
           <p className="muted small">Official issued bills only. Payment status and remaining balance come from the collections ledger.</p>
         </div>
-        <Link href={financialUrl} className="button secondary">Payment area &amp; receipts</Link>
+        <div className="customer-billing-actions">
+          <button type="button" className="button secondary" onClick={refreshHistory}
+            disabled={!current}>Refresh customer billing history</button>
+          <Link href={financialUrl} className="button secondary">Payment area &amp; receipts</Link>
+        </div>
       </div>
       {!current && <p role="status">Loading customer billing history…</p>}
       {current?.error && <p role="alert">Billing history is unavailable. Open Payments &amp; collections to review the account.</p>}
@@ -71,9 +77,14 @@ export function CustomerBillingFile({
           organizationId={organizationId}
           propertyId={propertyId}
           customerId={customerId}
-          notes={current?.data?.notes ?? []}
-          onSaved={() => {setLoaded(null);setRefresh(version=>version+1);}}
+          onSaved={refreshHistory}
         />}
+        <ResidentContactHistory
+          notes={current?.data?.notes ?? []}
+          propertyId={propertyId}
+          customerId={customerId}
+          collectionsUrl={financialUrl}
+        />
         <h4>Payment &amp; receipt history</h4>
         {!summary.receipts.length ? <p>No receipt recorded yet.</p> :
           <div className="customer-receipt-list">
