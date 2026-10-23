@@ -334,7 +334,7 @@ test('Overview lists each space and resident in a row with quick access to linke
   const unit = directory.locator('[data-overview-site="RV-01"]');
   await expect(directory.getByRole('table', { name: 'Overview space and customer rows' })).toBeVisible();
   await expect(unit).toContainText('Example Resident 01');
-  await expect(unit).toContainText('Occupied');
+  await expect(unit).toContainText('occupied');
   await expect(directory.locator('[data-overview-site="RV-15"]')).toContainText('No customer assigned');
 
   // Simply opening a space is read-only (unlike the simulation's check-in tile).
