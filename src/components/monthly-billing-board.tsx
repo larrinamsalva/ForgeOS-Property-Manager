@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
 import { customerName, type Snapshot } from '@/lib/domain';
 import type { MonthlyRunRow, MonthlyRunStatus } from '@/lib/monthly-billing-run';
+import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All occupied sites'},
@@ -33,6 +34,16 @@ export function MonthlyBillingBoard({
   };
   const names = new Map(snapshot.customers.filter(c => c.property_id === propertyId)
     .map(c => [c.id, customerName(c)]));
+  function downloadChecklist() {
+    const propertyName = snapshot.properties.find(p => p.id === propertyId)?.name ?? 'Property';
+    const contents = monthlyBillingCsv(propertyName, month, visible, names);
+    const url = URL.createObjectURL(new Blob([contents], {type:'text/csv;charset=utf-8'}));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'forgeos-monthly-billing-' + month + '.csv';
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   const visible = rows.filter(row => (filter === 'all' || row.status === filter) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
@@ -60,6 +71,11 @@ export function MonthlyBillingBoard({
             {filters.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
           </select>
         </label>
+      </div>
+      <div className="monthly-billing-export">
+        <button type="button" className="button secondary" disabled={navigationPending || !visible.length || loadingEvidence || evidenceError}
+          onClick={downloadChecklist}>Download filtered billing checklist (CSV)</button>
+        <p className="muted small">Exports only the rows on screen, with their review warnings, existing invoice states and recorded totals. Keep this resident information private.</p>
       </div>
       <div className="monthly-billing-counts" role="group" aria-label="Monthly billing status counts">
         <span><strong>{totals.all}</strong> stays</span>
