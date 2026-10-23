@@ -997,6 +997,40 @@ export function Workspace({
             <CommercialWorkspace snapshot={snapshot} propertyId={propertyId} section={section} />
           ) : section === 'overview' ? (
             <>
+              <section className="panel" aria-label="Daily operations command center">
+                <div className="panel-header">
+                  <div>
+                    <h2>Daily operations</h2>
+                    <p>Open today's work from one place. Figures come from your authorized property records.</p>
+                  </div>
+                </div>
+                <div className="stat-grid">
+                  <div className="stat-card">
+                    <span>Sites & units</span>
+                    <strong>{sites.filter((site) => !site.archived_at).length}</strong>
+                    <Link href={href('sites')}>View spaces <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Resident records</span>
+                    <strong>{customers.filter((customer) => !customer.archived_at).length}</strong>
+                    <Link href={href('customers')}>View residents <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Past-due sites</span>
+                    <strong>{financialVisibility === 'ready' ? Object.keys(arrears).length : '—'}</strong>
+                    <span>{financialVisibility === 'ready' ? 'Verified issued balances' : financialVisibility === 'restricted' ? 'Financial access restricted' : financialVisibility === 'loading' ? 'Checking balances…' : 'Balances unavailable'}</span>
+                    {operatingAccess && <Link href={href('collections')}>Review accounts <ArrowUpRight size={14} aria-hidden="true" /></Link>}
+                  </div>
+                </div>
+                <div className="quick-actions" aria-label="Operations shortcuts">
+                  <Link href={href('meters')}>Meter readings</Link>
+                  <Link href={href('billing')}>Monthly billing</Link>
+                  <Link href={href('maintenance')}>Maintenance tasks</Link>
+                  <Link href={href('reservations')}>Reservations</Link>
+                  <Link href={href('operations')}>Team & daily checks</Link>
+                  <Link href={href('collections')}>Payments & follow-ups</Link>
+                </div>
+              </section>
               <OperationsMetrics snapshot={snapshot} propertyId={propertyId} />
               <Overview
                 snapshot={snapshot}
