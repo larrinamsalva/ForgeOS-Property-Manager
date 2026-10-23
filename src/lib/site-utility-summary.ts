@@ -109,13 +109,17 @@ export function siteUtilitySummaries(
     !!accounts.get(i.id)?.issued_on &&
     ['issued', 'partially_paid', 'paid', 'overdue'].includes(accounts.get(i.id)!.state)
   ).sort((a, b) => b.starts_on.localeCompare(a.starts_on) || b.created_at.localeCompare(a.created_at)) : [];
-  const invoice = issued[0];
-  const revision = invoice && billing?.revisions.find(r => r.id === invoice.current_revision_id);
   return utilityKinds.map(kind => {
     const rows = assignments.filter(a => meterById.get(a.meter_id)?.utility === kind)
       .map(a => entryFor(meterById.get(a.meter_id)!, a, data, currentStayId));
-    // Only claim billed charge when an actual issued line exists in the selected
-    // invoice; zero charges may mean utility is included in rent.
+    // Find the latest ISSUED invoice containing this specific utility.
+    // Rent-only invoices can be more recent than the last utility statement.
+    const utilityInvoice = issued.map(invoice => ({
+      invoice,
+      revision: billing?.revisions.find(r => r.id === invoice.current_revision_id),
+    })).find(item => item.revision?.calculation.lines.some(line => line.category === kind));
+    const invoice = utilityInvoice?.invoice;
+    const revision = utilityInvoice?.revision;
     const lines = revision?.calculation.lines.filter(line => line.category === kind) ?? [];
     const amount = lines.reduce((sum, line) => sum + BigInt(line.total_cents), 0n).toString();
     const lastIssued = invoice && revision && lines.length
