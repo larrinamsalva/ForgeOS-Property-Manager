@@ -19,8 +19,6 @@ export function EndOfDayReport({ snapshot, propertyId, href }: {
   useEffect(() => {
     if (!scopeIds) return;
     const controller = new AbortController();
-    setOperations({ status: 'loading' });
-    setMeters({ status: 'loading' });
     async function get<T>(endpoint: string, setter: (value: Loaded<T>) => void) {
       try {
         const response = await fetch(endpoint, { cache: 'no-store', signal: controller.signal });
