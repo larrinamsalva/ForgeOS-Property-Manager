@@ -1,3 +1,7 @@
+## Overview: space and customer quick lookup
+
+The guest Overview shows a searchable, paginated **Spaces & residents** table: one row per created space/apartment/campground/mobile-home unit, the current customer name, contact phone/email, occupancy and **Space record** / **Customer** quick-access controls. The row is display-only: opening a record does **not** toggle occupancy or check anyone in. Searches cover site IDs, unit labels, customer names, contact details and section; status filters and 25-row pages handle 700+ units. Customer contact edits, new assignments, moves and checkouts appear immediately through each customer's `siteId` linkage. The Space / apartment record itself displays a **Customer on this space** summary (name, phone, email, move-in, vehicle, emergency contact and notes) with a direct link to the full editable customer file. An unoccupied site shows an unassigned message. These are **fictional guest demo records only**, with no new API writes or real-person access; the secure owner dashboard has not been updated by this pull request.
+
 # ForgeOS-Property-Manager
 
 All-in-one RV park, apartment, and property management operating system.

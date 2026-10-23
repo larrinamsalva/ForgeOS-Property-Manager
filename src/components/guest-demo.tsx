@@ -63,6 +63,9 @@ export function GuestDemo() {
   const [customerPage, setCustomerPage] = useState(0);
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
+  const [overviewQuery, setOverviewQuery] = useState('');
+  const [overviewStatus, setOverviewStatus] = useState<'all' | Status>('all');
+  const [overviewPage, setOverviewPage] = useState(0);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [photos, setPhotos] = useState<DemoSitePhoto[]>([]);
@@ -105,9 +108,38 @@ export function GuestDemo() {
   });
   const sitePages = Math.max(1, Math.ceil(filteredSites.length / 60));
   const visibleSitePage = Math.min(sitePage, sitePages - 1);
+  // One indexed view of each site's current customer. Do not duplicate
+  // resident details in site records; changes to customer contact info appear
+  // immediately in Overview and the linked space record.
+  const customerBySite = new Map(customers.filter((customer) => !!customer.siteId).map((customer) => [customer.siteId!, customer]));
+  const overviewRows = sites.filter((site) => {
+    if (overviewStatus !== 'all' && site.status !== overviewStatus) return false;
+    const customer = customerBySite.get(site.id);
+    const search = overviewQuery.trim().toLowerCase();
+    return [site.id, site.label, designationLabel(site.designation), site.section,
+      customer?.name, customer?.phone, customer?.email, site.resident]
+      .filter(Boolean).join(' ').toLowerCase().includes(search);
+  });
+  const overviewPages = Math.max(1, Math.ceil(overviewRows.length / 25));
+  const visibleOverviewPage = Math.min(overviewPage, overviewPages - 1);
   const filteredCustomers = customers.filter((c) => (c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim()));
   const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
   const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
+  function openSpaceRecord(siteId: string) {
+    setSelectedSiteId(siteId);
+    setSiteQuery(siteId);
+    setSiteFilter('all');
+    setSitePage(0);
+    setTab('sites');
+    setNotice('');
+  }
+  function openCustomerRecord(customerId: number) {
+    setSelectedCustomerId(customerId);
+    setCustomerQuery('');
+    setCustomerPage(0);
+    setTab('tenants');
+    setNotice('');
+  }
   function addSites(count: number) {
     if (!Number.isSafeInteger(count) || count < 1 || count > 250) return;
     const nextNumber = sites.reduce((max, site) => Math.max(max, Number(site.id.slice(3)) || 0), 0) + 1;
@@ -213,6 +245,9 @@ export function GuestDemo() {
     setCustomerPage(0);
     setSiteQuery('');
     setCustomerQuery('');
+    setOverviewQuery('');
+    setOverviewStatus('all');
+    setOverviewPage(0);
     setSelectedSiteId(null);
     setSelectedCustomerId(null);
     photoUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -301,21 +336,55 @@ export function GuestDemo() {
                 <Metric label="Customer records" value={customers.length.toLocaleString()} detail="Created as people arrive" />
                 <Metric label="Planned spaces" value={plannedCapacity.toLocaleString()} detail="Adjust in Property layout" />
               </div>
-              <div className="demo-two-columns">
-                <section className="demo-panel">
-                  <div className="demo-section-head"><h2>Sites at a glance</h2><button type="button" disabled={!hydrated} onClick={() => setTab('sites')}>View map <ArrowRight size={15}/></button></div>
-                  <div className="demo-mini-map">
-                    {sites.slice(0, 12).map((s) => <button type="button" disabled={!hydrated} key={s.id} title={s.id + ': ' + s.status} className={'demo-tile ' + s.status} onClick={() => {setTab('sites'); setNotice('Select any space to try a sample check-in or reservation.')}}>{s.id}</button>)}
-                  </div>
-                  <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
-                </section>
-                <section className="demo-panel">
-                  <div className="demo-section-head"><h2>Daily operations</h2><button type="button" disabled={!hydrated} onClick={() => setTab('maintenance')}>Manage tasks <ArrowRight size={15}/></button></div>
-                  <div className="demo-tasks">
-                    {jobs.map((job) => <div key={job.id} className="demo-task"><span className={job.status === 'Done' ? 'demo-task-icon done' : 'demo-task-icon'}><CheckCircle2 size={19}/></span><span><strong>{job.title}</strong><small>{job.location} · {job.status}</small></span></div>)}
-                  </div>
-                </section>
-              </div>
+              <section className="demo-panel demo-overview-directory" aria-label="Overview spaces and customers">
+                <div className="demo-section-head">
+                  <div><h2>Spaces &amp; residents — quick lookup</h2><p>One row per space: who lives there, their contact information and fast access to the full space or customer record.</p></div>
+                  <button type="button" onClick={() => setTab('sites')}>View site map <ArrowRight size={15}/></button>
+                </div>
+                <div className="demo-overview-filters">
+                  <label htmlFor="demo-overview-search">Search space or customer
+                    <input id="demo-overview-search" value={overviewQuery} placeholder="Space 88, apartment A-4, name or phone"
+                      onChange={(event) => {setOverviewQuery(event.target.value);setOverviewPage(0);}}/>
+                  </label>
+                  <label htmlFor="demo-overview-status">Occupancy
+                    <select id="demo-overview-status" value={overviewStatus}
+                      onChange={(event) => {setOverviewStatus(event.target.value as 'all' | Status);setOverviewPage(0);}}>
+                      <option value="all">All spaces</option>
+                      <option value="occupied">Occupied</option>
+                      <option value="available">Available</option>
+                      <option value="reserved">Reserved</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="demo-table-wrap">
+                  <table className="demo-table demo-overview-table" aria-label="Overview space and customer rows">
+                    <thead><tr><th>Space / unit</th><th>Customer name</th><th>Contact</th><th>Status</th><th>Open record</th></tr></thead>
+                    <tbody>
+                      {overviewRows.slice(visibleOverviewPage * 25, visibleOverviewPage * 25 + 25).map((site) => {
+                        const customer = customerBySite.get(site.id);
+                        return <tr key={site.id} data-overview-site={site.id}>
+                          <td><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></td>
+                          <td><strong>{site.status === 'occupied' ? customer?.name || site.resident || 'Customer not recorded' : 'No customer assigned'}</strong></td>
+                          <td>{customer ? <><span>{customer.phone || 'No phone on file'}</span><small>{customer.email || 'No email on file'}</small></> : <span>—</span>}</td>
+                          <td><span className={'demo-status ' + site.status}>{site.status}</span></td>
+                          <td><div className="demo-overview-actions">
+                            <button type="button" className="demo-small-button" onClick={() => openSpaceRecord(site.id)} aria-label={'Open space record for ' + site.id}>Space record</button>
+                            {customer && <button type="button" className="demo-small-button" onClick={() => openCustomerRecord(customer.id)} aria-label={'Open customer record for ' + site.id}>Customer</button>}
+                          </div></td>
+                        </tr>;
+                      })}
+                      {overviewRows.length === 0 && <tr><td colSpan={5} className="demo-overview-empty">No sites or residents match this search.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination page={visibleOverviewPage} pages={overviewPages} total={overviewRows.length} label="overview spaces" onChange={setOverviewPage}/>
+              </section>
+              <section className="demo-panel demo-overview-operations">
+                <div className="demo-section-head"><h2>Daily operations</h2><button type="button" disabled={!hydrated} onClick={() => setTab('maintenance')}>Manage tasks <ArrowRight size={15}/></button></div>
+                <div className="demo-tasks">
+                  {jobs.map((job) => <div key={job.id} className="demo-task"><span className={job.status === 'Done' ? 'demo-task-icon done' : 'demo-task-icon'}><CheckCircle2 size={19}/></span><span><strong>{job.title}</strong><small>{job.location} · {job.status}</small></span></div>)}
+                </div>
+              </section>
             </>
           )}
 
@@ -349,7 +418,9 @@ export function GuestDemo() {
                 <p className="demo-caption">60 spaces per page keeps large properties manageable. Every space has its own editable details, vehicle list and local photo gallery.</p>
               </section>
               {selectedSiteId && sites.some((site) => site.id === selectedSiteId) && <div id="demo-selected-space">
-                <GuestSiteEditor key={selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!} onSave={saveSpace} onClose={() => setSelectedSiteId(null)}/>
+                <GuestSiteEditor key={selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!}
+                  customer={customerBySite.get(selectedSiteId)} onOpenCustomer={openCustomerRecord}
+                  onSave={saveSpace} onClose={() => setSelectedSiteId(null)}/>
                 <GuestSiteMedia
                   key={'media-' + selectedSiteId}
                   siteId={selectedSiteId}

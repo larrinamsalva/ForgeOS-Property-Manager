@@ -95,3 +95,15 @@
   }
   .demo-customer-unit-pair select,.demo-customer-unit-pair input{padding:10px 8px}
 }
+
+/* A space record shows its current customer's live-linked demo contact details. */
+.demo-site-resident{display:grid;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 17px;min-width:0}
+.demo-site-resident-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.demo-site-resident-header>strong{font-size:13px;color:var(--text)}
+.demo-site-resident>small,.demo-site-resident>p{color:var(--muted);font-size:11px;margin:0}
+.demo-site-resident-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.demo-site-resident-grid>div{display:grid;gap:5px;align-content:start;min-width:0;overflow-wrap:anywhere}
+.demo-site-resident-grid small{font-size:10px;color:var(--muted);font-weight:750}
+.demo-site-resident-grid strong,.demo-site-resident-grid span{font-size:12px;color:var(--text);overflow-wrap:anywhere}
+.demo-site-resident-grid .demo-site-resident-notes{grid-column:1/-1}
+@media(max-width:650px){.demo-site-resident-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

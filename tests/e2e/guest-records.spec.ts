@@ -44,7 +44,7 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
   await expect(page.getByLabel('Unit type')).toHaveValue('apartment');
   await expect(page.getByLabel('Monthly rent ($)')).toHaveValue('950');
   await expect(page.getByLabel('Site information / notes')).toHaveValue('Example: Covered parking and accessible doorway');
-  await expect(page.getByText('Example Tenant Updated')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Assigned customer for RV-15' }).getByText('Example Tenant Updated', { exact: true })).toBeVisible();
   expect(requests).toEqual([]);
 });
 
@@ -320,4 +320,77 @@ test('Add Customer links a typed Space 88 to its available unit and blocks occup
   await number.fill('1');
   await expect(assignment).toHaveValue('unassigned');
   expect(apiWrites).toEqual([]);
+});
+
+
+test('Overview lists each space and resident in a row with quick access to linked customer records', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (req) => {
+    if (req.method() !== 'GET' && new URL(req.url()).pathname.startsWith('/api/')) writes.push(req.url());
+  });
+  await page.goto('/demo');
+  const navigation = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  const directory = page.getByRole('region', { name: 'Overview spaces and customers' });
+  const unit = directory.locator('[data-overview-site="RV-01"]');
+  await expect(directory.getByRole('table', { name: 'Overview space and customer rows' })).toBeVisible();
+  await expect(unit).toContainText('Example Resident 01');
+  await expect(unit).toContainText('occupied');
+  await expect(directory.locator('[data-overview-site="RV-15"]')).toContainText('No customer assigned');
+
+  // Simply opening a space is read-only (unlike the simulation's check-in tile).
+  await unit.getByRole('button', { name: 'Open space record for RV-01' }).click();
+  await expect(page.getByRole('region', { name: 'Assigned customer for RV-01' })).toContainText('Example Resident 01');
+  await expect(page.locator('[data-site="RV-01"]')).toContainText('occupied');
+  await page.getByRole('region', { name: 'Assigned customer for RV-01' })
+    .getByRole('button', { name: 'Open customer record' }).click();
+
+  await expect(page.getByRole('region', { name: 'Edit customer Example Resident 01' })).toBeVisible();
+  await page.getByLabel('Phone number').last().fill('555-0101');
+  await page.getByLabel('Email').last().fill('resident01@example.invalid');
+  await page.getByLabel('Vehicle / RV details').last().fill('Blue RV');
+  await page.getByRole('button', { name: 'Save sample customer' }).click();
+  await navigation.getByRole('button', { name: 'Overview' }).click();
+
+  const updated = directory.locator('[data-overview-site="RV-01"]');
+  await expect(updated).toContainText('Example Resident 01');
+  await expect(updated).toContainText('555-0101');
+  await expect(updated).toContainText('resident01@example.invalid');
+  await updated.getByRole('button', { name: 'Open space record for RV-01' }).click();
+  const spaceCustomer = page.getByRole('region', { name: 'Assigned customer for RV-01' });
+  await expect(spaceCustomer).toContainText('555-0101');
+  await expect(spaceCustomer).toContainText('resident01@example.invalid');
+  await expect(spaceCustomer).toContainText('Blue RV');
+
+  await navigation.getByRole('button', { name: 'Overview' }).click();
+  await page.getByLabel('Search space or customer').fill('555-0101');
+  await expect(directory.locator('[data-overview-site]')).toHaveCount(1);
+  await expect(directory.locator('[data-overview-site="RV-01"]')).toBeVisible();
+  await page.getByLabel('Search space or customer').fill('');
+  await page.getByLabel('Occupancy').selectOption('available');
+  await expect(directory.locator('[data-overview-site="RV-01"]')).toHaveCount(0);
+  await expect(directory.locator('[data-overview-site="RV-15"]')).toBeVisible();
+  expect(writes).toEqual([]);
+});
+
+test('Overview updates customer name when a new arrival is assigned and clears it after checkout', async ({ page }) => {
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  await page.getByLabel('Fictional customer name').fill('Example New Site Resident');
+  await page.getByLabel('Assign an available site (optional)').selectOption('RV-15');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await nav.getByRole('button', { name: 'Overview' }).click();
+  const directory = page.getByRole('region', { name: 'Overview spaces and customers' });
+  const row = directory.locator('[data-overview-site="RV-15"]');
+  await expect(row).toContainText('Example New Site Resident');
+  await expect(row).toContainText('occupied');
+  await row.getByRole('button', { name: 'Open customer record for RV-15' }).click();
+  await expect(page.getByRole('region', { name: 'Edit customer Example New Site Resident' })).toBeVisible();
+
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.locator('[data-site="RV-15"]').click();
+  await nav.getByRole('button', { name: 'Overview' }).click();
+  await expect(row).toContainText('No customer assigned');
+  await expect(row).toContainText('available');
+  await expect(row.getByRole('button', { name: 'Open customer record for RV-15' })).toHaveCount(0);
 });
