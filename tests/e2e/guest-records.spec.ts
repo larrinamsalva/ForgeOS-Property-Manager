@@ -196,8 +196,16 @@ test('customer unit selector lists all unoccupied types across the property and 
   await nav.getByRole('button', { name: 'Customers' }).click();
   const type = page.getByLabel('Choose unit type');
   const assignment = page.getByLabel('Assign an available site (optional)');
+  const nameInput = page.getByLabel('Fictional customer name');
+  // 'Assigned' is immediately below the name, before type/number fields.
+  const nameBox = await nameInput.boundingBox();
+  const assignedBox = await assignment.boundingBox();
+  const typeBox = await type.boundingBox();
+  expect(nameBox && assignedBox && typeBox).toBeTruthy();
+  expect(assignedBox!.y).toBeGreaterThan(nameBox!.y);
+  expect(assignedBox!.y).toBeLessThan(typeBox!.y);
   await expect(type.locator('option')).toHaveText([
-    'All sites, spaces, apartments, mobile homes & campgrounds',
+    'All types',
     'Site', 'Space', 'Apartment', 'Mobile Home', 'Campground'
   ]);
 
@@ -205,11 +213,21 @@ test('customer unit selector lists all unoccupied types across the property and 
   await expect(assignment.locator('option[value="RV-15"]')).toContainText('Apartment · A-15');
   await expect(assignment.locator('option[value="RV-16"]')).toContainText('Campground · Camp 16');
   await expect(assignment.locator('option[value="RV-17"]')).toContainText('Mobile Home · MH 17');
-  await expect(assignment.locator('option[value="RV-18"]')).toContainText('Space · Space 18');
-  // Playwright's toBeDisabled() does not recognize disabled native <option>
-  // consistently on Chromium mobile emulation. Assert the actual DOM state.
-  await expect(assignment.locator('option[value="RV-18"]')).toHaveAttribute('disabled', '');
+  // Reserved units are deliberately absent from the assignment dropdown.
+  await expect(assignment.locator('option[value="RV-18"]')).toHaveCount(0);
   await expect(assignment.locator('option[value="RV-01"]')).toHaveCount(0); // Already occupied.
+
+  // The separate complete-availability browser shows ALL actual vacant units,
+  // independent of the type selector, directory page, and reserved units.
+  const fullList = page.getByRole('region', { name: 'All available units' });
+  await expect(fullList).toContainText('3 available sites and units');
+  await expect(fullList).toContainText('20 created units');
+  await page.getByRole('button', { name: 'Browse all available units' }).click();
+  await expect(fullList.getByRole('button', { name: 'Assign Apartment A-15 (RV-15)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Campground Camp 16 (RV-16)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Mobile Home MH 17 (RV-17)' })).toBeVisible();
+  await expect(fullList.getByRole('button', { name: 'Assign Space Space 18 (RV-18)' })).toHaveCount(0);
+  await expect(fullList.getByRole('button', { name: 'Assign Site RV-01 (RV-01)' })).toHaveCount(0);
 
   await type.selectOption('apartment');
   await expect(assignment.locator('option[value="RV-15"]')).toBeEnabled();
@@ -221,6 +239,13 @@ test('customer unit selector lists all unoccupied types across the property and 
 
   // Occupying the apartment removes it from new-customer availability.
   await expect(assignment.locator('option[value="RV-15"]')).toHaveCount(0);
+  await expect(fullList).toContainText('2 available sites and units');
+  await expect(fullList.getByRole('button', { name: 'Assign Apartment A-15 (RV-15)' })).toHaveCount(0);
+  // Even with Apartment still selected in the type dropdown, the full browser
+  // can choose a site of a different type and reset the filter to All.
+  await fullList.getByRole('button', { name: 'Assign Campground Camp 16 (RV-16)' }).click();
+  await expect(type).toHaveValue('all');
+  await expect(assignment).toHaveValue('RV-16');
   await type.selectOption('campground');
   await expect(assignment.locator('option[value="RV-16"]')).toBeEnabled();
   await page.getByLabel('Fictional customer name').fill('Example Camp Guest');
@@ -233,6 +258,66 @@ test('customer unit selector lists all unoccupied types across the property and 
   await page.getByRole('button', { name: 'Edit customer Example Apartment Arrival' }).click();
   const editing = page.getByRole('region', { name: 'Edit customer Example Apartment Arrival' });
   await expect(editing.getByLabel('Choose unit type')).toHaveValue('apartment');
-  await expect(editing.getByLabel('Assigned site (optional)').locator('option[value="RV-15"]')).toBeEnabled();
+  await expect(editing.getByLabel('Assigned / available unit').locator('option[value="RV-15"]')).toBeEnabled();
+  expect(apiWrites).toEqual([]);
+});
+
+
+
+test('Add Customer links a typed Space 88 to its available unit and blocks occupied or reserved numbers', async ({ page }) => {
+  const apiWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) apiWrites.push(request.url());
+  });
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Property layout' }).click();
+  await page.getByLabel('Spaces to add now (1–250 per batch)').fill('68');
+  await page.getByRole('button', { name: 'Add spaces' }).click();
+
+  await nav.getByRole('button', { name: 'Sites & map' }).click();
+  await page.getByLabel('Find a space').fill('RV-88');
+  await page.getByRole('button', { name: 'Details and photos for RV-88' }).click();
+  await page.getByLabel('Unit type').selectOption('space');
+  await page.getByRole('button', { name: 'Save sample space' }).click();
+
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  const type = page.getByLabel('Choose unit type');
+  const number = page.getByLabel('Space / unit number');
+  const assignment = page.getByLabel('Assign an available site (optional)');
+  // The compact type selector must sit beside (and be narrower than) the number
+  // input on desktop, tablet and phone, with no big multi-line "All types" label.
+  await expect(type.locator('option').first()).toHaveText('All types');
+  const typeBox = await type.boundingBox();
+  const numberBox = await number.boundingBox();
+  expect(typeBox && numberBox).toBeTruthy();
+  expect(Math.abs(typeBox!.y - numberBox!.y)).toBeLessThan(12);
+  expect(numberBox!.x).toBeGreaterThan(typeBox!.x + typeBox!.width - 2);
+  expect(typeBox!.width).toBeLessThan(numberBox!.width);
+  await type.selectOption('space');
+  await number.fill('88');
+  await expect(assignment).toHaveValue('RV-88');
+  await expect(page.getByText('Selected: I live in Space 88')).toBeVisible();
+  await number.fill('Space 88');
+  await expect(assignment).toHaveValue('RV-88');
+
+  await page.getByLabel('Fictional customer name').fill('Example Space 88 Resident');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.locator('.demo-notice[role="status"]')).toContainText('Example Space 88 Resident added');
+  await expect(number).toHaveValue('');
+  await expect(assignment.locator('option[value="RV-88"]')).toHaveCount(0);
+  await number.fill('88');
+  await expect(assignment).toHaveValue('unassigned');
+  await page.getByLabel('Fictional customer name').fill('Another Sample Resident');
+  await page.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.locator('.demo-record-error[role="alert"]')).toContainText('Space or unit number not found');
+  await expect(page.getByRole('button', { name: 'Edit customer Another Sample Resident' })).toHaveCount(0);
+
+  // Reserved RV-18 and occupied RV-01 can never be resolved to new assignments.
+  await type.selectOption('site');
+  await number.fill('18');
+  await expect(assignment).toHaveValue('unassigned');
+  await number.fill('1');
+  await expect(assignment).toHaveValue('unassigned');
   expect(apiWrites).toEqual([]);
 });

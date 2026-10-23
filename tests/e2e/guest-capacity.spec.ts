@@ -29,6 +29,18 @@ test('guest can expand to 700+ spaces, add customers as they arrive, and search 
   await expect(page.locator('.demo-map-space')).toHaveCount(1);
 
   await nav.getByRole('button', { name: 'Customers' }).click();
+  // Initial sample has 20 created units, 14 occupied, 3 available and 3 held.
+  // Adding 681 units results in all 684 genuinely available units across this property.
+  const availablePanel = page.getByRole('region', { name: 'All available units' });
+  await expect(availablePanel).toContainText('684 available sites and units');
+  await expect(availablePanel).toContainText('701 created units');
+  await page.getByRole('button', { name: 'Browse all available units' }).click();
+  const availableSearch = page.getByLabel('Search all available sites and units');
+  await availableSearch.fill('RV-701');
+  await expect(page.getByRole('button', { name: 'Assign Site RV-701 (RV-701)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Assign Site RV-01 (RV-01)' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Assign Site RV-701 (RV-701)' }).click();
+  await expect(page.getByLabel('Assign an available site (optional)')).toHaveValue('RV-701');
   // Availability spans all 701 sites, even though the site directory was filtered.
   const filter = page.getByLabel('Choose unit type');
   const assignment = page.getByLabel('Assign an available site (optional)');
@@ -41,6 +53,8 @@ test('guest can expand to 700+ spaces, add customers as they arrive, and search 
   await assignment.selectOption('RV-701');
   await page.getByRole('button', { name: 'Add example customer' }).click();
   await expect(page.getByRole('status')).toContainText('Example New Arrival added');
+  await expect(availablePanel).toContainText('683 available sites and units');
+  await expect(page.getByRole('button', { name: 'Assign Site RV-701 (RV-701)' })).toHaveCount(0);
   await page.getByLabel('Search', { exact: true }).fill('Example New Arrival');
   await expect(page.getByRole('cell', { name: 'Example New Arrival', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'RV-701' })).toBeVisible();

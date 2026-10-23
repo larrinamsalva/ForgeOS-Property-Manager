@@ -49,3 +49,49 @@
 .demo-vehicle-icon{display:flex;align-items:center;justify-content:center;color:var(--primary);background:var(--blue-bg);border-radius:8px;padding:9px}
 @media(max-width:1100px){.demo-vehicle-form{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-vehicle-form .demo-action{width:100%}}
 @media(max-width:650px){.demo-record-grid,.demo-vehicle-form{grid-template-columns:1fr}.demo-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-media-chooser label:not(.demo-photo-upload){width:100%}.demo-photo-upload{width:100%}.demo-photo-card img{height:120px}}
+
+/* Customer intake: full-property vacancy browser, separate from the site-map page size. */
+.demo-available-panel{grid-column:1/-1;display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.demo-available-header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.demo-available-header>div{display:grid;gap:4px;flex:1;min-width:220px}
+.demo-available-header strong{font-size:13px;color:var(--text)}
+.demo-available-header small{font-size:11px;color:var(--muted);line-height:1.5}
+.demo-available-browser{display:grid;gap:10px;min-width:0}
+.demo-available-browser label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--text)}
+.demo-available-browser input{min-height:42px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--input);color:var(--text);width:100%}
+.demo-available-match-count{font-size:11px;color:var(--muted);margin:0}
+.demo-available-list{display:grid;gap:5px;overflow-y:auto;max-height:280px;min-width:0;overscroll-behavior:contain}
+.demo-available-item{display:flex;gap:12px;align-items:center;justify-content:space-between;text-align:left;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px 12px;min-height:52px}
+.demo-available-item:hover,.demo-available-item:focus-visible{border-color:var(--primary);background:var(--blue-bg)}
+.demo-available-item>span:first-child{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+.demo-available-item strong{font-size:12px}
+.demo-available-item small{font-size:11px;color:var(--muted)}
+.demo-available-choose{color:var(--primary);font-size:11px;font-weight:800}
+.demo-available-empty{font-size:12px;color:var(--muted);padding:12px 0;margin:0}
+@media(max-width:650px){.demo-available-header .demo-small-button{width:100%}}
+
+/* Keep the resident's unit type directly beside the editable unit number. */
+.demo-record-grid .demo-customer-name,
+.demo-record-grid .demo-assignment-field{grid-column:1/-1}
+.demo-record-grid label small{display:block;line-height:1.45;color:var(--muted);font-size:11px;font-weight:500}
+
+/* Compact, truly side-by-side type and number controls on every screen size. */
+.demo-record-grid .demo-customer-unit-pair{
+  grid-column:1/-1;display:grid;
+  grid-template-columns: minmax(0, 168px) minmax(0, 1fr);
+  gap:12px;align-items:start;min-width:0;
+}
+.demo-customer-unit-pair>label{display:grid;gap:6px;min-width:0}
+.demo-customer-unit-pair select,
+.demo-customer-unit-pair input{
+  box-sizing:border-box;max-width:100%;min-width:0;width:100%;
+  min-height:42px;padding:10px 12px;color:var(--text);
+  background:var(--input);border:1px solid var(--line);
+  border-radius:8px;font-size:13px;
+}
+@media(max-width:650px){
+  .demo-record-grid .demo-customer-unit-pair{
+    grid-template-columns:minmax(0, 112px) minmax(0, 1fr);gap:8px;
+  }
+  .demo-customer-unit-pair select,.demo-customer-unit-pair input{padding:10px 8px}
+}
