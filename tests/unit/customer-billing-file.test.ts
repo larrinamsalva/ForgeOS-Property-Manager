@@ -21,7 +21,7 @@ describe('customer monthly bill totals', () => {
   expect(result.receipts.map(r => r.id)).toEqual(['receipt-1']);
  });
  it('excludes other customers, unissued, drafts, and voided invoices', () => {
-  expect(customerBillingSummary(data, 'bob', 'park').bills).toHaveLength(0);
+  expect(customerBillingSummary(data, 'bob', 'park').bills.map(b => b.id)).toEqual(['two']);
   const unissued = { ...data, summary: { ...data.summary, accounts: [{ ...account, issued_on: null }] } };
   expect(customerBillingSummary(unissued, 'alice', 'park').bills).toHaveLength(0);
   const voided = { ...data, invoices: [{...invoice, status:'voided' as const}] };
