@@ -3430,3 +3430,13 @@ table summary {
 .overview-followup-item span{color:var(--muted);flex:1 1 170px;min-width:0;overflow-wrap:anywhere}
 .overview-followup-item svg{flex:none}
 .overview-followup-item:hover,.overview-followup-item:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
+
+
+/* Live daily operations command center */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 0.85rem; margin-block: 1rem; }
+.stat-grid .stat-card { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.stat-grid .stat-card strong { font-size: clamp(1.4rem, 2vw, 2rem); }
+.stat-grid .stat-card a { display: inline-flex; gap: 0.35rem; align-items: center; width: fit-content; text-decoration: underline; text-underline-offset: 3px; }
+.quick-actions { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+.quick-actions a { display: inline-flex; align-items: center; border: 1px solid var(--border, currentColor); border-radius: 0.65rem; padding: 0.55rem 0.8rem; font-weight: 600; }
+.quick-actions a:hover, .quick-actions a:focus-visible { outline-offset: 2px; text-decoration: underline; }
