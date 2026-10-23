@@ -9,8 +9,8 @@ import { OverdueReminderPanel } from './overdue-reminder-panel';
 import { ResidentContactHistory } from './resident-contact-history';
 
 export function CustomerBillingFile({
-  organizationId, propertyId, customerId, residentName, propertyName,
-}: { organizationId: string; propertyId: string; customerId: string; residentName: string; propertyName: string }) {
+  organizationId, propertyId, customerId, residentName, propertyName, propertyTimezone,
+}: { organizationId: string; propertyId: string; customerId: string; residentName: string; propertyName: string; propertyTimezone: string }) {
   const key = organizationId + ':' + propertyId + ':' + customerId;
   const [refresh, setRefresh] = useState(0);
   const [loaded, setLoaded] = useState<{ key: string; data?: CollectionsSnapshot; error?: boolean } | null>(null);
@@ -84,6 +84,9 @@ export function CustomerBillingFile({
           propertyId={propertyId}
           customerId={customerId}
           collectionsUrl={financialUrl}
+          organizationId={organizationId}
+          propertyTimezone={propertyTimezone}
+          onSaved={refreshHistory}
         />
         <h4>Payment &amp; receipt history</h4>
         {!summary.receipts.length ? <p>No receipt recorded yet.</p> :
