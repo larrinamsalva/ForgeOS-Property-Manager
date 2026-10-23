@@ -46,7 +46,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI;
             'Track plumbing, sprinklers, tree trimming, bathrooms, laundry, trash areas and more.'}</p>
         </div>
         <div className="action-group">
-          {ui.office && ui.active && <Action click={() => ui.open('new_work')}>Create maintenance task</Action>}
+          {ui.office && ui.active && <Action click={() => ui.open('new_work')}>New maintenance request</Action>}
           {!ui.office && ui.active && <Action click={() => ui.open('maintenance_self_task')}>Create my task</Action>}
         </div>
       </div>
