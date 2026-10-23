@@ -663,6 +663,12 @@ export function Workspace({
               propertyId={(record as Site | Customer).property_id}
               {...(editor.entity === 'site' ? { siteId: record.id } : { customerId: record.id })}
               customers={snapshot.customers.filter((c) => c.property_id === (record as Site | Customer).property_id)}
+              {...(editor.entity === 'site' ? {
+                site: record as Site,
+                currentStayId: history.find(stay => isCurrentStay(stay, dateAtProperty(
+                  snapshot.properties.find(p => p.id === (record as Site).property_id)?.timezone ?? 'America/Los_Angeles'
+                )))?.id,
+              } : {})}
             />
           )}
         {(editor.entity === 'site' || editor.entity === 'customer') && (

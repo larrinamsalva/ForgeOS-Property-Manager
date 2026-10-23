@@ -248,6 +248,15 @@ test('meter routes survive offline reload, retry photos once and retain supervis
   // The same immutable reading is now discoverable from both linked staff records.
   await page.goto(`/sites?organization=${s.org}&property=${s.property}`);
   await page.getByRole('button', { name: 'RV-01', exact: true }).click();
+  const siteSummary = page.getByRole('region', { name: 'Site water electric gas utility summary' });
+  await expect(siteSummary).toContainText('Electricity');
+  await expect(siteSummary).toContainText('Water');
+  await expect(siteSummary).toContainText('Gas');
+  await expect(siteSummary).toContainText('Latest approved');
+  await expect(siteSummary).toContainText('1234.123457');
+  await expect(siteSummary.getByRole('button', { name: 'Ask by voice' })).toBeVisible();
+  await siteSummary.getByRole('button', { name: 'Read meters aloud' }).click();
+  await expect(siteSummary.getByRole('status')).toContainText(/Reading site meter information aloud|not supported/i);
   const siteFile = page.getByRole('region', { name: 'Linked meter reading table' });
   await expect(siteFile).toContainText('1234.123457');
   await expect(siteFile).toContainText('River Sample');
