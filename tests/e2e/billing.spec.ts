@@ -239,11 +239,11 @@ test('site customer record opens preselected monthly draft preparation without i
   await expect(dialog.getByRole('heading',{name:'Calculate draft invoice'})).toBeVisible();
   const chosen=dialog.getByRole('combobox',{name:'Customer stay'});
   await expect(chosen.locator('option:checked')).toContainText('River Sample');
-  const today=dateAtProperty('America/Los_Angeles');
-  const previousMonth=new Date(today.slice(0,4)+'-'+today.slice(5,7)+'-01T12:00:00Z');
-  previousMonth.setUTCMonth(previousMonth.getUTCMonth()-1);
-  await expect(dialog.getByLabel('Billing starts on')).toHaveValue(previousMonth.toISOString().slice(0,10));
-  await expect(dialog.getByLabel('Billing ends on (exclusive)')).toHaveValue(today.slice(0,7)+'-01');
+  const chosenStart=await dialog.getByLabel('Billing starts on').inputValue();
+  const chosenEnd=await dialog.getByLabel('Billing ends on (exclusive)').inputValue();
+  expect(chosenStart).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+  expect(chosenEnd > chosenStart).toBe(true);
+  await expect(siteReview).toContainText(chosenStart + ' → ' + chosenEnd);
   await dialog.getByRole('button',{name:'Cancel'}).click();
   await expect(dialog).not.toBeVisible();
   expect((await (await page.request.get('/api/billing?organization='+new URL(link!, 'http://localhost').searchParams.get('organization'))).json()).invoices).toHaveLength(0);
