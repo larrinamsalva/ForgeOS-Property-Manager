@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { siteOverdueFlags } from '@/lib/site-overdue';
+import { siteOverdueFlags } from '../../src/lib/site-overdue';
 const now = new Date('2026-10-22T12:00:00-07:00');
 const properties = [{ id: 'park', timezone: 'America/Los_Angeles' }];
 const stay = { id: 'stay-1', property_id: 'park', site_id: 'RV-01', customer_id: 'alice', starts_on: '2026-01-01', ends_on: null };
