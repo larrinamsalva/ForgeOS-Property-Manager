@@ -7,11 +7,12 @@ import { siteBillingChecklist, type BillingChecklistItem, type BillingPeriodSugg
 export type MonthlyRunStatus = 'existing' | 'review' | 'ready';
 export type MonthlyInvoiceStage = 'none' | 'draft' | 'approved_unissued' | 'issued' | 'mixed';
 export function classifyMonthlyInvoices(
-  invoices: { status: 'draft' | 'approved'; issued: boolean }[],
+  invoices: { status: Invoice['status']; issued: boolean }[],
 ): MonthlyInvoiceStage {
   if (!invoices.length) return 'none';
-  const stages = new Set(invoices.map(invoice => invoice.issued ? 'issued' :
+  const stages = new Set(invoices.filter(invoice => invoice.status !== 'voided').map(invoice => invoice.issued ? 'issued' :
     invoice.status === 'approved' ? 'approved_unissued' : 'draft'));
+  if (!stages.size) return 'none';
   return stages.size === 1 ? [...stages][0] as MonthlyInvoiceStage : 'mixed';
 }
 export function invoiceStageLabel(stage: MonthlyInvoiceStage): string {
