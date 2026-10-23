@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { addDays, dateAtProperty } from '../../src/lib/domain';
 import type { CollectionsSnapshot } from '../../src/lib/collections-domain';
 import type { BillingSnapshot } from '../../src/lib/billing-domain';
@@ -299,11 +300,24 @@ test('site directory and site file show current occupant overdue balance and ope
   await expect(reviewQueue).toContainText('River Sample');
   await expect(reviewQueue).toContainText('$100.00');
   await expect(reviewQueue).toContainText('1 flagged site');
+  await expect(reviewQueue).toContainText(addDays(today(), -2));
+  await expect(reviewQueue).toContainText('2 days');
   const mapBalances=reviewQueue.getByRole('region',{name:'Past-due sites and balances'});
   await expect(mapBalances).toContainText('RV-01');
   await reviewQueue.getByRole('searchbox',{name:'Find flagged space or resident'}).fill('missing name');
   await expect(reviewQueue.getByText('No past-due sites match this search.')).toBeVisible();
   await reviewQueue.getByRole('searchbox',{name:'Find flagged space or resident'}).fill('River');
+  const pendingDownload=page.waitForEvent('download');
+  await reviewQueue.getByRole('button',{name:'Export filtered overdue review (CSV)'}).click();
+  const file=await pendingDownload;
+  expect(file.suggestedFilename()).toBe('ForgeOS-past-due-site-review.csv');
+  const path=await file.path();
+  const content=(await readFile(path!)).toString('utf8');
+  expect(content).toContain('River Sample');
+  expect(content).toContain('RV-01');
+  expect(content).toContain('$100.00');
+  expect(content).toContain(addDays(today(), -2));
+  expect(content).not.toContain('Other Resident');
   await mapBalances.getByRole('button',{name:'Review account at RV-01'}).click();
   await expect(page.getByRole('dialog').getByRole('region',{name:'Site resident billing status'}))
     .toContainText('PAST DUE · $100.00');
