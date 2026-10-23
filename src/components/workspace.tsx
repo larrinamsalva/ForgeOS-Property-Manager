@@ -133,8 +133,10 @@ export function Workspace({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
+  const [financialVersion, setFinancialVersion] = useState(0);
   const [financialRead, setFinancialRead] = useState<{
-    key: string; data?: CollectionsSnapshot; error?: boolean;
+    key: string; version: number; checkedAt?: string;
+    data?: CollectionsSnapshot; error?: boolean;
   } | null>(null);
   const [sectionFilter, setSectionFilter] = useState('');
   const org = snapshot.organizations.find((o) => o.id === snapshot.organizationId);
@@ -159,17 +161,23 @@ export function Workspace({
       })
       .then((records) => {
         if (!controller.signal.aborted) {
-          setFinancialRead({ key: financialKey, data: records });
+          setFinancialRead({ key: financialKey, version: financialVersion,
+            checkedAt: new Date().toISOString(), data: records });
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setFinancialRead({ key: financialKey, error: true });
+        if (!controller.signal.aborted) setFinancialRead({ key: financialKey, version: financialVersion, error: true });
       });
     return () => controller.abort();
-  }, [snapshot.organizationId, operatingAccess, section, financialKey]);
+  }, [snapshot.organizationId, operatingAccess, section, financialKey, financialVersion]);
   const financialVisibility = !operatingAccess ? 'restricted'
-    : financialRead?.key !== financialKey ? 'loading'
+    : financialRead?.key !== financialKey || financialRead?.version !== financialVersion ? 'loading'
     : financialRead.error ? 'unavailable' : 'ready';
+  const checkedAt = financialVisibility === 'ready' && financialRead?.checkedAt
+    ? new Date(financialRead.checkedAt).toLocaleTimeString(undefined, {
+      hour:'numeric', minute:'2-digit', second:'2-digit',
+    }) : null;
+  const refreshFinancial = () => setFinancialVersion(version => version + 1);
   const arrears = financialVisibility === 'ready' && financialRead?.data
     ? siteOverdueFlags(financialRead.data.summary.accounts, financialRead.data.invoices, snapshot.stays, snapshot.properties)
     : {};
@@ -893,6 +901,26 @@ export function Workspace({
               )}
             </fieldset>
           </div>
+          {snapshot.organizationId && operatingAccess &&
+            ['overview', 'map', 'sites'].includes(section) && (
+            <section className="financial-refresh-bar" aria-label="Financial balance status">
+              <div>
+                <strong>Verified issued balances</strong>
+                <small role="status">
+                  {financialVisibility === 'loading'
+                    ? 'Checking the collections ledger…'
+                    : financialVisibility === 'unavailable'
+                    ? 'Financial data unavailable. Try refreshing to recheck.'
+                    : checkedAt ? 'Last checked at ' + checkedAt + ' on this device' :
+                    'Balance status has not been verified yet.'}
+                </small>
+              </div>
+              <button type="button" className="button secondary" onClick={refreshFinancial}
+                disabled={financialVisibility === 'loading' || isPending}>
+                Refresh verified balances
+              </button>
+            </section>
+          )}
           {snapshot.organizationId && (
             <div className="scope-bar">
               <div>

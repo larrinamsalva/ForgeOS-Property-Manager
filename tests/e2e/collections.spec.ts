@@ -345,6 +345,70 @@ test('site directory and site file show current occupant overdue balance and ope
   expect(after.notes).toHaveLength(0);
 });
 
+test('refresh verified balances removes stale red map flags after a posted and allocated payment', async ({page}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Real payment and refresh lifecycle runs once.');
+  await login(page);
+  const invoiceRecord=await invoice(page);
+  await collections(page);
+  await policy(page);
+  const billing=(await (
+    await page.request.get('/api/billing?organization='+seed.org)
+  ).json()) as BillingSnapshot;
+  await api(page,'issue_invoice',{
+    invoice_id:invoiceRecord.id,
+    revision_id:billing.invoices.find(row=>row.id===invoiceRecord.id)!.current_revision_id,
+    issued_on:addDays(today(),-4),
+    due_on:addDays(today(),-2),
+  });
+  await page.goto('/map?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  const financial=page.getByRole('region',{name:'Financial balance status'});
+  const refresh=financial.getByRole('button',{name:'Refresh verified balances'});
+  const queue=page.getByRole('region',{name:'Past-due site review queue'});
+  await expect(financial).toContainText('Last checked at');
+  await expect(queue).toContainText('Sites needing a payment review');
+  await expect(queue).toContainText('$100.00');
+
+  // Another office worker's transaction changes the authoritative ledger,
+  // not the already-rendered site's cached financial snapshot.
+  const posted=(await (await api(page,'record_payment',{
+    customer_id:seed.customerId,amount_cents:'10000',
+    received_on:today(),method:'cash',reference:'Fictional paid in office',
+    corrects_payment_id:null,
+  })).json()) as {id:string;receipt_id:string};
+  expect(posted.id).toBeTruthy();
+  expect(posted.receipt_id).toBeTruthy();
+  await api(page,'allocate_payment',{
+    payment_id:posted.id,invoice_id:invoiceRecord.id,
+    amount_cents:'10000',effective_on:today(),reference:'Fictional allocation',
+  });
+  const beforeRefresh=page.getByRole('region',{name:'Past-due site review queue'});
+  await expect(beforeRefresh).toBeVisible();
+  await refresh.click();
+  await expect(financial).toContainText('Last checked at');
+  await expect(queue).toHaveCount(0);
+  await expect(page.locator('.map-site-overdue')).toHaveCount(0);
+  await expect(page.getByText('0 occupied sites with overdue issued balances.')).toBeVisible();
+  const accounts=(await (
+    await page.request.get('/api/collections?organization='+seed.org)
+  ).json()) as CollectionsSnapshot;
+  const paid=accounts.summary.accounts.find(row=>row.invoice_id===invoiceRecord.id);
+  expect(paid?.state).toBe('paid');
+  expect(paid?.outstanding_cents).toBe('0');
+
+  await page.route('**/api/collections?organization=*', async route => {
+    await route.fulfill({status:503,contentType:'application/json',
+      body:JSON.stringify({error:'Collections temporarily offline'})});
+  });
+  await refresh.click();
+  await expect(financial).toContainText('Financial data unavailable');
+  await expect(queue).toHaveCount(0);
+  await expect(page.locator('.map-site-overdue')).toHaveCount(0);
+  await page.unroute('**/api/collections?organization=*');
+  await refresh.click();
+  await expect(financial).toContainText('Last checked at');
+  await expect(queue).toHaveCount(0);
+});
+
 test('collection forms and receipts remain accessible on every viewport in both themes', async ({
   page,
 }, info) => {
