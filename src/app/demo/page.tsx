@@ -3,6 +3,7 @@ import { GuestDemo } from '@/components/guest-demo';
 import './demo.css';
 import './planner.css';
 import './records.css';
+import './site-ledger.css';
 
 export const metadata: Metadata = {
   title: 'Try ForgeOS · Free Guest Demo',
