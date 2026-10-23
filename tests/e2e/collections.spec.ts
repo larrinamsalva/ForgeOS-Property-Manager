@@ -293,6 +293,21 @@ test('site directory and site file show current occupant overdue balance and ope
     issued_on:addDays(today(),-4),
     due_on:addDays(today(),-2),
   });
+  await page.goto('/map?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  const reviewQueue=page.getByRole('region',{name:'Past-due site review queue'});
+  await expect(reviewQueue).toBeVisible();
+  await expect(reviewQueue).toContainText('River Sample');
+  await expect(reviewQueue).toContainText('$100.00');
+  await expect(reviewQueue).toContainText('1 flagged site');
+  const mapBalances=reviewQueue.getByRole('region',{name:'Past-due sites and balances'});
+  await expect(mapBalances).toContainText('RV-01');
+  await reviewQueue.getByRole('searchbox',{name:'Find flagged space or resident'}).fill('missing name');
+  await expect(reviewQueue.getByText('No past-due sites match this search.')).toBeVisible();
+  await reviewQueue.getByRole('searchbox',{name:'Find flagged space or resident'}).fill('River');
+  await mapBalances.getByRole('button',{name:'Review account at RV-01'}).click();
+  await expect(page.getByRole('dialog').getByRole('region',{name:'Site resident billing status'}))
+    .toContainText('PAST DUE · $100.00');
+  await page.getByRole('dialog').getByRole('button',{name:'Close dialog'}).click();
   await page.goto('/sites?'+new URLSearchParams({organization:seed.org,property:seed.property}));
   const directory=page.getByRole('region',{name:'Site directory records'});
   await expect(directory).toContainText('RV-01');
