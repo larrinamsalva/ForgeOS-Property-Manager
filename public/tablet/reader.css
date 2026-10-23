@@ -621,3 +621,14 @@ footer {
     gap: 20px;
   }
 }
+
+/* Optional voice entry on the protected tablet reader */
+.voice-meter{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin:0 0 20px;min-width:0}
+.voice-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.voice-actions button{min-height:44px}
+.voice-actions .muted{font-size:13px}
+#voice-status{margin:8px 0}
+.voice-preview{border:2px solid var(--primary);background:var(--panel);border-radius:9px;padding:12px;margin:12px 0;overflow-wrap:anywhere}
+.voice-preview p{margin:7px 0}
+.voice-preview #voice-number{font-variant-numeric:tabular-nums;font-size:1.4rem}
+.voice-notice{margin:10px 0 0;font-size:12px}

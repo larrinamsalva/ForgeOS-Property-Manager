@@ -1,9 +1,11 @@
 // Only these public, account-independent assets may enter Cache Storage.
-const CACHE = 'forgeos-reader-shell-v0.3.0-c0fa1652de85';
+const CACHE = 'forgeos-reader-shell-v0.4.0-voice-assisted';
 const ASSETS = [
   '/tablet/index.html',
   '/tablet/reader.css',
   '/tablet/reader.mjs',
+  '/tablet/voice-entry.mjs',
+  '/tablet/voice-register.mjs',
   '/tablet/vault.mjs',
   '/icon.svg',
   '/manifest.webmanifest',

@@ -12,6 +12,7 @@ import {
   base64,
   unbase64,
 } from './vault.mjs';
+import { mountVoiceEntry } from './voice-entry.mjs';
 const $ = (id) => document.getElementById(id);
 let vault = null,
   snapshot = null,
@@ -25,6 +26,7 @@ let vault = null,
   lockTimer,
   savedDraft = null;
 const orgQuery = new URL(location.href).searchParams.get('organization') || '';
+let voice = null;
 function element(tag, text, cls) {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -102,6 +104,7 @@ function renderDisabled() {
     $('next').disabled = busy || index >= currentItems().length - 1;
     $('sync').disabled = busy || !navigator.onLine || pending().length === 0;
   }
+  voice?.updateDisabled();
 }
 async function refreshVaultList() {
   const metas = await listVaults();
@@ -312,6 +315,7 @@ function renderQueue() {
   }
 }
 function clearDraft() {
+  voice?.reset();
   if (vault) saveDraft(vault, null).catch((e) => message(e.message, true));
   savedDraft = null;
   dirty = false;
@@ -553,6 +557,7 @@ async function sync() {
   });
 }
 async function refresh() {
+  voice?.reset();
   await run(async () => {
     const server = await fetchSnapshot(vault.meta.organizationId);
     if (server.userId !== vault.meta.userId)
@@ -599,6 +604,7 @@ async function autoLock() {
   });
 }
 function lock() {
+  voice?.reset('Reader locked. Manual and spoken drafts must be reviewed after unlocking.');
   vault = null;
   snapshot = null;
   operations = [];
@@ -634,6 +640,22 @@ function lock() {
   message('Reader locked. Saved entries remain encrypted on this device.');
   refreshVaultList().catch((e) => message(e.message, true));
 }
+voice = mountVoiceEntry({
+  input: $('register'),
+  current: () => {
+    const { item, assignment, meter } = current();
+    return {
+      item, assignment, meter,
+      allowed: !!vault && !!item && !!assignment && !!meter &&
+        !busy && !stale() && !collected(item.id) && !$('capture-fields').disabled,
+    };
+  },
+  onUse: value => {
+    $('register').value = value;
+    dirty = true;
+    $('register').focus();
+  },
+});
 $('unlock-form').addEventListener('submit', prepare);
 $('capture-form').addEventListener('submit', save);
 $('capture-form').addEventListener('input', () => {
@@ -658,6 +680,7 @@ $('route-choice').addEventListener('change', () => {
     $('route-choice').value = routeId;
     return;
   }
+  voice?.reset();
   routeId = $('route-choice').value;
   index = 0;
   clearDraft();
