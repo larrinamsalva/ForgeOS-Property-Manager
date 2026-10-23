@@ -67,6 +67,7 @@ const OperationsWorkspace = dynamic(() =>
 const PaperlessWorkspace = dynamic(() => import('./paperless-workspace').then((module) => module.PaperlessWorkspace));
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { siteOverdueFlags } from '@/lib/site-overdue';
+import { cents } from '@/lib/billing-domain';
 import type { CollectionsSnapshot } from '@/lib/collections-domain';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
@@ -147,7 +148,7 @@ export function Workspace({
   // Read only. The existing collections endpoint enforces session membership and
   // database RLS. Never fetch financial records for maintenance/meter-only roles.
   useEffect(() => {
-    if (!snapshot.organizationId || !operatingAccess || !['overview', 'map'].includes(section)) return;
+    if (!snapshot.organizationId || !operatingAccess || !['overview', 'map', 'sites'].includes(section)) return;
     const controller = new AbortController();
     fetch('/api/collections?organization=' + encodeURIComponent(snapshot.organizationId), {
       cache: 'no-store', signal: controller.signal,
@@ -602,6 +603,16 @@ export function Workspace({
           ? s.customer_id === record.id
           : s.property_id === record.id
     );
+    const currentSiteStay = editor.entity === 'site' ? history.find(stay =>
+      isCurrentStay(stay, dateAtProperty(
+        snapshot.properties.find(p => p.id === (record as Site).property_id)?.timezone ??
+          'America/Los_Angeles'
+      ))) : undefined;
+    const overdueFlag = editor.entity === 'site' &&
+      financialVisibility === 'ready' &&
+      canEditProperty(snapshot, (record as Site).property_id, true) &&
+      currentSiteStay?.customer_id === arrears[record.id]?.customerId
+      ? arrears[record.id] : undefined;
     const detailTitle =
       editor.entity === 'site'
         ? `Site / unit ${(record as Site).label}`
@@ -652,6 +663,39 @@ export function Workspace({
             </p>
           )}
         </div>
+        {editor.entity === 'site' &&
+          canEditProperty(snapshot, (record as Site).property_id, true) && (
+          <section className="site-account-review" aria-label="Site resident billing status">
+            <h3>Current resident billing</h3>
+            {currentSiteStay ? (
+              <>
+                <p><strong>{customerName(snapshot.customers.find(c => c.id === currentSiteStay.customer_id))}</strong>
+                  {' · '}Current stay started {currentSiteStay.starts_on}</p>
+                {financialVisibility === 'loading' && <p role="status">Checking issued balances…</p>}
+                {financialVisibility === 'unavailable' && <p role="alert">
+                  Billing status is unavailable; open Payments &amp; collections to verify.
+                </p>}
+                {financialVisibility === 'ready' && (overdueFlag ? (
+                  <div className="site-account-overdue" role="status">
+                    <strong>PAST DUE · {cents(overdueFlag.outstandingCents)}</strong>
+                    <span>{overdueFlag.invoiceCount} overdue issued invoice{overdueFlag.invoiceCount === 1 ? '' : 's'}.
+                      This flag belongs only to the current resident's stay.</span>
+                    <p>Review the resident's official account and payments before taking action.</p>
+                  </div>
+                ) : <p>No confirmed overdue issued balance for this current stay.</p>)}
+                {snapshot.customers.some(c => c.id === currentSiteStay.customer_id &&
+                  c.property_id === (record as Site).property_id) && (
+                  <button type="button" className="button secondary"
+                    onClick={() => setEditor({ type:'detail', entity:'customer', id:currentSiteStay.customer_id })}>
+                    Open resident billing and follow-up
+                  </button>
+                )}
+              </>
+            ) : <p>No current resident assigned. Past residents' balances are never carried into a new stay.</p>}
+            <p className="muted small">Only approved and issued overdue balances appear here.
+              Drafts, unissued bills and past residents' debt are excluded. No automatic notice or charge is created.</p>
+          </section>
+        )}
         {editor.entity === 'customer' && canEditProperty(snapshot, (record as Customer).property_id, true) && (
           <CustomerBillingFile organizationId={snapshot.organizationId}
             propertyId={(record as Customer).property_id} customerId={record.id}
@@ -1081,6 +1125,13 @@ export function Workspace({
                           </td>
                           <td>
                             <Badge status={stamp(site)} />
+                            {financialVisibility === 'ready' &&
+                              canEditProperty(snapshot, site.property_id, true) &&
+                              arrears[site.id] && (
+                              <small className="site-directory-arrears">
+                                PAST DUE · {cents(arrears[site.id].outstandingCents)}
+                              </small>
+                            )}
                           </td>
                           <td>
                             <strong>{money(site.monthly_rate_cents)}</strong>
