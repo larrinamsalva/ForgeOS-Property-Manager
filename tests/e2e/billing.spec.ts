@@ -210,6 +210,46 @@ test('approved meter captures become a traceable invoice, PDF, credit, reversal 
   expect(protectedPdf.status()).toBe(401);
   await unsigned.close();
 });
+test('site customer record opens preselected monthly draft preparation without issuing a charge', async ({page}) => {
+  await login(page);
+  await billing(page);
+  await policy(page);
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Sites & units', exact: true }).click();
+  await page.getByRole('button', { name: 'RV-01', exact: true }).click();
+  const profile = page.getByRole('dialog');
+  const prepareLink = profile.getByRole('link', {name:'Prepare monthly bill'});
+  await expect(prepareLink).toBeVisible();
+  const link = await prepareLink.getAttribute('href');
+  expect(link).toContain('/billing?');
+  expect(link).toContain('site=');
+  expect(link).toContain('stay=');
+  await prepareLink.click();
+  const siteReview=page.getByRole('region',{name:'Site monthly billing preparation'});
+  await expect(siteReview).toBeVisible();
+  await expect(siteReview).toContainText('Monthly billing · RV-01');
+  await expect(siteReview).toContainText('River Sample');
+  await expect(siteReview).toContainText('Property billing policy');
+  await expect(siteReview).toContainText('Existing invoices');
+  await expect(siteReview).toContainText('rate schedule');
+  await expect(siteReview).toContainText('boundary readings');
+  await expect(page.getByRole('region',{name:'Invoice records'})).toHaveCount(0);
+  await siteReview.getByRole('button',{name:'Calculate draft for this site'}).click();
+  const dialog=page.getByRole('dialog');
+  await expect(dialog.getByRole('heading',{name:'Calculate draft invoice'})).toBeVisible();
+  const chosen=dialog.getByRole('combobox',{name:'Customer stay'});
+  await expect(chosen.locator('option:checked')).toContainText('River Sample');
+  const today=dateAtProperty('America/Los_Angeles');
+  const previousMonth=new Date(today.slice(0,4)+'-'+today.slice(5,7)+'-01T12:00:00Z');
+  previousMonth.setUTCMonth(previousMonth.getUTCMonth()-1);
+  await expect(dialog.getByLabel('Billing starts on')).toHaveValue(previousMonth.toISOString().slice(0,10));
+  await expect(dialog.getByLabel('Billing ends on (exclusive)')).toHaveValue(today.slice(0,7)+'-01');
+  await dialog.getByRole('button',{name:'Cancel'}).click();
+  await expect(dialog).not.toBeVisible();
+  expect((await (await page.request.get('/api/billing?organization='+new URL(link!, 'http://localhost').searchParams.get('organization'))).json()).invoices).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});
+
 test('billing forms, rates and internal statements remain accessible on every viewport and theme', async ({
   page,
 }, info) => {
