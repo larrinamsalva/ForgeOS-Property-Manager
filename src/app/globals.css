@@ -3254,3 +3254,8 @@ table summary {
   display: grid;
   gap: 16px;
 }
+
+
+/* Staff-only, read-only issued-invoice alerts for the physical site map. */
+.map-site.map-site-overdue{outline:3px solid #ba252c;outline-offset:-3px}
+.map-arrears-label{display:block;border-radius:5px;background:#a52129;color:#fff;font-size:10px;font-weight:800;line-height:1.45;padding:4px 5px;margin-top:5px;white-space:normal;overflow-wrap:anywhere}

@@ -14,6 +14,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { Property, Site, Snapshot, Stay } from '@/lib/domain';
+import type { SiteOverdueFlag } from '@/lib/site-overdue';
+import { cents } from '@/lib/billing-domain';
 import {
   canEditProperty,
   customerName,
@@ -192,10 +194,14 @@ export function SiteMap({
   sites,
   snapshot,
   onSelect,
+  overdueSites = {},
+  financialStatus = 'restricted',
 }: {
   sites: Site[];
   snapshot: Snapshot;
   onSelect: (id: string) => void;
+  overdueSites?: Record<string, SiteOverdueFlag>;
+  financialStatus?: string;
 }) {
   if (!sites.length)
     return (
@@ -209,8 +215,17 @@ export function SiteMap({
     cells.set(key, [...(cells.get(key) ?? []), site]);
   }
   const columns = Math.max(...sites.map((s) => s.map_x)) + 1;
+  const overdueCount = sites.filter((site) => !!overdueSites[site.id]).length;
   return (
     <>
+      {financialStatus === 'ready' && <p className="muted small" role="status">
+        {overdueCount} occupied site{overdueCount === 1 ? '' : 's'} with overdue issued balances.
+        Flags use actual invoice status, not the day of the month alone.
+      </p>}
+      {financialStatus === 'loading' && <p className="muted small" role="status">Checking issued invoice balances…</p>}
+      {financialStatus === 'unavailable' && <p className="muted small" role="alert">
+        Financial flags are unavailable. Open Payments &amp; collections to review balances.
+      </p>}
       <div className="map-scroll">
         <div
           className="property-grid"
@@ -236,9 +251,10 @@ export function SiteMap({
                   snapshot.reservations
                 );
                 const Icon = site.kind === 'apartment' ? Building2 : Caravan;
+                const overdue = overdueSites[site.id];
                 return (
                   <button
-                    className={`map-site map-${status}`}
+                    className={`map-site map-${status}${overdue ? ' map-site-overdue' : ''}`}
                     key={site.id}
                     onClick={() => onSelect(site.id)}
                   >
@@ -248,6 +264,7 @@ export function SiteMap({
                     </span>
                     <strong>{site.label}</strong>
                     <span>{status.replaceAll('_', ' ')}</span>
+                    {overdue && <span className="map-arrears-label">PAST DUE · {cents(overdue.outstandingCents)}</span>}
                   </button>
                 );
               })}
@@ -273,6 +290,8 @@ export function Overview({
   href,
   addProperty,
   viewSite,
+  overdueSites = {},
+  financialStatus = 'restricted',
 }: {
   snapshot: Snapshot;
   properties: Property[];
@@ -280,6 +299,8 @@ export function Overview({
   href: (section: string, property?: string) => string;
   addProperty?: () => void;
   viewSite: (id: string) => void;
+  overdueSites?: Record<string, SiteOverdueFlag>;
+  financialStatus?: string;
 }) {
   const propertyIds = new Set(properties.filter((p) => !p.archived_at).map((p) => p.id));
   const activeSites = sites.filter((s) => !s.archived_at && propertyIds.has(s.property_id));
@@ -296,6 +317,7 @@ export function Overview({
   const available = activeSites.filter((s) => status(s) === 'available').length;
   const preparation = activeSites.filter((s) => status(s) === 'in_preparation').length;
   const unavailable = activeSites.filter((s) => ['blocked', 'out_of_service'].includes(status(s))).length;
+  const overdueCount = activeSites.filter((site) => !!overdueSites[site.id]).length;
   const arrivals = snapshot.reservations.filter(
     (r) =>
       propertyIds.has(r.property_id) &&
@@ -480,6 +502,18 @@ export function Overview({
             <b>{unavailable}</b>
             <ArrowRight size={15} />
           </Link>
+          {financialStatus === 'ready' && <Link href={href('collections')} className="attention-row" data-testid="live-overdue-summary">
+            <span className="attention-icon amber"><Clock3 size={19} /></span>
+            <div>
+              <strong>Past-due issued balances</strong>
+              <span>Open customer invoices and payment history</span>
+            </div>
+            <b>{overdueCount}</b>
+            <ArrowRight size={15} />
+          </Link>}
+          {financialStatus === 'unavailable' && <p className="muted small" role="alert">
+            Past-due account status could not be loaded; please check Payments &amp; collections.
+          </p>}
           <div className="roadmap-note">
             <span className="eyebrow">Daily operations</span>
             <p>Review repairs, recurring checklists, low stock and equipment service.</p>
@@ -513,7 +547,7 @@ export function Overview({
             </Link>
           </div>
           <div className="panel-content">
-            <SiteMap sites={activeSites} snapshot={snapshot} onSelect={viewSite} />
+            <SiteMap sites={activeSites} snapshot={snapshot} onSelect={viewSite} overdueSites={overdueSites} financialStatus={financialStatus} />
           </div>
         </section>
       )}
