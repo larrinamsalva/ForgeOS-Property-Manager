@@ -616,18 +616,19 @@ export function Overview({
                 <ArrowRight size={15}/>
               </Link>
               {staffTasks.length > 0 && (
-                <div className="overview-followup-preview" role="list" aria-label="Next staff tasks">
+                <ul className="overview-followup-preview" aria-label="Next staff tasks">
                   {staffTasks.slice(0,3).map(task => (
-                    <Link key={task.noteId} role="listitem"
-                      href={href('collections',task.propertyId)+'&focus=followups'}
-                      className="overview-followup-item">
-                      <strong>{customerName(snapshot.customers.find(c =>
-                        c.id === task.customerId && c.property_id === task.propertyId))}</strong>
-                      <span>{task.propertyName} · {task.state==='due'?'Due':'Scheduled'} {task.dueOn}</span>
-                      <ArrowRight size={14}/>
-                    </Link>
+                    <li key={task.noteId}>
+                      <Link href={href('collections',task.propertyId)+'&focus=followups'}
+                        className="overview-followup-item">
+                        <strong>{customerName(snapshot.customers.find(c =>
+                          c.id === task.customerId && c.property_id === task.propertyId))}</strong>
+                        <span>{task.propertyName} · {task.state==='due'?'Due':'Scheduled'} {task.dueOn}</span>
+                        <ArrowRight size={14}/>
+                      </Link>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </section>
           )}
