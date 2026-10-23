@@ -3381,3 +3381,10 @@ table summary {
 .customer-contact-history article{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);min-width:0}
 .customer-contact-history article>strong{color:var(--text)}
 .customer-contact-history .contact-record-body{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Persistent resident contact audit remains visible when overdue actions disappear. */
+.resident-contact-history{border:1px solid var(--line);border-radius:10px;margin:14px 0;padding:13px;display:grid;gap:10px;min-width:0}
+.resident-contact-history h4,.resident-contact-history p{margin:0}
+.resident-contact-history .customer-contact-history{max-width:100%}
+.customer-billing-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;max-width:100%}
+.customer-billing-actions .button{white-space:normal;max-width:100%;text-align:center}
