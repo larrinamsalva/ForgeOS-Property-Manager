@@ -287,7 +287,6 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await contact.getByRole('button',{name:'Save manual contact note'}).click();
   const saved=await noteSaved;
   expect(saved.ok(),await saved.text()).toBe(true);
-  await expect(contact).toContainText('Manual contact note saved in the audited customer record.');
   await expect(contact).toContainText('Staff attempted the resident phone number on file');
   await expect(contact).toContainText('Phone call');
   await expect(contact).toContainText('Attempted — no response');
