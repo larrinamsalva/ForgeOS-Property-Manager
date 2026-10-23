@@ -239,7 +239,7 @@ test('manual payments, deposits, receipts and reconciliation reach the same issu
   await expect(worklist).toContainText('0 due · 1 scheduled');
   await page.goto('/?'+new URLSearchParams({organization:seed.org,property:seed.property}));
   await expect(dailySummary).toContainText('1 additional scheduled follow-up');
-  await expect(dailySummary).toContainText('Staff to verify the completed payment receipt next week');
+  await expect(dailySummary).toContainText('Scheduled '+addDays(today(),5));
   await dailyLink.click();
   await expect(page.getByRole('heading',{name:'Account notes & manual follow-ups'})).toBeVisible();
   await worklist.getByRole('button',{name:'Scheduled',exact:true}).click();
