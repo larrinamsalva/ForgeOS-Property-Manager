@@ -3259,3 +3259,12 @@ table summary {
 /* Staff-only, read-only issued-invoice alerts for the physical site map. */
 .map-site.map-site-overdue{outline:3px solid #ba252c;outline-offset:-3px}
 .map-arrears-label{display:block;border-radius:5px;background:#a52129;color:#fff;font-size:10px;font-weight:800;line-height:1.45;padding:4px 5px;margin-top:5px;white-space:normal;overflow-wrap:anywhere}
+
+/* Linked meter history inside the authenticated site/customer record modal */
+.meter-file-panel{margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:10px;min-width:0;background:var(--surface-2)}
+.meter-file-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.meter-file-heading h3{margin:0 0 5px}
+.meter-file-heading p{margin:0 0 8px}
+.meter-file-table{width:100%;min-width:540px}
+.meter-file-table td,.meter-file-table th{vertical-align:top}
+.meter-file-table small{display:block;color:var(--muted)}
