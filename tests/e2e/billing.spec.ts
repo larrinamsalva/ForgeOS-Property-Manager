@@ -280,6 +280,10 @@ test('monthly billing run lists real stay records by month without auto-issuing'
   expect(checklistContents).toContain('River Sample');
   expect(checklistContents).toContain('Site / unit');
   expect(checklistContents).toContain('Readiness');
+  await board.getByLabel('Invoice follow-up filter').selectOption('draft');
+  await expect(board.getByText('No stays match this property, month and filter.')).toBeVisible();
+  await board.getByLabel('Invoice follow-up filter').selectOption('none');
+  await expect(table).toContainText('No invoice');
   await board.getByLabel('Billing readiness filter').selectOption('review');
   await expect(table).toContainText('Needs review');
   const link=table.getByRole('link',{name:'Review / prepare draft'});
