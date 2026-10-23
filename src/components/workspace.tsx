@@ -53,6 +53,7 @@ import {
 } from './record-form';
 import { Badge, Empty, Overview, SiteMap, StayHistory } from './workspace-parts';
 import { MeterWorkspace } from './meter-workspace';
+import { SiteMeterFile } from './site-meter-file';
 const BillingWorkspace = dynamic(() =>
   import('./billing-workspace').then((module) => module.BillingWorkspace)
 );
@@ -650,6 +651,15 @@ export function Workspace({
         </div>
         <h3>Occupancy history</h3>
         <StayHistory stays={history} snapshot={snapshot} />
+        {(editor.entity === 'site' || editor.entity === 'customer') &&
+          canEditProperty(snapshot, (record as Site | Customer).property_id) && (
+            <SiteMeterFile
+              organizationId={snapshot.organizationId}
+              propertyId={(record as Site | Customer).property_id}
+              {...(editor.entity === 'site' ? { siteId: record.id } : { customerId: record.id })}
+              customers={snapshot.customers.filter((c) => c.property_id === (record as Site | Customer).property_id)}
+            />
+          )}
         {(editor.entity === 'site' || editor.entity === 'customer') && (
           <PlanningHistory
             snapshot={snapshot}
