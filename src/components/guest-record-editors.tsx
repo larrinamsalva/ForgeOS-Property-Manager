@@ -215,6 +215,11 @@ export function GuestCustomerForm({
   const [draft, setDraft] = useState<DemoCustomer>(customer ?? makeDemoCustomer(0, ''));
   const [depositText, setDepositText] = useState(customer?.deposit ? String(customer.deposit) : '');
   const [error, setError] = useState('');
+  // Assigned and Waiting List are separate choices, not an empty option
+  // bundled inside the site dropdown.
+  const [placement, setPlacement] = useState<'assigned' | 'waiting'>(() =>
+    customer && !customer.siteId ? 'waiting' : 'assigned'
+  );
   const editing = !!customer;
   const fieldId = (name: string) => (editing ? 'demo-edit-customer-' : 'demo-new-customer-') + name;
   const edit = (fields: Partial<DemoCustomer>) => setDraft((current) => ({ ...current, ...fields }));
@@ -253,6 +258,16 @@ export function GuestCustomerForm({
     setUnitNumberText(selected ? unitNumber(selected) : '');
     setError('');
   }
+  function choosePlacement(next: 'assigned' | 'waiting') {
+    setPlacement(next);
+    if (next === 'waiting') {
+      // Moving to the waitlist releases the old site on save through the
+      // existing saveCustomer flow; nothing is reserved or assigned here.
+      chooseUnit(null);
+      setBrowseOpen(false);
+    }
+    setError('');
+  }
   function typeUnitNumber(text: string) {
     setUnitNumberText(text);
     const matches = readySites.filter((site) => unitNumberMatches(site, text));
@@ -280,17 +295,22 @@ export function GuestCustomerForm({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const deposit = depositText.trim() === '' ? 0 : Number(depositText);
-    if (unitNumberText.trim() && !draft.siteId) {
+    if (placement === 'assigned' && !draft.siteId && !unitNumberText.trim()) {
+      setError('Choose an available site for Assigned, or select Waiting List.');
+      return;
+    }
+    if (placement === 'assigned' && unitNumberText.trim() && !draft.siteId) {
       setError('Space or unit number not found among currently available units. Choose a matching unit from Assigned / Available, or add that unit first in Property layout.');
       return;
     }
     if (!validName(draft.name) || !moneyOkay(deposit) ||
-      (draft.siteId && !readySites.some((s) => s.id === draft.siteId))) {
+      (placement === 'assigned' && draft.siteId && !readySites.some((s) => s.id === draft.siteId))) {
       setError('Enter a sample name, a valid deposit, and a space that is available.');
       return;
     }
     onSave({
       ...draft,
+      siteId: placement === 'waiting' ? null : draft.siteId,
       deposit,
       id: customer?.id ?? 0,
       name: draft.name.trim(),
@@ -304,6 +324,7 @@ export function GuestCustomerForm({
       setDraft(makeDemoCustomer(0, ''));
       setDepositText('');
       setUnitNumberText('');
+      setPlacement('assigned');
     }
     setError('');
   }
@@ -317,9 +338,28 @@ export function GuestCustomerForm({
         <label className="demo-customer-name" htmlFor={fieldId('name')}>{editing ? 'Customer name' : 'Fictional customer name'}
           <input id={fieldId('name')} required maxLength={100} placeholder="Example: Sample Guest" value={draft.name} onChange={(e) => edit({ name: e.target.value })}/>
         </label>
+        <fieldset className="demo-customer-placement">
+          <legend>Customer placement</legend>
+          <div className="demo-customer-placement-options">
+            <label>
+              <input type="radio" name={fieldId('placement')} value="assigned"
+                checked={placement === 'assigned'} onChange={() => choosePlacement('assigned')}/>
+              Assigned
+            </label>
+            <label>
+              <input type="radio" name={fieldId('placement')} value="waiting"
+                checked={placement === 'waiting'} onChange={() => choosePlacement('waiting')}/>
+              Waiting List
+            </label>
+          </div>
+          <small>{placement === 'assigned'
+            ? 'Choose a vacant site, space, apartment, mobile home or campground below.'
+            : 'On the waiting list — no space is assigned or held.'}</small>
+        </fieldset>
+        {placement === 'assigned' && <>
         <label className="demo-assignment-field" htmlFor={fieldId('site')}>{editing ? 'Assigned / available unit' : 'Assign an available site (optional)'}
           <select id={fieldId('site')} value={draft.siteId ?? 'unassigned'} onChange={(e) => chooseUnit(e.target.value === 'unassigned' ? null : e.target.value)}>
-            <option value="unassigned">Waitlist / not assigned</option>
+            <option value="unassigned">Choose an available space</option>
             {readySites.map((site) => <option key={site.id} value={site.id}>{designationLabel(site.designation)} · {site.label} ({site.id}) — {site.id === customer?.siteId ? 'Currently assigned' : 'Available'}</option>)}
           </select>
           <small aria-live="polite">{vacancyCount} currently available {vacancyCount === 1 ? 'unit' : 'units'} in this selection. Only vacant spaces, apartments, mobile homes and campground sites are available to new customers.</small>
@@ -381,6 +421,7 @@ export function GuestCustomerForm({
             </div>
           </div>}
         </section>
+        </>}
         <label htmlFor={fieldId('phone')}>Phone number
           <input id={fieldId('phone')} type="tel" maxLength={40} placeholder="Sample only" value={draft.phone} onChange={(e) => edit({ phone: e.target.value })}/>
         </label>

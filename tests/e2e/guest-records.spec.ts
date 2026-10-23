@@ -394,3 +394,55 @@ test('Overview updates customer name when a new arrival is assigned and clears i
   await expect(row).toContainText('available');
   await expect(row.getByRole('button', { name: 'Open customer record for RV-15' })).toHaveCount(0);
 });
+
+
+test('Assigned and Waiting List are separate customer choices and moving between them updates occupancy', async ({ page }) => {
+  const apiWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) apiWrites.push(request.url());
+  });
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  const newCustomer = page.getByRole('region', { name: 'Add customer information' });
+  const assigned = newCustomer.getByRole('radio', { name: 'Assigned' });
+  const waiting = newCustomer.getByRole('radio', { name: 'Waiting List' });
+  await expect(assigned).toBeChecked();
+  await expect(waiting).not.toBeChecked();
+
+  // The old "Waitlist / not assigned" pseudo-site is no longer a choice.
+  const sitePicker = newCustomer.getByLabel('Assign an available site (optional)');
+  await expect(sitePicker.locator('option')).not.toContainText(['Waitlist / not assigned']);
+  await newCustomer.getByLabel('Fictional customer name').fill('Example Waiting Arrival');
+  await newCustomer.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(newCustomer.getByRole('alert')).toContainText('Choose an available site for Assigned');
+
+  await waiting.check();
+  await expect(newCustomer.getByLabel('Assign an available site (optional)')).toHaveCount(0);
+  await newCustomer.getByRole('button', { name: 'Add example customer' }).click();
+  await expect(page.locator('p.demo-notice[role="status"]')).toContainText('Example Waiting Arrival added');
+  await page.getByLabel('Search', { exact: true }).fill('Example Waiting Arrival');
+  await expect(page.getByRole('row').filter({ hasText: 'Example Waiting Arrival' })).toContainText('Not assigned');
+
+  await page.getByRole('button', { name: 'Edit customer Example Waiting Arrival' }).click();
+  const edit = page.getByRole('region', { name: 'Edit customer Example Waiting Arrival' });
+  await expect(edit.getByRole('radio', { name: 'Waiting List' })).toBeChecked();
+  await edit.getByRole('radio', { name: 'Assigned' }).check();
+  await edit.getByLabel('Assigned / available unit').selectOption('RV-15');
+  await edit.getByRole('button', { name: 'Save sample customer' }).click();
+  await nav.getByRole('button', { name: 'Overview' }).click();
+  const overview = page.getByRole('region', { name: 'Overview spaces and customers' });
+  await expect(overview.locator('[data-overview-site="RV-15"]')).toContainText('Example Waiting Arrival');
+
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  await page.getByRole('button', { name: 'Edit customer Example Waiting Arrival' }).click();
+  const assignedEdit = page.getByRole('region', { name: 'Edit customer Example Waiting Arrival' });
+  await expect(assignedEdit.getByRole('radio', { name: 'Assigned' })).toBeChecked();
+  await assignedEdit.getByRole('radio', { name: 'Waiting List' }).check();
+  await assignedEdit.getByRole('button', { name: 'Save sample customer' }).click();
+
+  await nav.getByRole('button', { name: 'Overview' }).click();
+  await expect(overview.locator('[data-overview-site="RV-15"]')).toContainText('No customer assigned');
+  await expect(overview.locator('[data-overview-site="RV-15"]')).toContainText('available');
+  expect(apiWrites).toEqual([]);
+});
