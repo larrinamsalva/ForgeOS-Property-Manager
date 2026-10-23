@@ -56,12 +56,10 @@ describe('property monthly billing run does not post or invent invoice balances'
  it('uses the actual collection account issuance, not approval alone',()=>{
   const invoice={id:'invoice',number:'INV-100',property_id:'park',site_id:'s2',stay_id:'s2stay',
     status:'approved' as const,starts_on:'2026-09-01',ends_on:'2026-10-01',current_revision_id:'rev'};
-  const data={...billing,invoices:[invoice],revisions:[{id:'rev',total_cents:'90000'}],accounts:[]}
-    as unknown as BillingSnapshot;
+  const data={...billing,invoices:[invoice],revisions:[{id:'rev',total_cents:'90000'}],accounts:[]} as unknown as BillingSnapshot;
   const first=monthlyBillingRun('park','2026-09','2026-10-23',sites,stays,data,null);
   expect(first.find(r=>r.stayId==='s2stay')?.invoiceStage).toBe('approved_unissued');
-  const issued={...data,accounts:[{invoice_id:'invoice',issued_on:'2026-10-02'}]}
-    as unknown as BillingSnapshot;
+  const issued={...data,accounts:[{invoice_id:'invoice',issued_on:'2026-10-02'}]} as unknown as BillingSnapshot;
   expect(monthlyBillingRun('park','2026-09','2026-10-23',sites,stays,issued,null)
     .find(r=>r.stayId==='s2stay')?.invoiceStage).toBe('issued');
   // Other tenants sharing a site remain unaffected.
