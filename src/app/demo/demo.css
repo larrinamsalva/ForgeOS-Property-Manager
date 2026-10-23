@@ -121,3 +121,34 @@
 :root[data-theme='dark'] .demo-tile.available,:root[data-theme='dark'] .demo-map-space.available{background:#184937;border-color:#377b59;color:#dbffec}
 :root[data-theme='dark'] .demo-tile.reserved,:root[data-theme='dark'] .demo-map-space.reserved{background:#503b1e;border-color:#a27d41;color:#ffe4ae}
 :root[data-theme='dark'] .demo-status.occupied{background:#20496c;color:#d5edff}
+
+/* Overview: space-first quick lookup, without changing occupancy on click. */
+.demo-overview-directory .demo-section-head{align-items:center;flex-wrap:wrap}
+.demo-overview-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(145px,1fr);gap:12px;margin-bottom:14px}
+.demo-overview-filters label{font-weight:750;font-size:12px;color:var(--text);display:grid;gap:6px;min-width:0}
+.demo-overview-filters input,.demo-overview-filters select{background:var(--input);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;min-width:0;min-height:42px;color:var(--text)}
+.demo-overview-table{min-width:690px}
+.demo-overview-table td{vertical-align:middle;overflow-wrap:anywhere}
+.demo-overview-table td>strong{font-weight:750}
+.demo-overview-table td>small,.demo-overview-table td>span+small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.demo-overview-actions{display:flex;flex-wrap:wrap;gap:6px}
+.demo-overview-actions .demo-small-button{white-space:normal}
+.demo-overview-empty{text-align:center;color:var(--muted);padding:24px!important}
+.demo-overview-operations .demo-tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(max-width:750px){
+  .demo-overview-operations .demo-tasks{grid-template-columns:1fr}
+  .demo-overview-table{min-width:0}
+  .demo-overview-table thead{display:none}
+  .demo-overview-table tbody{display:grid;gap:10px;padding:8px}
+  .demo-overview-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px}
+  .demo-overview-table td{border:0!important;padding:3px 0}
+  .demo-overview-table td:first-child{grid-column:1/-1}
+  .demo-overview-table td:nth-child(3){grid-column:1/-1}
+  .demo-overview-table td:last-child{grid-column:1/-1}
+  .demo-overview-table td:nth-child(2)::before{content:'Customer';display:block;font-size:10px;font-weight:750;color:var(--muted)}
+  .demo-overview-table td:nth-child(3)::before{content:'Contact';display:block;font-size:10px;font-weight:750;color:var(--muted)}
+  .demo-overview-table td:nth-child(4)::before{content:'Status';display:block;font-size:10px;font-weight:750;color:var(--muted)}
+  .demo-overview-table td:last-child::before{content:'Records';display:block;font-size:10px;font-weight:750;color:var(--muted);margin-bottom:6px}
+  .demo-overview-table td.demo-overview-empty{grid-column:1/-1}
+}
+@media(max-width:460px){.demo-overview-filters{grid-template-columns:1fr}}
