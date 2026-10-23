@@ -502,7 +502,7 @@ export function GuestDemo() {
                     paid={rentPaid(customer.id)} today={todayAtPark}
                     onRecordSamplePayment={recordSampleRent} onDraft={prepareSampleNotice}
                     onGoMeters={() => openMeterForSite(site.id)}/> : null;
-                })()}}
+                })()}
               <section className="demo-panel">
                 <div className="demo-section-head"><div><h2>Customer directory</h2><p>{customers.length.toLocaleString()} fictional customer files with optional contacts, arrival details, vehicle notes and deposits. Lists display 50 at a time.</p></div>
                   <label className="demo-filter" htmlFor="demo-customer-search">Search
