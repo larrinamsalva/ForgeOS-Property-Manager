@@ -55,7 +55,7 @@ export function SiteMeterFile({
       });
     }
     return () => controller.abort();
-  }, [organizationId, key]);
+  }, [organizationId, key, siteId]);
   const current = loaded?.key === key ? loaded : null;
   const entries = current?.data
     ? meterFileEntries(current.data, { siteId, customerId }) : [];
