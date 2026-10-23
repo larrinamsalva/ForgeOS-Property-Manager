@@ -48,8 +48,9 @@ export function siteOverdueFlags(
     // a due date from the calendar or a site's monthly rate.
     const dueOn = account.due_on && /^\d{4}-\d{2}-\d{2}$/.test(account.due_on)
       ? account.due_on : null;
-    const pastDueDays = Number.isSafeInteger(account.days_past_due) &&
-      (account.days_past_due ?? 0) >= 0 ? account.days_past_due! : null;
+    const pastDueDays = typeof account.days_past_due === 'number' &&
+      Number.isSafeInteger(account.days_past_due) && account.days_past_due >= 0
+      ? account.days_past_due : null;
     flags[invoice.site_id] = {
       siteId: invoice.site_id,
       customerId: account.customer_id,
