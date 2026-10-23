@@ -4,14 +4,22 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
 import { customerName, type Snapshot } from '@/lib/domain';
-import type { MonthlyRunRow, MonthlyRunStatus } from '@/lib/monthly-billing-run';
+import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
-  {value:'all',label:'All occupied sites'},
+  {value:'all',label:'All intersecting stays'},
   {value:'ready',label:'Precheck clear'},
   {value:'review',label:'Needs review'},
   {value:'existing',label:'Existing invoices'},
+];
+const stages: {value:'all'|MonthlyInvoiceStage;label:string}[] = [
+  {value:'all',label:'All invoice stages'},
+  {value:'none',label:'No invoice yet'},
+  {value:'draft',label:'Draft awaiting approval'},
+  {value:'approved_unissued',label:'Approved, awaiting issuance'},
+  {value:'issued',label:'Issued'},
+  {value:'mixed',label:'Mixed invoice stages'},
 ];
 export function MonthlyBillingBoard({
   snapshot, propertyId, month, onMonth, rows, loadingEvidence, evidenceError, navigationPending,
@@ -26,11 +34,16 @@ export function MonthlyBillingBoard({
   navigationPending: boolean;
 }) {
   const [filter, setFilter] = useState<'all'|MonthlyRunStatus>('all');
+  const [invoiceFilter, setInvoiceFilter] = useState<'all'|MonthlyInvoiceStage>('all');
   const [search,setSearch] = useState('');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
     existing:rows.filter(r=>r.status==='existing').length,
+    draft:rows.filter(r=>r.invoiceStage==='draft').length,
+    approved:rows.filter(r=>r.invoiceStage==='approved_unissued' ||
+      (r.invoiceStage==='mixed' && r.invoices.some(i=>i.status==='approved' && !i.issued))).length,
+    issued:rows.filter(r=>r.invoiceStage==='issued').length,
   };
   const names = new Map(snapshot.customers.filter(c => c.property_id === propertyId)
     .map(c => [c.id, customerName(c)]));
@@ -45,6 +58,7 @@ export function MonthlyBillingBoard({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const visible = rows.filter(row => (filter === 'all' || row.status === filter) &&
+    (invoiceFilter === 'all' || row.invoiceStage === invoiceFilter) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
   return (
@@ -71,6 +85,12 @@ export function MonthlyBillingBoard({
             {filters.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
           </select>
         </label>
+        <label>Invoice follow-up
+          <select aria-label="Invoice follow-up filter" value={invoiceFilter}
+            onChange={e => setInvoiceFilter(e.target.value as typeof invoiceFilter)}>
+            {stages.map(stage => <option key={stage.value} value={stage.value}>{stage.label}</option>)}
+          </select>
+        </label>
       </div>
       <div className="monthly-billing-export">
         <button type="button" className="button secondary" disabled={navigationPending || !visible.length || loadingEvidence || evidenceError}
@@ -82,10 +102,14 @@ export function MonthlyBillingBoard({
         <span><strong>{totals.ready}</strong> precheck clear</span>
         <span><strong>{totals.review}</strong> need review</span>
         <span><strong>{totals.existing}</strong> have invoices</span>
+        <span><strong>{totals.draft}</strong> drafts awaiting approval</span>
+        <span><strong>{totals.approved}</strong> have approved, unissued bills</span>
+        <span><strong>{totals.issued}</strong> issued bills only</span>
       </div>
       <p className="muted small">
         {loadingEvidence ? 'Loading supervisor-reviewed meter readings… ' : ''}
         {evidenceError ? 'Meter evidence unavailable. Review indicators may be incomplete. ' : ''}
+        Invoice-stage counts describe recorded invoices, not whether all services have been billed.
         Precheck clear is not a guaranteed invoice. The authoritative calculator still requires
         complete, approved meter boundaries and applicable rate versions.
       </p>
@@ -120,7 +144,8 @@ export function MonthlyBillingBoard({
                     <p key={i.label}><strong>{i.label}:</strong> {i.note}</p>)}
                 </details>}
               </td>
-              <td>{row.invoices.length ? row.invoices.map(invoice=>
+              <td><strong>{invoiceStageLabel(row.invoiceStage)}</strong>
+                {row.invoices.length ? row.invoices.map(invoice=>
                 <div key={invoice.id}>
                   <Link href={'/invoices/'+invoice.id}>{invoice.number}</Link>
                   <small>{invoice.issued ? 'Issued' : invoice.status === 'approved' ? 'Approved, unissued' : 'Draft'}
@@ -131,6 +156,11 @@ export function MonthlyBillingBoard({
                   organization:snapshot.organizationId,property:propertyId,
                   site:row.siteId,stay:row.stayId,month,
                 })}>{row.status === 'existing' ? 'Review site bills' : 'Review / prepare draft'}</Link>
+                {row.invoices.some(invoice => invoice.status === 'approved' && !invoice.issued) && (
+                  <Link className="monthly-issue-link" href={'/collections?' + new URLSearchParams({
+                    organization:snapshot.organizationId,property:propertyId,
+                  })}>Open collections for manual issuance</Link>
+                )}
               </td>
             </tr>)}</tbody>
           </table>
