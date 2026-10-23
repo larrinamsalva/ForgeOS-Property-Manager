@@ -10,7 +10,7 @@ const period=suggestBillingPeriod(stay,'2026-10-23');
 const billing={
  policies:[{property_id:'property'}], rates:[{property_id:'property',utility:'electric',
   status:'active',starts_on:'2026-01-01',ends_on:null}], invoices:[]
-} as BillingSnapshot;
+} as unknown as BillingSnapshot;
 const meter={
  meters:[{id:'meter',property_id:'property',utility:'electric'}],
  assignments:[{id:'assignment',meter_id:'meter',site_id:'site',property_id:'property',
@@ -52,7 +52,7 @@ describe('site-focused monthly billing preparation',()=>{
  });
  it('warns of existing draft/issued overlap and missing policy',()=>{
   const data={...billing,policies:[], invoices:[{id:'invoice',stay_id:'stay',site_id:'site',
-   status:'approved',number:'INV-0001',starts_on:'2026-09-01',ends_on:'2026-10-01'}]} as BillingSnapshot;
+   status:'approved',number:'INV-0001',starts_on:'2026-09-01',ends_on:'2026-10-01'}]} as unknown as BillingSnapshot;
   const result=siteBillingChecklist(site,stay,period,data,meter);
   expect(result.find(i=>i.label==='Property billing policy')?.state).toBe('check');
   expect(result.find(i=>i.label==='Existing invoices')?.note).toContain('INV-0001');
