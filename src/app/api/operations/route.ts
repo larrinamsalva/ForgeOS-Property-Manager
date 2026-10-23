@@ -4,6 +4,7 @@ import { z, ZodError } from 'zod';
 import { serverClient } from '@/lib/supabase/server';
 import { sameOrigin } from '@/lib/request-origin';
 import { operationsCommandSchema, operationsError } from '@/lib/operations-validation';
+import { maintenanceSelfTaskSchema } from '@/lib/maintenance-validation';
 import { loadOperationsSnapshot } from '@/lib/operations-data';
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
@@ -57,8 +58,13 @@ export async function POST(request: NextRequest) {
     } = await client.auth.getUser();
     if (error || !user)
       return NextResponse.json({ error: 'Session expired. Sign in before retrying.' }, { status: 401 });
-    const input = operationsCommandSchema.parse(await readJson(request));
-    const result = await client.rpc('operations_command', input);
+    const body = await readJson(request);
+    const selfService = typeof body === 'object' && body !== null &&
+      'command' in body && body.command === 'maintenance_self_task';
+    const input = selfService ? maintenanceSelfTaskSchema.parse(body) : operationsCommandSchema.parse(body);
+    const result = selfService
+      ? await client.rpc('submit_maintenance_task', { payload: input.payload })
+      : await client.rpc('operations_command', input);
     if (result.error) {
       const mapped = operationsError(result.error.code, result.error.message);
       return NextResponse.json({ error: mapped.error }, { status: mapped.status });

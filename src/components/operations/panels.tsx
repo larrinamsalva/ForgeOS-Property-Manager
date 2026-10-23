@@ -25,12 +25,13 @@ function Action({
     </button>
   );
 }
-export function WorkPanel({ ui, search, status }: { ui: OpsUI; search: string; status: string }) {
+export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean }) {
   const work = scoped(ui, ui.data.work)
     .filter(
       (w) =>
         (status === 'all' || w.status === status) &&
-        `${w.number} ${w.title} ${w.category}`.toLowerCase().includes(search.toLowerCase())
+        (!mineOnly || w.assigned_to === ui.snapshot.userId) &&
+        `${w.number} ${w.title} ${w.category} ${w.description}`.toLowerCase().includes(search.toLowerCase())
     )
     .sort(
       (a, b) =>
@@ -40,10 +41,14 @@ export function WorkPanel({ ui, search, status }: { ui: OpsUI; search: string; s
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <h2>Maintenance requests & work orders</h2>
-          <p>Assigned staff record work; managers review completion and actual costs.</p>
+          <h2>{mineOnly ? 'My service · assigned jobs' : 'Maintenance requests & work orders'}</h2>
+          <p>{mineOnly ? 'Open your work order to start service, add time, list parts, upload photos or mark it complete.' :
+            'Track plumbing, sprinklers, tree trimming, bathrooms, laundry, trash areas and more.'}</p>
         </div>
-        {ui.office && ui.active && <Action click={() => ui.open('new_work')}>New maintenance request</Action>}
+        <div className="action-group">
+          {ui.office && ui.active && <Action click={() => ui.open('new_work')}>New maintenance request</Action>}
+          {!ui.office && ui.active && <Action click={() => ui.open('maintenance_self_task')}>Create my task</Action>}
+        </div>
       </div>
       {!work.length ? (
         <Empty title="No matching work orders">
@@ -67,10 +72,12 @@ export function WorkPanel({ ui, search, status }: { ui: OpsUI; search: string; s
                     <button className="text-button" onClick={() => ui.open('work_detail', w.id)}>
                       {w.number}
                     </button>
-                    <small>{w.title}</small>
+                    <small>{w.title} · {w.category}</small>
                   </th>
                   <td>
                     {ui.data.context.work.find((c) => c.id === w.id)?.site_label ?? 'Property / common area'}
+                    <small>{w.description.split('\n')[0].startsWith('Service area: ') ?
+                      w.description.split('\n')[0] : 'Area not recorded'}</small>
                     <small>
                       {ui.data.context.work.find((c) => c.id === w.id)?.assigned_name ??
                         staffName(ui, w.assigned_to)}

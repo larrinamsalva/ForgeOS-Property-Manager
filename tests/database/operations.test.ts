@@ -180,6 +180,49 @@ async function plan(s: Awaited<ReturnType<typeof setup>>, kind = 'checklist') {
   });
 }
 describe('property operations transactions and access', () => {
+  it('allows an active maintenance worker to create only their own auditable self-task, with retry safety', async () => {
+    const setupResult = await setup();
+    const payload = {
+      ...setupResult.scope,
+      request_id: randomUUID(),
+      reason: 'Inspected the irrigation damage in service zone two',
+      title: 'Replace broken sprinkler head',
+      description: 'Service area: Sprinklers / irrigation zones · Zone 2\\n\\nReplace broken sprinkler head',
+      category: 'Sprinklers & irrigation',
+      work_area: 'sprinklers',
+      priority: 'normal',
+      site_id: null,
+      requested_on: today,
+      due_on: today,
+      parts_required: 'PVC connector',
+    };
+    const run = (body: Record<string, unknown>, user = worker) =>
+      asUser(db, user, async (tx) =>
+        (await tx.query<{ task: { id: string } }>(
+          'select submit_maintenance_task($1::jsonb) task', [JSON.stringify(body)]
+        )).rows[0].task.id
+      );
+    const id = await run(payload);
+    expect(await run(payload)).toBe(id);
+    const row = (await db.query<{ assigned_to: string; customer_id: string | null; status: string; description: string }>(
+      'select assigned_to,customer_id,status,description from work_orders where id=$1', [id]
+    )).rows[0];
+    expect(row.assigned_to).toBe(worker);
+    expect(row.customer_id).toBeNull();
+    expect(row.status).toBe('scheduled');
+    expect(row.description).toContain('Zone 2');
+    const count = (await db.query<{ count: number }>(
+      'select count(*)::int count from work_orders where id=$1', [id]
+    )).rows[0].count;
+    expect(count).toBe(1);
+    await expect(run({...payload,request_id:randomUUID()}, identities.other)).rejects.toThrow();
+    await expect(run({...payload,request_id:randomUUID(),property_id:randomUUID()})).rejects.toThrow();
+    await expect(run({...payload,title:'Changed after retry'})).rejects.toThrow();
+    await expect(run({...payload,request_id:randomUUID(),due_on:addDays(today,-1)})).rejects.toThrow();
+    await asUser(db, worker, async (tx) => {
+      expect((await tx.query('select id from work_orders where id=$1', [id])).rows).toHaveLength(1);
+    });
+  });
   it('assigns scoped work and limits a maintenance employee to their jobs, without tenant or cost access', async () => {
     const s = await setup(),
       w = await work(s),

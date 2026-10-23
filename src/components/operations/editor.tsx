@@ -7,6 +7,7 @@ import { WorkDetail, StockDetail, EquipmentDetail, RunDetail, PurchaseDetail } f
 import { addDays, customerName } from '@/lib/domain';
 import { collectionDollars } from '@/lib/collections-domain';
 import { quantity, quantityToMilli, opsLabel } from '@/lib/operations-domain';
+import { maintenanceCategories, maintenanceAreas, formatMaintenanceDescription, getSavedMaintenanceDescription } from '@/lib/maintenance-catalog';
 import type { OpsUI, OpsEditor } from './types';
 const reason: Field = { name: 'reason', label: 'Reason / work note', type: 'textarea', required: true };
 const reference: Field = { name: 'reference', label: 'Supporting reference' };
@@ -322,8 +323,14 @@ export function OperationsEditor({
         next_service_on: v.next_service_on || null,
       });
   }
-  if (editor.type === 'new_work' || editor.type === 'edit_work') {
-    title = work ? 'Edit work order' : 'New maintenance request';
+  if (editor.type === 'new_work' || editor.type === 'edit_work' || editor.type === 'maintenance_self_task') {
+    const selfTask = editor.type === 'maintenance_self_task';
+    const savedArea = getSavedMaintenanceDescription(work?.description ?? '');
+    const serviceAreas = maintenanceAreas.map((a) => ({ value: a.value, label: a.label }));
+    title = selfTask ? 'Create my maintenance task' : work ? 'Edit work order' : 'New maintenance request';
+    description = selfTask
+      ? 'Create a task assigned to you. The property manager can review and close it. Customer billing and payment information is not available here.'
+      : 'Choose the service type and exact work area. Tasks for bathrooms, laundry, dumpsters and grounds do not require a resident or site.';
     fields = [
       { name: 'title', label: 'Work title', required: true, default: work?.title ?? '' },
       {
@@ -331,9 +338,22 @@ export function OperationsEditor({
         label: 'Problem / work description',
         type: 'textarea',
         required: true,
-        default: work?.description ?? '',
+        default: savedArea.description,
       },
-      { name: 'category', label: 'Maintenance category', default: work?.category ?? 'General' },
+      {
+        name: 'category', label: 'Type of maintenance job', type: 'select', required: true,
+        options: [
+          ...maintenanceCategories.map((v) => ({ value: v, label: v })),
+          ...(work?.category && !maintenanceCategories.includes(work.category as typeof maintenanceCategories[number])
+            ? [{ value: work.category, label: work.category }] : []),
+        ],
+        default: work?.category ?? 'General repairs',
+      },
+      { name: 'work_area', label: 'What area needs service?', type: 'select', required: true,
+        options: serviceAreas, default: savedArea.area },
+      { name: 'area_detail', label: 'Exact spot (building, zone, row, or landmark)',
+        default: savedArea.detail,
+        help: 'Examples: Laundry building B, restroom near gate, row 4, irrigation zone 2.' },
       {
         name: 'priority',
         label: 'Priority',
@@ -352,14 +372,14 @@ export function OperationsEditor({
                 .filter((s) => s.property_id === propertyId && !s.archived_at)
                 .map((s) => ({ value: s.id, label: s.label })),
             },
-            {
+            ...(!selfTask ? [{
               name: 'customer_id',
               label: 'Customer (optional)',
               type: 'select' as const,
               options: snapshot.customers
                 .filter((c) => c.property_id === propertyId)
                 .map((c) => ({ value: c.id, label: customerName(c) })),
-            },
+            }] : []),
             {
               name: 'requested_on',
               label: 'Request date',
@@ -377,7 +397,7 @@ export function OperationsEditor({
         type: 'date',
         default: work?.due_on ?? today,
       },
-      assign,
+      ...(!selfTask ? [assign] : []),
       {
         name: 'parts_required',
         label: 'Parts required',
@@ -386,15 +406,20 @@ export function OperationsEditor({
       },
       reason,
     ];
-    onSave = (v) =>
-      save(editor.type, {
+    onSave = (v) => {
+      const fullDescription = formatMaintenanceDescription(String(v.work_area), String(v.area_detail), String(v.description));
+      return save(editor.type, {
         ...v,
+        description: fullDescription,
+        work_area: selfTask ? v.work_area : undefined,
+        area_detail: undefined,
         due_on: v.due_on || null,
-        assigned_to: v.assigned_to || null,
+        assigned_to: selfTask ? undefined : (v.assigned_to || null),
         ...(work
           ? { work_order_id: work.id, version: work.version }
-          : { site_id: v.site_id || null, customer_id: v.customer_id || null }),
+          : { site_id: v.site_id || null, ...(!selfTask ? { customer_id: v.customer_id || null } : {}) }),
       });
+    };
   }
   if (editor.type === 'work_status' && work) {
     title = `${editor.value === 'closed' ? 'Approve & close' : opsLabel(editor.value ?? '')} ${work.number}`;
