@@ -93,8 +93,14 @@ function unitNumberMatches(site: DemoSite, typed: string): boolean {
 }
 
 export function GuestSiteEditor({
-  site, onSave, onClose,
-}: { site: DemoSite; onSave: (updated: DemoSite) => void; onClose: () => void }) {
+  site, customer, onOpenCustomer, onSave, onClose,
+}: {
+  site: DemoSite;
+  customer?: DemoCustomer;
+  onOpenCustomer?: (id: number) => void;
+  onSave: (updated: DemoSite) => void;
+  onClose: () => void;
+}) {
   const [draft, setDraft] = useState<DemoSite>(site);
   // Keep input text separate from saved numbers so deleting "0", or typing
   // a decimal point, never forces the old value back into the field.
@@ -131,6 +137,24 @@ export function GuestSiteEditor({
     <div className="demo-section-head"><div><h2><Building2 size={19}/> Space / apartment record</h2><p>Editing <strong>{site.id}</strong> · Sample changes only · No real records saved</p></div>
       <button type="button" className="demo-small-button" onClick={onClose}><X size={15}/> Close</button>
     </div>
+    <section className="demo-site-resident" aria-label={'Assigned customer for ' + site.id}>
+      <div className="demo-site-resident-header">
+        <strong>Customer on this space</strong>
+        {customer && onOpenCustomer && <button type="button" className="demo-small-button" onClick={() => onOpenCustomer(customer.id)}>Open customer record</button>}
+      </div>
+      {customer ? <div className="demo-site-resident-grid">
+        <div><small>Customer name</small><strong>{customer.name}</strong></div>
+        <div><small>Phone</small><span>{customer.phone || 'Not provided'}</span></div>
+        <div><small>Email</small><span>{customer.email || 'Not provided'}</span></div>
+        <div><small>Move-in date</small><span>{customer.arrivalDate || 'Not entered'}</span></div>
+        <div><small>Emergency contact</small><span>{customer.emergencyContact || 'Not provided'}</span></div>
+        <div><small>Vehicle / RV</small><span>{customer.vehicle || 'Not entered'}</span></div>
+        {customer.notes && <div className="demo-site-resident-notes"><small>Customer notes</small><span>{customer.notes}</span></div>}
+      </div> : <p>{site.status === 'occupied'
+        ? site.resident ? site.resident + ' — no linked customer information yet.' : 'Occupied — customer information not recorded.'
+        : 'No current customer is assigned to this space.'}</p>}
+      <small>Fictional demo records only · Updates follow the linked customer record.</small>
+    </section>
     <form onSubmit={submit}>
       <div className="demo-record-grid">
         <label htmlFor="demo-space-designation">Unit type
