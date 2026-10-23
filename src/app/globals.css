@@ -3295,3 +3295,16 @@ table summary {
 .site-utility-bill>a{display:block;overflow-wrap:anywhere}
 .site-meter-voice{border-top:1px solid var(--line);padding-top:12px}
 .site-meter-voice>.action-group{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Site-to-billing workstream; source checks never impersonate issued totals */
+.site-monthly-bill-link{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:12px;border:1px solid var(--line);padding:12px;border-radius:10px;margin:14px 0}
+.site-monthly-bill-link p{margin:4px 0}
+.site-billing-review{margin:12px 0}
+.site-billing-checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin:12px 0}
+.site-billing-check{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.site-billing-check strong{overflow-wrap:anywhere}
+.site-billing-check span{font-size:.85rem;color:var(--muted)}
+.site-billing-check[data-state="check"]{border-style:dashed}
+.site-billing-existing{margin-top:16px}
+.site-billing-statement{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px}
+.site-billing-totals{display:flex;gap:6px 15px;flex-wrap:wrap;font-size:.86rem}

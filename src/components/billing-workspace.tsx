@@ -1,6 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { MeterSnapshot } from '@/lib/meter-domain';
+import { suggestBillingPeriod, siteBillingChecklist } from '@/lib/site-billing-prep';
 import { Receipt, RefreshCw, Plus, Download } from 'lucide-react';
 import { stateLabel } from '@/lib/collections-domain';
 import type { Snapshot } from '@/lib/domain';
@@ -22,10 +24,12 @@ export function BillingWorkspace({
   snapshot,
   propertyId,
   navigationPending,
+  focus,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
+  focus?: { siteId: string; stayId: string };
 }) {
   const [data, setData] = useState<BillingSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,7 @@ export function BillingWorkspace({
   const [customerId, setCustomerId] = useState('');
   const [editor, setEditor] = useState<Editor | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [meterEvidence, setMeterEvidence] = useState<{ key: string; data?: MeterSnapshot; error?: boolean } | null>(null);
   const property = snapshot.properties.find((p) => p.id === selectedProperty);
   const today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
   const active = !!property && !property.archived_at && property.operating_status === 'active';
@@ -65,6 +70,22 @@ export function BillingWorkspace({
       });
     return () => controller.abort();
   }, [snapshot.organizationId, refresh]);
+  const meterEvidenceKey = snapshot.organizationId + ':' + selectedProperty + ':' + (focus?.siteId ?? '');
+  useEffect(() => {
+    if (!focus?.siteId || !focus.stayId || !selectedProperty || !prepare) return;
+    const controller = new AbortController();
+    fetch('/api/meters?organization=' + encodeURIComponent(snapshot.organizationId), {
+      cache: 'no-store', signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) throw new Error('Meter evidence unavailable');
+      return response.json() as Promise<MeterSnapshot>;
+    }).then(data => {
+      if (!controller.signal.aborted) setMeterEvidence({ key: meterEvidenceKey, data });
+    }).catch(() => {
+      if (!controller.signal.aborted) setMeterEvidence({ key: meterEvidenceKey, error: true });
+    });
+    return () => controller.abort();
+  }, [focus?.siteId, focus?.stayId, selectedProperty, snapshot.organizationId, meterEvidenceKey, prepare]);
   const reload = () => {
     setLoading(true);
     setRefresh((value) => value + 1);
@@ -83,12 +104,17 @@ export function BillingWorkspace({
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error);
-    close();
-    setNotice(
-      command === 'approve_invoice'
-        ? 'Invoice approved for internal review. It has not been issued.'
-        : 'Billing record saved. Earlier versions and ledger entries are retained.'
-    );
+    if (command === 'create_draft' && focus?.stayId && typeof result.id === 'string') {
+      setEditor({ type: 'detail', id: result.id, requestId: crypto.randomUUID() });
+      setNotice('Draft calculated. Review itemized rent, electric, water, gas, sewer, taxes and total. No invoice has been issued.');
+    } else {
+      close();
+      setNotice(
+        command === 'approve_invoice'
+          ? 'Invoice approved for internal review. It has not been issued.'
+          : 'Billing record saved. Earlier versions and ledger entries are retained.'
+      );
+    }
     reload();
   }
   const invoices = (data?.invoices.filter((i) => i.property_id === selectedProperty) ?? []).sort(
@@ -106,6 +132,14 @@ export function BillingWorkspace({
   );
   const policy = policies[0];
   const stays = snapshot.stays.filter((s) => s.property_id === selectedProperty);
+  const focusSite = snapshot.sites.find(s => s.id === focus?.siteId && s.property_id === selectedProperty);
+  const focusStay = focusSite ? stays.find(s => s.id === focus?.stayId && s.site_id === focusSite.id) : undefined;
+  const suggested = focusStay ? suggestBillingPeriod(focusStay, today, policy?.due_days ?? 15) : null;
+  const siteChecklist = data && focusSite && focusStay && suggested
+    ? siteBillingChecklist(focusSite, focusStay, suggested, data,
+        meterEvidence?.key === meterEvidenceKey ? (meterEvidence.data ?? null) : null)
+    : [];
+  const focusInvoices = focusStay ? invoices.filter(i => i.stay_id === focusStay.id && i.site_id === focusSite?.id) : [];
   const current = (invoice: Invoice) => data?.revisions.find((r) => r.id === invoice.current_revision_id);
   async function download(invoice: Invoice) {
     setDownloading(true);
@@ -378,15 +412,13 @@ export function BillingWorkspace({
     if (editor.type === 'create_draft') {
       title = 'Calculate draft invoice';
       submit = 'Calculate draft';
-      const defaultStay = stays[0];
-      const start =
+      const defaultStay = focusStay ?? stays[0];
+      const start = focusStay && suggested ? suggested.startsOn :
         defaultStay && defaultStay.starts_on > calendarMonth(today, 0)
-          ? defaultStay.starts_on
-          : calendarMonth(today, 0);
-      const end =
+          ? defaultStay.starts_on : calendarMonth(today, 0);
+      const end = focusStay && suggested ? suggested.endsOn :
         defaultStay?.ends_on && defaultStay.ends_on < calendarMonth(today, 1)
-          ? defaultStay.ends_on
-          : calendarMonth(today, 1);
+          ? defaultStay.ends_on : calendarMonth(today, 1);
       fields = [
         {
           name: 'stay_id',
@@ -406,7 +438,7 @@ export function BillingWorkspace({
           label: 'Planned due date',
           type: 'date',
           required: true,
-          default: addDays(end, policy?.due_days ?? 15),
+          default: focusStay && suggested ? suggested.dueOn : addDays(end, policy?.due_days ?? 15),
         },
         {
           name: 'rent_mode',
@@ -600,6 +632,10 @@ export function BillingWorkspace({
             intervals can then be recalculated.
           </p>
         )}
+        {editor.type === 'create_draft' && focusSite && focusStay && (
+          <p className="alert">Preparing {focusSite.label} · {customerName(snapshot.customers.find(c => c.id === focusStay.customer_id))}.
+            Confirm the date range. Charges come from approved source records, not the meter display.</p>
+        )}
         <RecordForm fields={fields} submit={submit} onCancel={close} onSave={onSave} />
       </Modal>
     );
@@ -674,6 +710,53 @@ export function BillingWorkspace({
           </button>
         ))}
       </div>
+      {focusSite && focusStay && !loading && data && suggested && (
+        <section className="panel site-billing-review" aria-label="Site monthly billing preparation">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Monthly billing · {focusSite.label}</span>
+              <h2>{customerName(snapshot.customers.find(c => c.id === focusStay.customer_id))}</h2>
+              <p>Suggested billing period {suggested.startsOn} → {suggested.endsOn} (exclusive) · Due {suggested.dueOn}</p>
+              <p className="muted small">Readiness indicators are advisory. PostgreSQL billing checks complete meter and rate histories, rent agreements, conversions and taxes when calculating the draft.</p>
+            </div>
+            {prepare && <button type="button" className="button primary"
+              disabled={!active || !policy} onClick={() => {setTab('invoices');open('create_draft');}}>
+              <Plus size={16} /> Calculate draft for this site
+            </button>}
+          </div>
+          <div className="site-billing-checklist">
+            {siteChecklist.map(item => <div key={item.label} className="site-billing-check" data-state={item.state}>
+              <strong>{item.state === 'ok' ? '✓' : '!'} {item.label}</strong>
+              <span>{item.note}</span>
+            </div>)}
+          </div>
+          {focusInvoices.length > 0 && <div className="site-billing-existing">
+            <h3>Existing bills for this stay</h3>
+            {focusInvoices.slice(0,6).map(invoice => {
+              const revision = current(invoice);
+              const calc = revision?.calculation;
+              return <div key={invoice.id} className="site-billing-statement">
+                <button className="text-button" type="button"
+                  onClick={() => open('detail', invoice.id)}>{invoice.number} · {stateLabel(invoice.status)}</button>
+                <span>{invoice.starts_on} → {invoice.ends_on} · {revision ? cents(revision.total_cents) : 'Total unavailable'}</span>
+                {calc && <div className="site-billing-totals">
+                  {['rent','electric','water','gas','sewer','fee','discount'].map(category => {
+                    const lines = calc.lines.filter(line => line.category === category);
+                    if (!lines.length) return null;
+                    return <span key={category}>{stateLabel(category)}: {cents(lines.reduce((sum,line)=>
+                      sum+BigInt(line.total_cents),0n))}</span>;
+                  })}
+                </div>}
+              </div>;
+            })}
+          </div>}
+          {meterEvidence?.key === meterEvidenceKey && meterEvidence.error &&
+            <p role="alert">Meter evidence is unavailable. Open Meters &amp; reader to check captures.</p>}
+          {!policy && <p className="alert">Configure a billing policy in Rates &amp; policy before calculating a draft.</p>}
+          <p className="muted small">Draft → explicit manager approval → issuance in Payments &amp; collections.
+            Nothing here posts an automatic charge.</p>
+        </section>
+      )}
       {loading && <p role="status">Loading billing records…</p>}
       {!loading && data && (
         <fieldset className="meter-content" disabled={navigationPending}>

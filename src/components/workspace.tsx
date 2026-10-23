@@ -118,10 +118,12 @@ export function Workspace({
   snapshot,
   section,
   propertyId,
+  billingFocus,
 }: {
   snapshot: Snapshot;
   section: string;
   propertyId: string;
+  billingFocus?: { siteId: string; stayId: string };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -944,7 +946,7 @@ export function Workspace({
           ) : section === 'collections' ? (
             <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
           ) : section === 'billing' ? (
-            <BillingWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
+            <BillingWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} focus={billingFocus} />
           ) : section === 'reservations' || section === 'leases' ? (
             <PlanningWorkspace
               snapshot={snapshot}

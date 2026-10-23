@@ -80,6 +80,17 @@ export function SiteMeterFile({
       </div>
       {!current && <p role="status">Loading meter history…</p>}
       {current?.error && <p role="alert">Meter history is unavailable. Use Meters &amp; reader to check your connection or access.</p>}
+      {site && currentStayId && !site.archived_at && (
+        <div className="site-monthly-bill-link">
+          <div>
+            <strong>Monthly billing for {site.label}</strong>
+            <p className="muted small">Prepare a rent, electric, water and gas draft from approved records. Nothing is issued from this profile.</p>
+          </div>
+          <Link className="button primary" href={'/billing?' + new URLSearchParams({
+            organization: organizationId, property: propertyId, site: site.id, stay: currentStayId,
+          })}>Prepare monthly bill</Link>
+        </div>
+      )}
       {site && current?.data && (
         <section className="site-utility-section" aria-label="Site water electric gas utility summary">
           <h4>Water, electric &amp; gas · automatic readings</h4>

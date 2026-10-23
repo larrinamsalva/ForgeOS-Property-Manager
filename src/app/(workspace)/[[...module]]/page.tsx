@@ -9,7 +9,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -48,12 +48,17 @@ export default async function Page({
   const query = await searchParams;
   const snapshot = await loadSnapshot(client, user, query.organization);
   const property = snapshot.properties.some((p) => p.id === query.property) ? (query.property ?? '') : '';
+  const billingFocus = section === 'billing' && property &&
+    snapshot.sites.some((site) => site.id === query.site && site.property_id === property) &&
+    snapshot.stays.some((stay) => stay.id === query.stay && stay.property_id === property && stay.site_id === query.site)
+      ? { siteId: query.site!, stayId: query.stay! } : undefined;
   return (
     <Workspace
       key={`${snapshot.organizationId}:${section}:${property}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
+      billingFocus={billingFocus}
     />
   );
 }
