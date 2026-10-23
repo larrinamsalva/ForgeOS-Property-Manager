@@ -28,7 +28,7 @@ test('fictional site and customer files share meter reading history and clear th
   await expect(account.getByLabel('Notice preview for RV-01')).toContainText('rent of $725.00');
   await account.getByRole('button', { name: 'Save draft for staff review (no SMS)' }).click();
   await expect(account.getByText('Draft only, not sent')).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Nothing was texted');
+  await expect(page.locator('p.demo-notice[role="status"]')).toContainText('Nothing was texted');
 
   await account.getByRole('button', { name: 'Mark sample rent paid for 2026-10' }).click();
   await expect(account.getByText('Rent paid', { exact: true })).toBeVisible();
