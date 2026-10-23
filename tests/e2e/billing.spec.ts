@@ -241,7 +241,7 @@ test('site customer record opens preselected monthly draft preparation without i
   await expect(chosen.locator('option:checked')).toContainText('River Sample');
   const chosenStart=await dialog.getByLabel('Billing starts on').inputValue();
   const chosenEnd=await dialog.getByLabel('Billing ends on (exclusive)').inputValue();
-  expect(chosenStart).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+  expect(chosenStart).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(chosenEnd > chosenStart).toBe(true);
   await expect(siteReview).toContainText(chosenStart + ' → ' + chosenEnd);
   await dialog.getByRole('button',{name:'Cancel'}).click();
