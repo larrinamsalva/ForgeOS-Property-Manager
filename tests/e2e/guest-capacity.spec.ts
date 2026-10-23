@@ -23,6 +23,14 @@ test('guest can expand to 700+ spaces, add customers as they arrive, and search 
   await batch.fill('1');
   await page.getByRole('button', { name: 'Add spaces' }).click();
   await expect(page.getByText('701', { exact: true }).first()).toBeVisible();
+  // Overview keeps 701+ rows accessible without rendering all rows at once.
+  await nav.getByRole('button', { name: 'Overview' }).click();
+  const overview = page.getByRole('region', { name: 'Overview spaces and customers' });
+  await expect(overview.locator('[data-overview-site]')).toHaveCount(25);
+  await page.getByLabel('Search space or customer').fill('RV-701');
+  await expect(overview.locator('[data-overview-site]')).toHaveCount(1);
+  await overview.getByRole('button', { name: 'Open space record for RV-701' }).click();
+  await expect(page.getByRole('region', { name: 'Assigned customer for RV-701' })).toContainText('No current customer');
   await nav.getByRole('button', { name: 'Sites & map' }).click();
   await page.getByLabel('Find a space').fill('RV-701');
   await expect(page.locator('[data-site="RV-701"]')).toBeVisible();
