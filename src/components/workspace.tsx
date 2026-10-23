@@ -128,8 +128,9 @@ export function Workspace({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
-  const [financialSnapshot, setFinancialSnapshot] = useState<CollectionsSnapshot | null>(null);
-  const [arrearsLoad, setArrearsLoad] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [financialRead, setFinancialRead] = useState<{
+    key: string; data?: CollectionsSnapshot; error?: boolean;
+  } | null>(null);
   const [sectionFilter, setSectionFilter] = useState('');
   const org = snapshot.organizations.find((o) => o.id === snapshot.organizationId);
   const manageOrg = canManageOrganization(snapshot);
@@ -138,13 +139,12 @@ export function Workspace({
     snapshot.propertyMemberships.some(
       (m) => m.user_id === snapshot.userId && ['manager', 'office'].includes(m.role)
     );
+  const financialKey = snapshot.organizationId + ':' + section;
   // Read only. The existing collections endpoint enforces session membership and
   // database RLS. Never fetch financial records for maintenance/meter-only roles.
   useEffect(() => {
     if (!snapshot.organizationId || !operatingAccess || !['overview', 'map'].includes(section)) return;
     const controller = new AbortController();
-    setArrearsLoad('loading');
-    setFinancialSnapshot(null);
     fetch('/api/collections?organization=' + encodeURIComponent(snapshot.organizationId), {
       cache: 'no-store', signal: controller.signal,
     })
@@ -154,19 +154,20 @@ export function Workspace({
       })
       .then((records) => {
         if (!controller.signal.aborted) {
-          setFinancialSnapshot(records);
-          setArrearsLoad('ready');
+          setFinancialRead({ key: financialKey, data: records });
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setArrearsLoad('unavailable');
+        if (!controller.signal.aborted) setFinancialRead({ key: financialKey, error: true });
       });
     return () => controller.abort();
-  }, [snapshot.organizationId, operatingAccess, section]);
-  const arrears = financialSnapshot && arrearsLoad === 'ready'
-    ? siteOverdueFlags(financialSnapshot.summary.accounts, financialSnapshot.invoices, snapshot.stays, snapshot.properties)
+  }, [snapshot.organizationId, operatingAccess, section, financialKey]);
+  const financialVisibility = !operatingAccess ? 'restricted'
+    : financialRead?.key !== financialKey ? 'loading'
+    : financialRead.error ? 'unavailable' : 'ready';
+  const arrears = financialVisibility === 'ready' && financialRead?.data
+    ? siteOverdueFlags(financialRead.data.summary.accounts, financialRead.data.invoices, snapshot.stays, snapshot.properties)
     : {};
-  const financialVisibility = operatingAccess ? arrearsLoad : 'restricted';
 
   const properties = snapshot.properties.filter((p) => !propertyId || p.id === propertyId);
   const ids = new Set(properties.map((p) => p.id));
