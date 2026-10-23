@@ -291,6 +291,9 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await expect(history).toContainText('Staff attempted the resident phone number on file');
   await expect(history).toContainText('Phone call');
   await expect(history).toContainText('Attempted — no response');
+  await expect(history).toContainText('Scheduled follow-up');
+  await expect(history).toContainText('0 due follow-ups · 1 scheduled');
+  await expect(history.getByRole('button',{name:'Resolve this follow-up'})).toBeVisible();
 
   const after = (await (
     await page.request.get('/api/collections?organization=' + seed.org)
@@ -322,6 +325,7 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await expect(dialog.getByRole('region',{name:'Resident overdue follow-up review'})).toHaveCount(0);
   await expect(history).toContainText('Staff attempted the resident phone number on file');
   await expect(history).toContainText('Staff follow-up: '+addDays(today(),2));
+  await expect(history).toContainText('Scheduled follow-up');
   await expect(history).toContainText('View invoice');
   await expect(dialog.getByRole('region',{name:'Customer billed totals and payments'})).toContainText('Paid');
   const settled=(await (
@@ -330,6 +334,34 @@ test('resident billing file provides reviewed factual overdue reminders without 
   expect(settled.summary.accounts.find(account=>account.invoice_id===i.id)?.outstanding_cents)
     .toBe('0');
   expect(settled.notes.map(n=>n.id)).toEqual(after.notes.map(n=>n.id));
+
+  // Payment alone does not close the staff task. A human must explicitly record
+  // the resolution, and the original note is retained unchanged.
+  await history.getByRole('button',{name:'Resolve this follow-up'}).click();
+  const resolutionForm=history.getByRole('group',{name:'Resolve manual follow-up'});
+  await resolutionForm.getByRole('textbox',{name:'Resolution details'})
+    .fill('Office verified receipt, followed up with resident, and closed the staff task.');
+  const resolutionSaved=page.waitForResponse(response =>
+    response.url().endsWith('/api/collections') &&
+    response.request().method()==='POST' &&
+    response.request().postDataJSON()?.command==='account_note');
+  await resolutionForm.getByRole('button',{name:'Record completed follow-up'}).click();
+  const savedResolution=await resolutionSaved;
+  expect(savedResolution.ok(),await savedResolution.text()).toBe(true);
+  await expect(history).toContainText('Resolved');
+  await expect(history).toContainText('Office verified receipt, followed up with resident');
+  await expect(history).toContainText('0 due follow-ups · 0 scheduled');
+  await expect(history.getByRole('button',{name:'Resolve this follow-up'})).toHaveCount(0);
+  const resolved=(await (
+    await page.request.get('/api/collections?organization='+seed.org)
+  ).json()) as CollectionsSnapshot;
+  expect(resolved.summary.accounts).toEqual(settled.summary.accounts);
+  expect(resolved.invoices).toEqual(settled.invoices);
+  expect(resolved.notes).toHaveLength(settled.notes.length+1);
+  expect(resolved.notes.some(entry =>
+    entry.kind==='resolution' && entry.resolves_id===note?.id &&
+    entry.customer_id===seed.customerId && entry.property_id===seed.property)).toBe(true);
+  expect(resolved.notes.find(entry=>entry.id===note?.id)).toEqual(note);
 });
 
 test('site directory and site file show current occupant overdue balance and open verified resident follow-up', async ({page}, info) => {
