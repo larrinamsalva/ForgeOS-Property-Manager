@@ -9,7 +9,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -59,6 +59,7 @@ export default async function Page({
       section={section}
       propertyId={property}
       billingFocus={billingFocus}
+      collectionsFocus={section === 'collections' && query.focus === 'followups' ? 'followups' : undefined}
     />
   );
 }
