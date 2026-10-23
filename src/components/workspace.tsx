@@ -120,11 +120,13 @@ export function Workspace({
   section,
   propertyId,
   billingFocus,
+  collectionsFocus,
 }: {
   snapshot: Snapshot;
   section: string;
   propertyId: string;
   billingFocus?: { siteId: string; stayId: string; month?: string };
+  collectionsFocus?: 'followups';
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1005,6 +1007,7 @@ export function Workspace({
                 viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
                 overdueSites={arrears}
                 financialStatus={financialVisibility}
+                financialNotes={financialVisibility === 'ready' ? financialRead?.data?.notes ?? [] : []}
               />
             </>
           ) : section === 'paperless' ? (
@@ -1019,7 +1022,8 @@ export function Workspace({
               navigationPending={isPending}
             />
           ) : section === 'collections' ? (
-            <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} />
+            <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending}
+              initialTab={collectionsFocus === 'followups' ? 'notes' : 'accounts'} />
           ) : section === 'billing' ? (
             <BillingWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} focus={billingFocus} />
           ) : section === 'reservations' || section === 'leases' ? (

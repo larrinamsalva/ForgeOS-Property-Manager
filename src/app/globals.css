@@ -3419,3 +3419,14 @@ table summary {
 .staff-task-due{background:var(--amber-bg);color:var(--amber)}
 .staff-followup-actions{margin-top:9px}
 .staff-followup-task .button{max-width:100%;white-space:normal}
+
+/* Overview: read-only property-authorized staff follow-up attention. */
+.overview-followup-snapshot{min-width:0;border-top:1px solid var(--line);margin-top:8px;padding-top:7px}
+.overview-followup-snapshot .attention-row{margin-bottom:0}
+.overview-followup-preview{list-style:none;margin:0;padding:6px 14px 12px;display:grid;gap:6px}
+.overview-followup-preview li{min-width:0}
+.overview-followup-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:var(--surface-2);min-width:0;flex-wrap:wrap}
+.overview-followup-item strong{color:var(--text);font-weight:700;min-width:90px;max-width:100%;overflow-wrap:anywhere}
+.overview-followup-item span{color:var(--muted);flex:1 1 170px;min-width:0;overflow-wrap:anywhere}
+.overview-followup-item svg{flex:none}
+.overview-followup-item:hover,.overview-followup-item:focus-visible{outline:2px solid var(--ring);outline-offset:1px}

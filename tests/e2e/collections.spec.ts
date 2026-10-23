@@ -202,6 +202,19 @@ test('manual payments, deposits, receipts and reconciliation reach the same issu
   await expect(page.getByText(/1 unresolved items due/)).toBeVisible();
   const worklist=page.getByRole('region',{name:'Staff follow-up worklist'});
   await expect(worklist).toContainText('1 due · 0 scheduled');
+  // Daily operations exposes the authorized task without digging into
+  // Collections; clicking opens this property's follow-up tab directly.
+  await page.goto('/?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  const dailySummary=page.getByRole('region',{name:'Staff follow-up snapshot'});
+  const dailyLink=dailySummary.getByTestId('office-followup-summary');
+  await expect(dailyLink).toContainText('Staff follow-ups due');
+  await expect(dailyLink).toContainText('0 additional scheduled');
+  await expect(dailyLink).toContainText('1');
+  await expect(dailySummary).toContainText('River Sample');
+  await expect(dailyLink).toHaveAttribute('href',/focus=followups/);
+  await dailyLink.click();
+  await expect(page.getByRole('heading',{name:'Account notes & manual follow-ups'})).toBeVisible();
+  await expect(worklist).toContainText('1 due · 0 scheduled');
   await expect(worklist).toContainText('River Sample');
   await expect(worklist).toContainText('Manual follow-up after fictional settlement');
   await worklist.getByRole('button',{name:'Scheduled',exact:true}).click();
@@ -224,6 +237,11 @@ test('manual payments, deposits, receipts and reconciliation reach the same issu
   await page.getByLabel('Manual follow-up date (optional)').fill(addDays(today(),5));
   await submit(page,'Add account note');
   await expect(worklist).toContainText('0 due · 1 scheduled');
+  await page.goto('/?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  await expect(dailySummary).toContainText('1 additional scheduled follow-up');
+  await expect(dailySummary).toContainText('Scheduled '+addDays(today(),5));
+  await dailyLink.click();
+  await expect(page.getByRole('heading',{name:'Account notes & manual follow-ups'})).toBeVisible();
   await worklist.getByRole('button',{name:'Scheduled',exact:true}).click();
   await expect(worklist).toContainText('Staff to verify the completed payment receipt next week');
   await worklist.getByRole('searchbox',{name:'Find follow-up task'}).fill('unknown resident');
@@ -578,6 +596,8 @@ test('collection APIs and receipt routes reject cross-origin, raw card fields an
   await page.waitForURL('**/login');
   expect((await page.request.get(`/api/collections/receipts/${payment.receipt_id}/pdf`)).status()).toBe(401);
   await login(page, 'technician');
+  await page.goto('/?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  await expect(page.getByTestId('office-followup-summary')).toHaveCount(0);
   const result = await page.request.get(`/api/collections?organization=${seed.org}`);
   expect(result.ok()).toBe(true);
   const data = (await result.json()) as CollectionsSnapshot;
