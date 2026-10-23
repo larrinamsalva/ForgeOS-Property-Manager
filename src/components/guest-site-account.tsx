@@ -55,7 +55,7 @@ export function GuestSiteAccount({
         <p><strong>Current status:</strong> {status === 'past_due' ? 'Unpaid after the 5th — flag on site map' :
           status === 'paid' ? 'Marked paid for this sample month' :
           status === 'pending' ? 'Unpaid; not overdue until after the 5th' : 'No current rent due in this sample'}</p>
-        <p className="demo-caption">Illustration only. A live system must use issued invoices, actual payment allocations and each property's timezone and lease terms.</p>
+        <p className="demo-caption">Illustration only. A live system must use issued invoices, actual payment allocations and each property&apos;s timezone and lease terms.</p>
         {customer && status !== 'paid' &&
           <button type="button" className="demo-small-button" onClick={() => onRecordSamplePayment(customer.id)}>
             Mark sample rent paid for {month}
