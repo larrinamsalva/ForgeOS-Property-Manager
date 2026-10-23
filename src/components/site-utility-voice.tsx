@@ -120,7 +120,7 @@ export function SiteUtilityVoice({
         </button>
       </div>
       {status && <p role="status" className="muted small">{status}</p>}
-      <p className="muted small">Voice is optional and read-only. Microphone access starts only when you tap Ask by voice. Browser speech recognition may use an online service; don't dictate private payment details.</p>
+      <p className="muted small">Voice is optional and read-only. Microphone access starts only when you tap Ask by voice. Browser speech recognition may use an online service; do not dictate private payment details.</p>
     </div>
   );
 }
