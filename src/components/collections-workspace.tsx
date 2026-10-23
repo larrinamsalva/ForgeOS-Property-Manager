@@ -56,17 +56,19 @@ export function CollectionsWorkspace({
   snapshot,
   propertyId,
   navigationPending,
+  initialTab = 'accounts',
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
+  initialTab?: 'accounts' | 'notes';
 }) {
   const [data, setData] = useState<CollectionsSnapshot | null>(null);
   const [loading, setLoading] = useState(true),
     [refresh, setRefresh] = useState(0);
   const [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
-    [tab, setTab] = useState('accounts');
+    [tab, setTab] = useState(initialTab);
   const [selectedProperty, setSelectedProperty] = useState(
     propertyId || snapshot.properties.find((p) => canEditProperty(snapshot, p.id, true))?.id || ''
   );
