@@ -1001,7 +1001,7 @@ export function Workspace({
                 <div className="panel-header">
                   <div>
                     <h2>Daily operations</h2>
-                    <p>Open today's work from one place. Figures come from your authorized property records.</p>
+                    <p>Open today&apos;s work from one place. Figures come from your authorized property records.</p>
                   </div>
                 </div>
                 <div className="stat-grid">
