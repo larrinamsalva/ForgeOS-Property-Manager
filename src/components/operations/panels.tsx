@@ -791,6 +791,12 @@ export function EquipmentDetail({ ui, id }: { ui: OpsUI; id: string }) {
   );
 }
 export function DailyPanel({ ui }: { ui: OpsUI }) {
+  const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
+  const openToday = todaysRuns.filter((run) => run.status === 'open');
+  const itemsToday = todaysRuns.reduce((total, run) => total + run.items.length, 0);
+  const recordedToday = todaysRuns.reduce((total, run) => total + run.items.filter((item) =>
+    ['done', 'skipped'].includes(checklistState(ui.data.entries, run.id, item.key)?.status ?? '')
+  ).length, 0);
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -804,6 +810,23 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
           </Action>
         )}
       </div>
+      <div className="ops-record" aria-label="Daily checklist progress">
+        <h3>Today at a glance · {ui.today}</h3>
+        <p>{todaysRuns.length} scheduled checklist runs · {openToday.length} open · {recordedToday}/{itemsToday} item results recorded</p>
+        <p>Recorded includes completed and explicitly skipped items; a skipped item is not the same as completed work.</p>
+      </div>
+      <details className="ops-record">
+        <summary>Suggested manager checklist — morning, utilities, office and closing</summary>
+        <p>Use these as a guide when creating a recurring checklist plan. These examples are not saved tasks until a manager creates a plan and schedules a run.</p>
+        <ul>
+          <li><strong>Morning property walk:</strong> bathrooms, laundry rooms, trash cans, roads, walkways and landscaping</li>
+          <li><strong>Utility checks:</strong> look for water leaks, electrical hazards and gas concerns; review meter-reading exceptions with authorized staff</li>
+          <li><strong>Maintenance:</strong> review new requests, assign technicians, confirm materials and review completed work</li>
+          <li><strong>Office:</strong> check arrivals, planned departures, issued balances and resident follow-ups</li>
+          <li><strong>End of day:</strong> verify checklist results, record unresolved work and plan tomorrow's priorities</li>
+        </ul>
+        <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
+      </details>
       {!scoped(ui, ui.data.runs).length ? (
         <Empty title="No checklist runs">
           Create a recurring checklist plan, then create an occurrence from the calendar.
