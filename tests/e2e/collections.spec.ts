@@ -271,12 +271,38 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await followup.getByRole('combobox',{name:'Reminder style'}).selectOption('past_due');
   await expect(draft).toHaveValue(/Our records show an unpaid balance/);
   await expect(followup).toContainText('Nothing is sent, scheduled or added to the balance here');
+  const contact=followup.getByRole('group',{name:'Manual overdue contact log'});
+  await expect(contact).toContainText('No manual overdue contact notes recorded yet.');
+  await contact.getByRole('combobox',{name:'Manual contact method'})
+    .selectOption('phone');
+  await contact.getByRole('combobox',{name:'Manual contact outcome'})
+    .selectOption('attempted_no_response');
+  await contact.getByRole('textbox',{name:'Manual contact details'})
+    .fill('Staff attempted the resident phone number on file; no answer.');
+  await contact.getByLabel('Next contact follow-up date').fill(addDays(today(),2));
+  const noteSaved=page.waitForResponse(response =>
+    response.url().endsWith('/api/collections') &&
+    response.request().method()==='POST' &&
+    response.request().postDataJSON()?.command==='account_note');
+  await contact.getByRole('button',{name:'Save manual contact note'}).click();
+  const saved=await noteSaved;
+  expect(saved.ok(),await saved.text()).toBe(true);
+  await expect(contact).toContainText('Staff attempted the resident phone number on file');
+  await expect(contact).toContainText('Phone call');
+  await expect(contact).toContainText('Attempted — no response');
 
   const after = (await (
     await page.request.get('/api/collections?organization=' + seed.org)
   ).json()) as CollectionsSnapshot;
   expect(after.invoices).toEqual(before.invoices);
   expect(after.summary.accounts).toEqual(before.summary.accounts);
+  expect(after.notes).toHaveLength(before.notes.length + 1);
+  const note=after.notes.find(entry=>entry.customer_id===seed.customerId);
+  expect(note?.body).toContain('Manual past-due contact');
+  expect(note?.body).toContain('Staff attempted the resident phone number on file');
+  expect(note?.invoice_id).toBe(i.id);
+  expect(note?.follow_up_on).toBe(addDays(today(),2));
+  expect(after.notes.every(entry=>entry.property_id===seed.property)).toBe(true);
 });
 
 test('site directory and site file show current occupant overdue balance and open verified resident follow-up', async ({page}, info) => {

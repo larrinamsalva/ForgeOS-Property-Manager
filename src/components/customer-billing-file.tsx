@@ -11,6 +11,7 @@ export function CustomerBillingFile({
   organizationId, propertyId, customerId, residentName, propertyName,
 }: { organizationId: string; propertyId: string; customerId: string; residentName: string; propertyName: string }) {
   const key = organizationId + ':' + propertyId + ':' + customerId;
+  const [refresh, setRefresh] = useState(0);
   const [loaded, setLoaded] = useState<{ key: string; data?: CollectionsSnapshot; error?: boolean } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -25,7 +26,7 @@ export function CustomerBillingFile({
       if (!controller.signal.aborted) setLoaded({ key, error: true });
     });
     return () => controller.abort();
-  }, [organizationId, key]);
+  }, [organizationId, key, refresh]);
   const current = loaded?.key === key ? loaded : null;
   const summary = current?.data ? customerBillingSummary(current.data, customerId, propertyId) : null;
   const overdue = current?.data ? customerOverdueReminders(current.data, propertyId, customerId) : [];
@@ -67,6 +68,11 @@ export function CustomerBillingFile({
           residentName={residentName}
           propertyName={propertyName}
           collectionsUrl={financialUrl}
+          organizationId={organizationId}
+          propertyId={propertyId}
+          customerId={customerId}
+          notes={current?.data?.notes ?? []}
+          onSaved={() => {setLoaded(null);setRefresh(version=>version+1);}}
         />}
         <h4>Payment &amp; receipt history</h4>
         {!summary.receipts.length ? <p>No receipt recorded yet.</p> :
