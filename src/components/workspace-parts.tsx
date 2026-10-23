@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useState } from 'react';
 import {
   ArrowUpRight,
   Building2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Property, Site, Snapshot, Stay } from '@/lib/domain';
 import type { SiteOverdueFlag } from '@/lib/site-overdue';
+import { pastDueSiteReviewRows } from '@/lib/past-due-site-review';
 import { cents } from '@/lib/billing-domain';
 import {
   canEditProperty,
@@ -203,6 +205,7 @@ export function SiteMap({
   overdueSites?: Record<string, SiteOverdueFlag>;
   financialStatus?: string;
 }) {
+  const [reviewSearch, setReviewSearch] = useState('');
   if (!sites.length)
     return (
       <Empty title="Your layout starts with a site">
@@ -215,7 +218,13 @@ export function SiteMap({
     cells.set(key, [...(cells.get(key) ?? []), site]);
   }
   const columns = Math.max(...sites.map((s) => s.map_x)) + 1;
-  const overdueCount = sites.filter((site) => !!overdueSites[site.id]).length;
+  const pastDueRows = financialStatus === 'ready'
+    ? pastDueSiteReviewRows(sites, overdueSites, snapshot.stays, snapshot.customers, snapshot.properties)
+    : [];
+  const outstandingCents = pastDueRows.reduce((sum, row) => sum + BigInt(row.outstandingCents), 0n);
+  const visibleReview = pastDueRows.filter(row =>
+    (row.siteLabel + ' ' + row.resident).toLowerCase().includes(reviewSearch.trim().toLowerCase()));
+  const overdueCount = pastDueRows.length;
   return (
     <>
       {financialStatus === 'ready' && <p className="muted small" role="status">
@@ -226,6 +235,51 @@ export function SiteMap({
       {financialStatus === 'unavailable' && <p className="muted small" role="alert">
         Financial flags are unavailable. Open Payments &amp; collections to review balances.
       </p>}
+      {financialStatus === 'ready' && overdueCount > 0 && (
+        <section className="map-overdue-queue" aria-label="Past-due site review queue">
+          <div className="map-overdue-queue-heading">
+            <div>
+              <h3>Sites needing a payment review</h3>
+              <p className="muted small">Verified current-resident balances on issued overdue invoices only.
+                Click a space to review the current stay, bills, receipts and optional reminder draft.</p>
+            </div>
+            <div className="map-overdue-queue-total">
+              <strong>{cents(outstandingCents)}</strong>
+              <small>Outstanding on {overdueCount} flagged site{overdueCount === 1 ? '' : 's'}</small>
+            </div>
+          </div>
+          <label className="map-overdue-queue-search">Find flagged space or resident
+            <input type="search" aria-label="Find flagged space or resident"
+              value={reviewSearch} onChange={e => setReviewSearch(e.target.value)}
+              placeholder="Search space or resident" />
+          </label>
+          {visibleReview.length ? (
+            <div className="table-wrap" role="region" aria-label="Past-due sites and balances" tabIndex={0}>
+              <table>
+                <thead><tr>
+                  <th scope="col">Site / resident</th>
+                  <th scope="col">Issued overdue invoices</th>
+                  <th scope="col">Verified outstanding</th>
+                  <th scope="col">Review</th>
+                </tr></thead>
+                <tbody>{visibleReview.map(row => (
+                  <tr key={row.siteId}>
+                    <th scope="row"><strong>{row.siteLabel}</strong><small>{row.resident}</small></th>
+                    <td>{row.invoiceCount}</td>
+                    <td><strong className="map-overdue-amount">{cents(row.outstandingCents)}</strong></td>
+                    <td><button type="button" className="button secondary small"
+                      onClick={() => onSelect(row.siteId)}
+                      aria-label={'Review account at ' + row.siteLabel}>Review site account</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : <p>No past-due sites match this search.</p>}
+          <p className="muted small">This is an internal review queue, not a legal notice.
+            Confirm recent payments, account holds and local rules before any staff follow-up.
+            No reminder is automatically sent and no late fee is applied.</p>
+        </section>
+      )}
       <div className="map-scroll">
         <div
           className="property-grid"
