@@ -6,6 +6,8 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
+import { GuestSiteAccount, type DemoMeterRecord } from '@/components/guest-site-account';
+import { demoPropertyToday, isRentPastDue, rentMonthKey, type DemoNoticeDraft, type DemoNoticeKind } from '@/lib/guest-site-account';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
@@ -17,7 +19,7 @@ type Status = 'occupied' | 'available' | 'reserved';
 type Site = DemoSite;
 type Job = { id: number; title: string; location: string; status: 'Open' | 'Done' };
 type Stock = { name: string; quantity: number; unit: string };
-type Reading = { site: string; value: number; usage: number };
+type Reading = DemoMeterRecord;
 
 const menu = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -86,6 +88,10 @@ export function GuestDemo() {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [paidRentKeys, setPaidRentKeys] = useState<string[]>([]);
+  const [noticeDrafts, setNoticeDrafts] = useState<DemoNoticeDraft[]>([]);
+  const todayAtPark = demoPropertyToday();
+  const currentRentMonth = rentMonthKey(todayAtPark);
   const [meterSite, setMeterSite] = useState('RV-01');
   const [meterValue, setMeterValue] = useState(String(startingRegister('RV-01') + 45));
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -112,6 +118,13 @@ export function GuestDemo() {
   // resident details in site records; changes to customer contact info appear
   // immediately in Overview and the linked space record.
   const customerBySite = new Map(customers.filter((customer) => !!customer.siteId).map((customer) => [customer.siteId!, customer]));
+  const rentPaid = (customerId: number) => paidRentKeys.includes(customerId + ':' + currentRentMonth);
+  const flagged = (site: Site) => {
+    const customer = customerBySite.get(site.id);
+    return isRentPastDue(todayAtPark, site.status === 'occupied' && !!customer,
+      customer ? rentPaid(customer.id) : false);
+  };
+  const overdueCount = sites.filter(flagged).length;
   const overviewRows = sites.filter((site) => {
     if (overviewStatus !== 'all' && site.status !== overviewStatus) return false;
     const customer = customerBySite.get(site.id);
@@ -225,6 +238,32 @@ export function GuestDemo() {
     setNotice(id + ' — ' + changed + ' in this sample only. No actual booking was made.');
   }
 
+  function recordSampleRent(customerId: number) {
+    const key = customerId + ':' + currentRentMonth;
+    setPaidRentKeys((old) => old.includes(key) ? old : [...old, key]);
+    setNotice('Fictional rent marked paid for ' + currentRentMonth + '. No payment or receipt was created.');
+  }
+  function prepareSampleNotice(customer: DemoCustomer, kind: DemoNoticeKind, message: string) {
+    if (!customer.siteId) return;
+    setNoticeDrafts((old) => [...old, {
+      id: (old.at(-1)?.id ?? 0) + 1,
+      siteId: customer.siteId!,
+      customerId: customer.id,
+      month: currentRentMonth,
+      kind,
+      message,
+      preparedOn: new Date().toISOString(),
+      phone: customer.phone,
+    }]);
+    setNotice('Notice draft saved for staff review only. Nothing was texted, sent, assessed or served.');
+  }
+  function openMeterForSite(siteId: string) {
+    setMeterSite(siteId);
+    const last = [...readings].reverse().find((r) => r.site === siteId);
+    setMeterValue(String((last?.value ?? startingRegister(siteId)) + 45));
+    setTab('meters');
+    setNotice('');
+  }
   function saveReading(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = Number(meterValue);
@@ -232,7 +271,7 @@ export function GuestDemo() {
       setNotice('Enter a whole-number meter reading higher than ' + previousRegister + '.');
       return;
     }
-    setReadings((old) => [...old, { site: meterSite, value, usage: value - previousRegister }]);
+    setReadings((old) => [...old, { site: meterSite, value, usage: value - previousRegister, capturedAt: new Date().toISOString() }]);
     setNotice('Sample reading saved in this browser view. No database was updated.');
     setMeterValue(String(value + 20));
   }
@@ -258,6 +297,8 @@ export function GuestDemo() {
     setJobs(initialJobs());
     setStock(initialStock());
     setReadings([]);
+    setPaidRentKeys([]);
+    setNoticeDrafts([]);
     setMeterSite('RV-01');
     setMeterValue(String(startingRegister('RV-01') + 45));
     setInvoiceOpen(false);
@@ -331,6 +372,7 @@ export function GuestDemo() {
               <div className="demo-kpis">
                 <Metric label="Occupied spaces" value={String(occupied) + ' / ' + sites.length.toLocaleString()} detail={String(Math.round((occupied / Math.max(1, sites.length)) * 100)) + '% occupancy'} />
                 <Metric label="Available now" value={String(available)} detail={String(reserved) + ' reservations'} />
+                <Metric label="Rent red flags" value={String(overdueCount)} detail="Fictional unpaid rent after 5th" />
                 <Metric label="Sample monthly rent" value={money(rentTotal)} detail="Illustrative only" />
                 <Metric label="Open work orders" value={String(unpaidJobs)} detail="Tasks to review" />
                 <Metric label="Customer records" value={customers.length.toLocaleString()} detail="Created as people arrive" />
@@ -366,7 +408,8 @@ export function GuestDemo() {
                           <td><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></td>
                           <td><strong>{site.status === 'occupied' ? customer?.name || site.resident || 'Customer not recorded' : 'No customer assigned'}</strong></td>
                           <td>{customer ? <><span>{customer.phone || 'No phone on file'}</span><small>{customer.email || 'No email on file'}</small></> : <span>—</span>}</td>
-                          <td><span className={'demo-status ' + site.status}>{site.status}</span></td>
+                          <td><span className={'demo-status ' + site.status}>{site.status}</span>
+                            {flagged(site) && <span className="demo-payment-flag" role="note">Rent past due</span>}</td>
                           <td><div className="demo-overview-actions">
                             <button type="button" className="demo-small-button" onClick={() => openSpaceRecord(site.id)} aria-label={'Open space record for ' + site.id}>Space record</button>
                             {customer && <button type="button" className="demo-small-button" onClick={() => openCustomerRecord(customer.id)} aria-label={'Open customer record for ' + site.id}>Customer</button>}
@@ -408,6 +451,7 @@ export function GuestDemo() {
                   {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <div key={site.id} className="demo-space-card">
                     <button type="button" data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}>
                       <span><Home size={19}/>{site.id}</span><small>{designationLabel(site.designation)}{site.label !== site.id ? ' · ' + site.label : ''}</small><small>{site.status} · {money(site.rent)} / mo</small>
+                      {flagged(site) && <strong className="demo-payment-flag" aria-label={'Rent past due for ' + site.id}>RENT PAST DUE</strong>}
                     </button>
                     <button type="button" className="demo-site-details-button" aria-label={'Details and photos for ' + site.id} onClick={() => setSelectedSiteId(site.id)}>
                       Details &amp; photos {photos.some((photo) => photo.siteId === site.id) ? '(' + photos.filter((photo) => photo.siteId === site.id).length + ')' : ''}
@@ -421,6 +465,12 @@ export function GuestDemo() {
                 <GuestSiteEditor key={selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!}
                   customer={customerBySite.get(selectedSiteId)} onOpenCustomer={openCustomerRecord}
                   onSave={saveSpace} onClose={() => setSelectedSiteId(null)}/>
+                <GuestSiteAccount key={'account-' + selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!}
+                  customer={customerBySite.get(selectedSiteId)} readings={readings}
+                  notices={noticeDrafts.filter((n) => n.siteId === selectedSiteId)}
+                  paid={!!customerBySite.get(selectedSiteId) && rentPaid(customerBySite.get(selectedSiteId)!.id)}
+                  today={todayAtPark} onRecordSamplePayment={recordSampleRent}
+                  onDraft={prepareSampleNotice} onGoMeters={() => openMeterForSite(selectedSiteId)}/>
                 <GuestSiteMedia
                   key={'media-' + selectedSiteId}
                   siteId={selectedSiteId}
@@ -443,6 +493,16 @@ export function GuestDemo() {
             <>
               <GuestCustomerForm sites={sites} onSave={saveCustomer}/>
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestCustomerForm key={'customer-' + selectedCustomerId} customer={customers.find((customer) => customer.id === selectedCustomerId)} sites={sites} onSave={saveCustomer} onClose={() => setSelectedCustomerId(null)}/>}
+              {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId && !!customer.siteId) &&
+                (() => { const customer = customers.find((c) => c.id === selectedCustomerId)!;
+                  const site = sites.find((s) => s.id === customer.siteId);
+                  return site ? <GuestSiteAccount key={'customer-account-' + customer.id + '-' + site.id}
+                    site={site} customer={customer} readings={readings}
+                    notices={noticeDrafts.filter((n) => n.siteId === site.id && n.customerId === customer.id)}
+                    paid={rentPaid(customer.id)} today={todayAtPark}
+                    onRecordSamplePayment={recordSampleRent} onDraft={prepareSampleNotice}
+                    onGoMeters={() => openMeterForSite(site.id)}/> : null;
+                })()}}
               <section className="demo-panel">
                 <div className="demo-section-head"><div><h2>Customer directory</h2><p>{customers.length.toLocaleString()} fictional customer files with optional contacts, arrival details, vehicle notes and deposits. Lists display 50 at a time.</p></div>
                   <label className="demo-filter" htmlFor="demo-customer-search">Search
