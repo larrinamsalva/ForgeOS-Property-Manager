@@ -38,10 +38,11 @@ export function demoRentIsPastDue(
 }
 
 export function GuestSiteLedger({
-  site, customer, customers, readings, paid, notices, onSetPaid, onPrepare,
+  site, customer, customers, readings, paid, notices, customerView = false, onSetPaid, onPrepare,
 }: {
   site?: DemoSite;
   customer?: DemoCustomer;
+  customerView?: boolean;
   customers: DemoCustomer[];
   readings: DemoMeterReading[];
   paid: Record<string, boolean>;
@@ -58,7 +59,7 @@ export function GuestSiteLedger({
   const pastDue = site ? demoRentIsPastDue(site, customer, paid, month) : false;
   const siteReadings = site ? readings.filter((reading) => reading.site === site.id) : [];
   const customerReadings = customer ? readings.filter((reading) => reading.customerId === customer.id) : [];
-  const displayReadings = site ? siteReadings : customerReadings;
+  const displayReadings = customerView ? customerReadings : site ? siteReadings : customerReadings;
   const noticeHistory = notices.filter((n) => n.customerId === customer?.id &&
     (!site || n.siteId === site.id));
   const canPrepare = !!site && !!customer && site.status === 'occupied';
@@ -109,7 +110,7 @@ export function GuestSiteLedger({
         <small>Demo status only, not a payment receipt or real invoice. Real overdue balances must use issued bills and actual posted payments.</small>
       </div>
       <div>
-        <h3>{site ? 'Site meter-reading history' : 'Customer meter-reading history'}</h3>
+        <h3>{customerView || !site ? 'Customer meter-reading history' : 'Site meter-reading history'}</h3>
         {displayReadings.length ? <div className="demo-ledger-history">
           {[...displayReadings].reverse().map((r, i) => <div key={r.recordedAt + ':' + i}>
             <strong>{r.site} · {r.value.toLocaleString()} kWh</strong>
