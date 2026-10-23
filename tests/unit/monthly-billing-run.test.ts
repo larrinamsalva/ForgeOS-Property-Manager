@@ -14,8 +14,7 @@ const stays=[
  {id:'s2stay',property_id:'park',site_id:'s2',customer_id:'second',starts_on:'2026-09-01',ends_on:null,billing_period:'monthly'},
  {id:'outside',property_id:'other',site_id:'s3',customer_id:'outside',starts_on:'2026-09-01',ends_on:null,billing_period:'monthly'},
 ] as unknown as Stay[];
-const billing={policies:[{id:'policy',property_id:'park',due_days:10,created_at:'2026-07-01'}],rates:[],invoices:[],revisions:[],accounts:[]}
-  as unknown as BillingSnapshot;
+const billing={policies:[{id:'policy',property_id:'park',due_days:10,created_at:'2026-07-01'}],rates:[],invoices:[],revisions:[],accounts:[]} as unknown as BillingSnapshot;
 describe('property monthly billing run does not post or invent invoice balances',()=>{
  it('clips month to each stay, including previous tenants with different periods',()=>{
   const data=monthlyBillingRun('park','2026-09','2026-10-23',sites,stays,billing,{meters:[],assignments:[],readings:[],reviews:[],occupancy:[]});
