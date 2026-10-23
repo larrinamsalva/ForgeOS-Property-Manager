@@ -81,7 +81,7 @@ export function SiteMeterFile({
       {!current && <p role="status">Loading meter history…</p>}
       {current?.error && <p role="alert">Meter history is unavailable. Use Meters &amp; reader to check your connection or access.</p>}
       {site && current?.data && (
-        <div className="site-utility-section" aria-label="Site water electric gas utility summary">
+        <section className="site-utility-section" aria-label="Site water electric gas utility summary">
           <h4>Water, electric &amp; gas · automatic readings</h4>
           <p className="muted small">Usage automatically compares approved readings from the same meter and current stay, including meter multiplier. Exact charges below come only from an issued billing statement.</p>
           <div className="site-utility-grid">
@@ -123,7 +123,7 @@ export function SiteMeterFile({
           </div>
           <SiteUtilityVoice siteLabel={site.label} cards={summaries} />
           <p className="muted small">A displayed usage figure is not an invoice. Tiered rates, sewer, taxes, discounts, resets and boundary readings are handled by Utilities &amp; billing. No charges are posted from this screen.</p>
-        </div>
+        </section>
       )}
       {current?.data && !entries.length && <p>No recorded meter readings for this {siteId ? 'site' : 'customer'} yet.</p>}
       {current?.data && entries.length > 0 && (
