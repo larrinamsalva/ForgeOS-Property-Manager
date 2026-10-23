@@ -33,7 +33,7 @@ describe('private, manager-initiated monthly billing CSV',()=>{
    checklist:[{label:'note',state:'check' as const,note:'@SUM(1,2)'}]};
   const result=monthlyBillingCsv('RV Park','2026-09',[row],new Map());
   expect(result).toContain("'=HYPERLINK");
-  expect(result).toContain("'@SUM");
+  expect(result).toContain('note: @SUM(1,2)');
   expect(result).not.toContain('"=HYPERLINK');
  });
  it('empty filters export only a header and never pull hidden rows',()=>{
