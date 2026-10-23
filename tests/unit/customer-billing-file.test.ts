@@ -22,9 +22,9 @@ describe('customer monthly bill totals', () => {
  });
  it('excludes other customers, unissued, drafts, and voided invoices', () => {
   expect(customerBillingSummary(data, 'bob', 'park').bills.map(b => b.id)).toEqual(['two']);
-  const unissued = { ...data, summary: { ...data.summary, accounts: [{ ...account, issued_on: null }] } };
+  const unissued = { ...data, summary: { ...data.summary, accounts: [{ ...account, issued_on: null }] } } as unknown as CollectionsSnapshot;
   expect(customerBillingSummary(unissued, 'alice', 'park').bills).toHaveLength(0);
-  const voided = { ...data, invoices: [{...invoice, status:'voided' as const}] };
+  const voided = { ...data, invoices: [{...invoice, status:'voided' as const}] } as unknown as CollectionsSnapshot;
   expect(customerBillingSummary(voided, 'alice', 'park').bills).toHaveLength(0);
  });
  it('shows zero issued balance when no bill exists, never guesses rent', () => {
