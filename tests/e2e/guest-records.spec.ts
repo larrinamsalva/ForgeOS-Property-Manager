@@ -44,7 +44,7 @@ test('each space can have its own type, rate, utilities, notes and an assigned c
   await expect(page.getByLabel('Unit type')).toHaveValue('apartment');
   await expect(page.getByLabel('Monthly rent ($)')).toHaveValue('950');
   await expect(page.getByLabel('Site information / notes')).toHaveValue('Example: Covered parking and accessible doorway');
-  await expect(page.getByText('Example Tenant Updated')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Assigned customer for RV-15' }).getByText('Example Tenant Updated', { exact: true })).toBeVisible();
   expect(requests).toEqual([]);
 });
 
