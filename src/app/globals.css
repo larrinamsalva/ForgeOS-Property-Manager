@@ -3308,3 +3308,15 @@ table summary {
 .site-billing-existing{margin-top:16px}
 .site-billing-statement{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px}
 .site-billing-totals{display:flex;gap:6px 15px;flex-wrap:wrap;font-size:.86rem}
+
+/* Monthly property billing run: readable filters and dense site rows */
+.monthly-billing-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:14px 0}
+.monthly-billing-controls label{display:flex;flex-direction:column;gap:5px;flex:1 1 170px;max-width:350px}
+.monthly-billing-controls input,.monthly-billing-controls select{max-width:100%;min-height:42px}
+.monthly-billing-counts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:9px}
+.monthly-billing-counts strong{font-size:1.15em}
+.monthly-billing-board td,.monthly-billing-board th{vertical-align:top}
+.monthly-billing-board td small,.monthly-billing-board th small{display:block;color:var(--muted)}
+.monthly-billing-board .monthly-billing-warnings{font-size:.84rem;overflow-wrap:anywhere;margin:7px 0}
+.monthly-billing-board .monthly-billing-warnings p{margin:5px 0}
+.monthly-billing-board .table-wrap{max-width:100%}
