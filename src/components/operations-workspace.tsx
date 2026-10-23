@@ -20,6 +20,7 @@ import type { OpsEditor, OpsUI } from './operations/types';
 const tabs: Record<string, [string, string][]> = {
   maintenance: [
     ['work', 'Work orders'],
+    ['mine', 'My Service'],
     ['plans', 'Preventive calendar'],
     ['equipment', 'Equipment'],
     ['notifications', 'My notifications'],
@@ -337,6 +338,7 @@ export function OperationsWorkspace({
               ))}
           </div>
           {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} />}{' '}
+          {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly />}{' '}
           {tab === 'stock' && <StockPanel ui={ui} search={search} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
           {tab === 'suppliers' && <SuppliersPanel ui={ui} />}{' '}
