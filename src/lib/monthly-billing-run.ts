@@ -5,6 +5,23 @@ import type { MeterSnapshot } from './meter-domain';
 import { siteBillingChecklist, type BillingChecklistItem, type BillingPeriodSuggestion } from './site-billing-prep';
 
 export type MonthlyRunStatus = 'existing' | 'review' | 'ready';
+export type MonthlyInvoiceStage = 'none' | 'draft' | 'approved_unissued' | 'issued' | 'mixed';
+export function classifyMonthlyInvoices(
+  invoices: { status: Invoice['status']; issued: boolean }[],
+): MonthlyInvoiceStage {
+  if (!invoices.length) return 'none';
+  const stages = new Set(invoices.filter(invoice => invoice.status !== 'voided').map(invoice => invoice.issued ? 'issued' :
+    invoice.status === 'approved' ? 'approved_unissued' : 'draft'));
+  if (!stages.size) return 'none';
+  return stages.size === 1 ? [...stages][0] as MonthlyInvoiceStage : 'mixed';
+}
+export function invoiceStageLabel(stage: MonthlyInvoiceStage): string {
+  return {
+    none: 'No invoice', draft: 'Draft awaiting approval',
+    approved_unissued: 'Approved, awaiting issuance',
+    issued: 'Issued', mixed: 'Mixed invoice stages',
+  }[stage];
+}
 export interface MonthlyRunRow {
   siteId: string;
   siteLabel: string;
@@ -12,6 +29,7 @@ export interface MonthlyRunRow {
   customerId: string;
   period: BillingPeriodSuggestion;
   status: MonthlyRunStatus;
+  invoiceStage: MonthlyInvoiceStage;
   checklist: BillingChecklistItem[];
   warnings: string[];
   invoices: { id: string; number: string; status: Invoice['status']; totalCents: string | null; issued: boolean }[];
@@ -68,7 +86,7 @@ export function monthlyBillingRun(
         : warnings.length ? 'review' : 'ready';
       return [{
         siteId:site.id, siteLabel:site.label, stayId:stay.id, customerId:stay.customer_id,
-        period, status, checklist, warnings, invoices,
+        period, status, invoiceStage:classifyMonthlyInvoices(invoices), checklist, warnings, invoices,
       }];
     }).sort((a, b) => a.siteLabel.localeCompare(b.siteLabel,undefined,{numeric:true}) ||
       a.period.startsOn.localeCompare(b.period.startsOn) ||
