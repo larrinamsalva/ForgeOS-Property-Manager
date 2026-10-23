@@ -26,6 +26,6 @@ describe('fictional site account rent alerts and notice safety', () => {
     expect(late).toMatch(/Internal staff review only/);
     expect(legal).toMatch(/INTERNAL LEGAL REVIEW ONLY/);
     expect(legal).toMatch(/Late fees and utilities must never be included/);
-    assert.doesNotMatch(legal, /you must move out|notice has been sent/i);
+    expect(legal).not.toMatch(/you must move out|notice has been sent/i);
   });
 });
