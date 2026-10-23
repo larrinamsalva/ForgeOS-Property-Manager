@@ -364,7 +364,7 @@ export function GuestDemo() {
                         const customer = customerBySite.get(site.id);
                         return <tr key={site.id} data-overview-site={site.id}>
                           <td><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></td>
-                          <td><strong>{site.status === 'occupied' ? customer?.name ?? site.resident || 'Customer not recorded' : 'No customer assigned'}</strong></td>
+                          <td><strong>{site.status === 'occupied' ? customer?.name || site.resident || 'Customer not recorded' : 'No customer assigned'}</strong></td>
                           <td>{customer ? <><span>{customer.phone || 'No phone on file'}</span><small>{customer.email || 'No email on file'}</small></> : <span>—</span>}</td>
                           <td><span className={'demo-status ' + site.status}>{site.status}</span></td>
                           <td><div className="demo-overview-actions">
