@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type { Property, Site, Snapshot, Stay } from '@/lib/domain';
 import type { SiteOverdueFlag } from '@/lib/site-overdue';
+import type { AccountNote } from '@/lib/collections-domain';
+import { overviewStaffTasks } from '@/lib/overview-staff-tasks';
 import { pastDueSiteReviewRows, pastDueSiteReviewCsv } from '@/lib/past-due-site-review';
 import { cents } from '@/lib/billing-domain';
 import {
@@ -372,6 +374,7 @@ export function Overview({
   viewSite,
   overdueSites = {},
   financialStatus = 'restricted',
+  financialNotes = [],
 }: {
   snapshot: Snapshot;
   properties: Property[];
@@ -381,6 +384,7 @@ export function Overview({
   viewSite: (id: string) => void;
   overdueSites?: Record<string, SiteOverdueFlag>;
   financialStatus?: string;
+  financialNotes?: AccountNote[];
 }) {
   const propertyIds = new Set(properties.filter((p) => !p.archived_at).map((p) => p.id));
   const activeSites = sites.filter((s) => !s.archived_at && propertyIds.has(s.property_id));
@@ -398,6 +402,15 @@ export function Overview({
   const preparation = activeSites.filter((s) => status(s) === 'in_preparation').length;
   const unavailable = activeSites.filter((s) => ['blocked', 'out_of_service'].includes(status(s))).length;
   const overdueCount = activeSites.filter((site) => !!overdueSites[site.id]).length;
+  const authorizedFinancialProperties = properties.filter(p =>
+    !p.archived_at && canEditProperty(snapshot,p.id,true));
+  const staffTasks = financialStatus === 'ready'
+    ? overviewStaffTasks(financialNotes,authorizedFinancialProperties) : [];
+  const dueStaffTasks = staffTasks.filter(task => task.state === 'due').length;
+  const scheduledStaffTasks = staffTasks.length - dueStaffTasks;
+  const staffTaskDestination = staffTasks[0]?.propertyId ?? authorizedFinancialProperties[0]?.id;
+  const staffTaskLink = staffTaskDestination
+    ? href('collections',staffTaskDestination) + '&focus=followups' : '';
   const arrivals = snapshot.reservations.filter(
     (r) =>
       propertyIds.has(r.property_id) &&
@@ -591,8 +604,36 @@ export function Overview({
             <b>{overdueCount}</b>
             <ArrowRight size={15} />
           </Link>}
+          {financialStatus === 'ready' && staffTaskDestination && (
+            <section className="overview-followup-snapshot" aria-label="Staff follow-up snapshot">
+              <Link href={staffTaskLink} className="attention-row" data-testid="office-followup-summary">
+                <span className="attention-icon amber"><Clock3 size={19}/></span>
+                <div>
+                  <strong>Staff follow-ups due</strong>
+                  <span>{scheduledStaffTasks} additional scheduled follow-up{scheduledStaffTasks===1?'':'s'} · Open office tasks</span>
+                </div>
+                <b>{dueStaffTasks}</b>
+                <ArrowRight size={15}/>
+              </Link>
+              {staffTasks.length > 0 && (
+                <div className="overview-followup-preview" role="list" aria-label="Next staff tasks">
+                  {staffTasks.slice(0,3).map(task => (
+                    <Link key={task.noteId} role="listitem"
+                      href={href('collections',task.propertyId)+'&focus=followups'}
+                      className="overview-followup-item">
+                      <strong>{customerName(snapshot.customers.find(c =>
+                        c.id === task.customerId && c.property_id === task.propertyId))}</strong>
+                      <span>{task.propertyName} · {task.state==='due'?'Due':'Scheduled'} {task.dueOn}</span>
+                      <ArrowRight size={14}/>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
           {financialStatus === 'unavailable' && <p className="muted small" role="alert">
-            Past-due account status could not be loaded; please check Payments &amp; collections.
+            Past-due balances and staff follow-up status could not be verified;
+            please check Payments &amp; collections.
           </p>}
           <div className="roadmap-note">
             <span className="eyebrow">Daily operations</span>
