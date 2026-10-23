@@ -260,12 +260,16 @@ test('meter routes survive offline reload, retry photos once and retain supervis
         '/tablet/index.html',
         '/tablet/reader.css',
         '/tablet/reader.mjs',
+        '/tablet/voice-entry.mjs',
+        '/tablet/voice-register.mjs',
         '/tablet/vault.mjs',
         '/icon.svg',
         '/manifest.webmanifest',
       ].includes(path)
     )
   ).toBe(true);
+  expect(caches).toContain('/tablet/voice-entry.mjs');
+  expect(caches).toContain('/tablet/voice-register.mjs');
   await page.getByRole('button', { name: 'Outdoor mode' }).click();
   await noOverflow(page);
   expect(
