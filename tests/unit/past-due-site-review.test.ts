@@ -4,7 +4,7 @@ import type { SiteOverdueFlag } from '../../src/lib/site-overdue';
 import type { Customer, Property, Site, Stay } from '../../src/lib/domain';
 
 const now=new Date('2026-10-23T15:00:00Z');
-const properties=[{id:'park',timezone:'America/Los_Angeles'},{id:'other',timezone:'America/New_York'}] as Property[];
+const properties=[{id:'park',timezone:'America/Los_Angeles'},{id:'other',timezone:'America/New_York'}] as unknown as Property[];
 const sites=[
  {id:'s1',label:'RV-01',property_id:'park',archived_at:null},
  {id:'s2',label:'RV-02',property_id:'park',archived_at:null},
@@ -21,7 +21,7 @@ const customers=[
  {id:'former',property_id:'park',first_name:'Former',last_name:'Resident',archived_at:null},
  {id:'sam',property_id:'park',first_name:'Sam',last_name:'Payne',archived_at:null},
  {id:'foreign',property_id:'other',first_name:'Other',last_name:'Resident',archived_at:null},
-] as Customer[];
+] as unknown as Customer[];
 const flag=(siteId:string,customerId:string,amount:string):SiteOverdueFlag=>({
  siteId,customerId,invoiceCount:1,outstandingCents:amount,
 });
