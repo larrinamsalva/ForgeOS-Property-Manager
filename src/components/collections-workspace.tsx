@@ -68,7 +68,7 @@ export function CollectionsWorkspace({
     [refresh, setRefresh] = useState(0);
   const [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
-    [tab, setTab] = useState(initialTab);
+    [tab, setTab] = useState<string>(initialTab);
   const [selectedProperty, setSelectedProperty] = useState(
     propertyId || snapshot.properties.find((p) => canEditProperty(snapshot, p.id, true))?.id || ''
   );
