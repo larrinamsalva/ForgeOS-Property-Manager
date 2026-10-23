@@ -3333,3 +3333,11 @@ table summary {
 .customer-overdue-followup .field{min-width:0}
 .customer-overdue-followup textarea{width:100%;min-width:0;max-width:100%;resize:vertical;white-space:pre-wrap}
 .customer-overdue-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* Authorized site-level billing review; reflects issued balances, never calculated rent estimates. */
+.site-account-review{display:grid;gap:10px;border:1px solid var(--line);border-radius:10px;padding:14px;margin:15px 0;min-width:0}
+.site-account-review h3,.site-account-review p{margin:0}
+.site-account-overdue{display:grid;gap:5px;padding:12px;border:1px solid var(--danger);border-radius:8px;background:var(--surface-2);color:var(--text);overflow-wrap:anywhere}
+.site-account-overdue strong,.site-directory-arrears{color:var(--danger);font-weight:700}
+.site-account-review .button{width:fit-content;max-width:100%;white-space:normal;text-align:center}
+.site-directory-arrears{display:block;margin-top:5px}
