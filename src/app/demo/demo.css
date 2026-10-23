@@ -152,3 +152,27 @@
   .demo-overview-table td.demo-overview-empty{grid-column:1/-1}
 }
 @media(max-width:460px){.demo-overview-filters{grid-template-columns:1fr}}
+
+/* Site accounts: history and reviewed notices, with an unmistakable rent flag. */
+.demo-payment-flag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:.02em;color:#fff;background:#a22127;border:1px solid #7f161d;border-radius:6px;padding:4px 7px;margin-top:5px;line-height:1.4}
+.demo-overview-table .demo-payment-flag{display:block;max-width:max-content}
+.demo-map-space .demo-payment-flag{color:#fff;text-transform:uppercase;overflow-wrap:anywhere}
+.demo-site-account .demo-section-head{align-items:center;flex-wrap:wrap}
+.demo-account-badge{padding:7px 10px;border-radius:8px;font-weight:850;font-size:11px;border:1px solid var(--line);background:var(--surface-2);color:var(--text)}
+.demo-account-badge.past_due{border-color:#9b2429;color:#fff;background:#a22127}
+.demo-account-badge.paid{border-color:#3f916c;color:#176d45;background:#d9f2e2}
+.demo-site-account-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.demo-account-section{border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0;display:grid;gap:12px;align-content:start;background:var(--surface-2)}
+.demo-account-section h3{font-size:14px;margin:0;font-weight:800;color:var(--text)}
+.demo-account-section p{margin:0;font-size:12px;color:var(--muted)}
+.demo-account-section p strong{color:var(--text)}
+.demo-account-section .demo-table{min-width:300px}
+.demo-account-section .demo-small-button{justify-self:start}
+.demo-account-section label{display:grid;gap:6px;font-size:12px;font-weight:800;color:var(--text)}
+.demo-account-section select{min-height:42px;width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;color:var(--text);background:var(--input);padding:9px 12px}
+.demo-notice-workflow{margin-top:14px}
+.demo-notice-preview{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
+.demo-notice-history{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.demo-notice-history li{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px}
+.demo-notice-history li small{display:block;font-size:11px;color:var(--muted);margin-top:6px;white-space:pre-wrap}
+@media(max-width:750px){.demo-site-account-cols{grid-template-columns:1fr}}
