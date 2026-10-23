@@ -268,6 +268,18 @@ test('monthly billing run lists real stay records by month without auto-issuing'
   await expect(board.getByText('No stays match this property, month and filter.')).toBeVisible();
   await board.getByLabel('Find billing site or resident').fill('River');
   await expect(table).toContainText('River Sample');
+  // Only the currently filtered month/site rows can be exported. No drafts,
+  // issued statements or charges are created by a CSV download.
+  const checklistDownload = page.waitForEvent('download');
+  await board.getByRole('button', {name:'Download filtered billing checklist (CSV)'}).click();
+  const checklistFile = await checklistDownload;
+  expect(checklistFile.suggestedFilename()).toContain('forgeos-monthly-billing-');
+  const checklistPath = await checklistFile.path();
+  const checklistContents = (await readFile(checklistPath!)).toString('utf8');
+  expect(checklistContents).toContain('RV-01');
+  expect(checklistContents).toContain('River Sample');
+  expect(checklistContents).toContain('Site / unit');
+  expect(checklistContents).toContain('Readiness');
   await board.getByLabel('Billing readiness filter').selectOption('review');
   await expect(table).toContainText('Needs review');
   const link=table.getByRole('link',{name:'Review / prepare draft'});
