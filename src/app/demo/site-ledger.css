@@ -1,0 +1,27 @@
+/* Fictional guest ledger: separate payment alerts from occupancy status. */
+.demo-overdue-badge{display:inline-block;margin:4px 5px 0 0;padding:5px 8px;border-radius:6px;background:#a52b34;color:#fff;font-weight:800;font-size:11px;line-height:1.25}
+.demo-dot.overdue{background:#b42330}
+.demo-map-space.overdue{border:3px solid #bb2430!important;outline:2px solid #ffc5c8;outline-offset:-5px;background:#fff0f0!important;color:#762229!important}
+.demo-map-space .demo-map-overdue{display:block;min-height:14px;color:#9e1a22;font-size:10px;font-weight:900;letter-spacing:.01em;text-transform:uppercase}
+.demo-site-ledger{scroll-margin-top:16px;display:grid;gap:16px}
+.demo-site-ledger h2{font-size:18px}
+.demo-site-ledger h3{font-size:14px;margin:0 0 10px;color:var(--text)}
+.demo-site-ledger p{font-size:12px;line-height:1.55;margin:6px 0;color:var(--text)}
+.demo-ledger-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.demo-ledger-grid>div,.demo-ledger-notices{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:16px;min-width:0}
+.demo-ledger-grid small,.demo-ledger-draft small{font-size:11px;color:var(--muted)}
+.demo-ledger-grid .demo-ledger-overdue{color:#bf2636;font-weight:800}
+.demo-ledger-actions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:11px 0}
+.demo-ledger-actions label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--text);min-width:200px;flex:1}
+.demo-ledger-actions input,.demo-ledger-actions select{min-height:42px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--input);color:var(--text);width:100%}
+.demo-ledger-actions .demo-action{min-height:42px;margin:0}
+.demo-ledger-history{display:grid;gap:8px;max-height:280px;overflow:auto}
+.demo-ledger-history>div,.demo-ledger-draft{display:grid;gap:5px;border-bottom:1px solid var(--line);padding:9px 0}
+.demo-ledger-history strong,.demo-ledger-draft strong{font-size:12px;color:var(--text)}
+.demo-ledger-history span,.demo-ledger-history small{font-size:11px;color:var(--muted)}
+.demo-ledger-draft p{white-space:pre-wrap}
+.demo-site-ledger .demo-ledger-caution{font-size:11px;color:var(--muted);border-left:3px solid var(--amber);padding-left:10px;margin-top:14px}
+:root[data-theme='dark'] .demo-map-space.overdue{background:#53232b!important;border-color:#fa7780!important;color:#fff0f0!important;outline-color:#8f3944}
+:root[data-theme='dark'] .demo-map-space .demo-map-overdue{color:#ffbdc5}
+:root[data-theme='dark'] .demo-ledger-grid .demo-ledger-overdue{color:#ffadb3}
+@media(max-width:650px){.demo-ledger-grid{grid-template-columns:1fr}.demo-site-ledger{gap:12px}.demo-ledger-actions label{min-width:100%}}
