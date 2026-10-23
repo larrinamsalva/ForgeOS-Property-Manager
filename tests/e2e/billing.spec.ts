@@ -281,7 +281,7 @@ test('monthly billing run lists real stay records by month without auto-issuing'
   const modal=page.getByRole('dialog');
   const starts=await modal.getByLabel('Billing starts on').inputValue();
   const ends=await modal.getByLabel('Billing ends on (exclusive)').inputValue();
-  expect(ends).toBeGreaterThan(starts);
+  expect(ends > starts).toBe(true);
   await expect(focused).toContainText(starts + ' → ' + ends);
   await modal.getByRole('button',{name:'Cancel'}).click();
   // Navigating and pre-filling must not even create a draft, much less issue a bill.
