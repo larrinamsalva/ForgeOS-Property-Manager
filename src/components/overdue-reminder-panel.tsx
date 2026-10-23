@@ -1,8 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { cents } from '@/lib/billing-domain';
+import type { AccountNote } from '@/lib/collections-domain';
+import {
+  contactMethods, contactOutcomes, manualContactBody, overdueContactHistory,
+  type ContactMethod, type ContactOutcome,
+} from '@/lib/manual-overdue-contact';
 import {
   draftOverdueReminder, overdueReminderTotal,
   type ReminderStyle, type OverdueReminderRow,
@@ -10,14 +15,29 @@ import {
 
 export function OverdueReminderPanel({
   rows, residentName, propertyName, collectionsUrl,
+  organizationId, propertyId, customerId, notes, onSaved,
 }: {
   rows: OverdueReminderRow[];
   residentName: string;
   propertyName: string;
   collectionsUrl: string;
+  organizationId: string;
+  propertyId: string;
+  customerId: string;
+  notes: AccountNote[];
+  onSaved: () => void;
 }) {
   const [style,setStyle] = useState<ReminderStyle>('friendly');
   const [status,setStatus] = useState('');
+  const [contactMethod,setContactMethod] = useState<ContactMethod>('phone');
+  const [contactOutcome,setContactOutcome] = useState<ContactOutcome>('attempted_no_response');
+  const [contactDetails,setContactDetails] = useState('');
+  const [followUpOn,setFollowUpOn] = useState('');
+  const [saving,setSaving] = useState(false);
+  const [contactError,setContactError] = useState('');
+  const [contactNotice,setContactNotice] = useState('');
+  const requestId = useRef<string | null>(null);
+  const contacts = overdueContactHistory(notes,propertyId,customerId);
   if (!rows.length) return null;
   const message = draftOverdueReminder({style, residentName, propertyName, rows});
   async function copyForReview() {
@@ -26,6 +46,43 @@ export function OverdueReminderPanel({
       setStatus('Reminder copied. Review it before sending through your own approved communication channel.');
     } catch {
       setStatus('Automatic copy is unavailable. Select and copy the message from the text box.');
+    }
+  }
+  async function recordManualContact() {
+    if (saving) return;
+    setContactError('');
+    setContactNotice('');
+    try {
+      const body = manualContactBody(contactMethod,contactOutcome,contactDetails);
+      if (followUpOn && !/^\d{4}-\d{2}-\d{2}$/.test(followUpOn))
+        throw new Error('Enter a valid follow-up date or leave it blank.');
+      if (!requestId.current) requestId.current = crypto.randomUUID();
+      setSaving(true);
+      const response = await fetch('/api/collections', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          command:'account_note',
+          payload:{
+            organization_id:organizationId, property_id:propertyId,
+            request_id:requestId.current, customer_id:customerId,
+            invoice_id: rows.length===1 ? rows[0].invoiceId : null,
+            kind:'note',body,follow_up_on:followUpOn || null,
+            promised_on:null,promised_amount_cents:null,resolves_id:null,
+          },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not record this contact.');
+      requestId.current = null;
+      setContactDetails('');
+      setFollowUpOn('');
+      setContactNotice('Manual contact note saved in the audited customer record. No message was sent.');
+      onSaved();
+    } catch (error) {
+      setContactError(error instanceof Error ? error.message : 'Could not record the contact.');
+    } finally {
+      setSaving(false);
     }
   }
   return (
@@ -65,6 +122,54 @@ export function OverdueReminderPanel({
         <Link href={collectionsUrl} className="text-button">Open collections account</Link>
       </div>
       {status && <p role="status" className="muted small">{status}</p>}
+      <div className="customer-contact-log" role="group" aria-label="Manual overdue contact log">
+        <h4>Record a manual contact attempt</h4>
+        <p className="muted small">After contacting or attempting to contact this resident outside
+          ForgeOS, record what actually happened. Saving a note does not call, text, email,
+          deliver or legally serve any notice. Verify contact preferences and permission first.</p>
+        <label>Contact method
+          <select aria-label="Manual contact method" value={contactMethod}
+            onChange={e=>{setContactMethod(e.target.value as ContactMethod);requestId.current=null;}}>
+            {contactMethods.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </label>
+        <label>Reported outcome
+          <select aria-label="Manual contact outcome" value={contactOutcome}
+            onChange={e=>{setContactOutcome(e.target.value as ContactOutcome);requestId.current=null;}}>
+            {contactOutcomes.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </label>
+        <label>What actually happened (required)
+          <textarea aria-label="Manual contact details" rows={3} maxLength={1500}
+            value={contactDetails} onChange={e=>{setContactDetails(e.target.value);requestId.current=null;}}
+            placeholder="E.g. called number on file, left no voicemail; follow up tomorrow."/>
+        </label>
+        <label>Next staff follow-up date (optional)
+          <input aria-label="Next contact follow-up date" type="date" value={followUpOn}
+            onChange={e=>{setFollowUpOn(e.target.value);requestId.current=null;}}/>
+        </label>
+        <button type="button" className="button primary" disabled={saving || contactDetails.trim().length<3}
+          onClick={recordManualContact}>
+          {saving ? 'Saving manual contact…' : 'Save manual contact note'}
+        </button>
+        {contactError && <p role="alert">{contactError}</p>}
+        {contactNotice && <p role="status">{contactNotice}</p>}
+        <h4>Recorded manual contact history</h4>
+        {contacts.length===0 ? <p className="muted small">No manual overdue contact notes recorded yet.</p> :
+          <div className="customer-contact-history">
+            {contacts.slice(0,10).map(note=>(
+              <article key={note.id}>
+                <strong>{new Date(note.created_at).toLocaleString()}</strong>
+                <p className="contact-record-body">{note.body.replace(/^Manual past-due contact\n/,'')}</p>
+                {note.follow_up_on && <p>Staff follow-up: {note.follow_up_on}</p>}
+                {note.invoice_id && <p>Linked invoice: <Link href={'/invoices/'+note.invoice_id}>
+                  View invoice</Link></p>}
+              </article>
+            ))}
+          </div>}
+        {contacts.length>10 && <p className="muted small">Showing the ten newest entries.
+          Open Payments &amp; collections for all notes and follow-ups.</p>}
+      </div>
       <p className="muted small">Nothing is sent, scheduled or added to the balance here.
         Staff must verify the recipient, payment history, notice rules and permitted contact method.
         Formal pay-or-quit notices, late fees and eviction timelines require separate authorized review.</p>
