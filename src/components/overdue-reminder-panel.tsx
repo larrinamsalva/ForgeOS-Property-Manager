@@ -3,9 +3,8 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { cents } from '@/lib/billing-domain';
-import type { AccountNote } from '@/lib/collections-domain';
 import {
-  contactMethods, contactOutcomes, manualContactBody, overdueContactHistory,
+  contactMethods, contactOutcomes, manualContactBody,
   type ContactMethod, type ContactOutcome,
 } from '@/lib/manual-overdue-contact';
 import {
@@ -15,7 +14,7 @@ import {
 
 export function OverdueReminderPanel({
   rows, residentName, propertyName, collectionsUrl,
-  organizationId, propertyId, customerId, notes, onSaved,
+  organizationId, propertyId, customerId, onSaved,
 }: {
   rows: OverdueReminderRow[];
   residentName: string;
@@ -24,7 +23,6 @@ export function OverdueReminderPanel({
   organizationId: string;
   propertyId: string;
   customerId: string;
-  notes: AccountNote[];
   onSaved: () => void;
 }) {
   const [style,setStyle] = useState<ReminderStyle>('friendly');
@@ -37,7 +35,6 @@ export function OverdueReminderPanel({
   const [contactError,setContactError] = useState('');
   const [contactNotice,setContactNotice] = useState('');
   const requestId = useRef<string | null>(null);
-  const contacts = overdueContactHistory(notes,propertyId,customerId);
   if (!rows.length) return null;
   const message = draftOverdueReminder({style, residentName, propertyName, rows});
   async function copyForReview() {
@@ -154,21 +151,6 @@ export function OverdueReminderPanel({
         </button>
         {contactError && <p role="alert">{contactError}</p>}
         {contactNotice && <p role="status">{contactNotice}</p>}
-        <h4>Recorded manual contact history</h4>
-        {contacts.length===0 ? <p className="muted small">No manual overdue contact notes recorded yet.</p> :
-          <div className="customer-contact-history">
-            {contacts.slice(0,10).map(note=>(
-              <article key={note.id}>
-                <strong>{new Date(note.created_at).toLocaleString()}</strong>
-                <p className="contact-record-body">{note.body.replace(/^Manual past-due contact\n/,'')}</p>
-                {note.follow_up_on && <p>Staff follow-up: {note.follow_up_on}</p>}
-                {note.invoice_id && <p>Linked invoice: <Link href={'/invoices/'+note.invoice_id}>
-                  View invoice</Link></p>}
-              </article>
-            ))}
-          </div>}
-        {contacts.length>10 && <p className="muted small">Showing the ten newest entries.
-          Open Payments &amp; collections for all notes and follow-ups.</p>}
       </div>
       <p className="muted small">Nothing is sent, scheduled or added to the balance here.
         Staff must verify the recipient, payment history, notice rules and permitted contact method.

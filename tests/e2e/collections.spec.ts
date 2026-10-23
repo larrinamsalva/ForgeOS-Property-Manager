@@ -272,7 +272,7 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await expect(draft).toHaveValue(/Our records show an unpaid balance/);
   await expect(followup).toContainText('Nothing is sent, scheduled or added to the balance here');
   const contact=followup.getByRole('group',{name:'Manual overdue contact log'});
-  await expect(contact).toContainText('No manual overdue contact notes recorded yet.');
+  await expect(dialog.getByRole('region',{name:'Resident manual contact history'})).toHaveCount(0);
   await contact.getByRole('combobox',{name:'Manual contact method'})
     .selectOption('phone');
   await contact.getByRole('combobox',{name:'Manual contact outcome'})
@@ -287,9 +287,10 @@ test('resident billing file provides reviewed factual overdue reminders without 
   await contact.getByRole('button',{name:'Save manual contact note'}).click();
   const saved=await noteSaved;
   expect(saved.ok(),await saved.text()).toBe(true);
-  await expect(contact).toContainText('Staff attempted the resident phone number on file');
-  await expect(contact).toContainText('Phone call');
-  await expect(contact).toContainText('Attempted — no response');
+  const history=dialog.getByRole('region',{name:'Resident manual contact history'});
+  await expect(history).toContainText('Staff attempted the resident phone number on file');
+  await expect(history).toContainText('Phone call');
+  await expect(history).toContainText('Attempted — no response');
 
   const after = (await (
     await page.request.get('/api/collections?organization=' + seed.org)
@@ -303,6 +304,32 @@ test('resident billing file provides reviewed factual overdue reminders without 
   expect(note?.invoice_id).toBe(i.id);
   expect(note?.follow_up_on).toBe(addDays(today(),2));
   expect(after.notes.every(entry=>entry.property_id===seed.property)).toBe(true);
+
+  // The office later applies the full payment. Refresh the same open customer
+  // file: the overdue reminder must disappear, but immutable contact history
+  // cannot disappear along with the flag.
+  const posted=(await (await api(page,'record_payment',{
+    customer_id:seed.customerId,amount_cents:'10000',
+    received_on:today(),method:'cash',reference:'Fictional settlement after manual call',
+    corrects_payment_id:null,
+  })).json()) as {id:string;receipt_id:string};
+  expect(posted.id).toBeTruthy();
+  await api(page,'allocate_payment',{
+    payment_id:posted.id,invoice_id:i.id,amount_cents:'10000',
+    effective_on:today(),reference:'Fictional settlement allocation',
+  });
+  await dialog.getByRole('button',{name:'Refresh customer billing history'}).click();
+  await expect(dialog.getByRole('region',{name:'Resident overdue follow-up review'})).toHaveCount(0);
+  await expect(history).toContainText('Staff attempted the resident phone number on file');
+  await expect(history).toContainText('Staff follow-up: '+addDays(today(),2));
+  await expect(history).toContainText('View invoice');
+  await expect(dialog.getByRole('region',{name:'Customer billed totals and payments'})).toContainText('Paid');
+  const settled=(await (
+    await page.request.get('/api/collections?organization='+seed.org)
+  ).json()) as CollectionsSnapshot;
+  expect(settled.summary.accounts.find(account=>account.invoice_id===i.id)?.outstanding_cents)
+    .toBe('0');
+  expect(settled.notes.map(n=>n.id)).toEqual(after.notes.map(n=>n.id));
 });
 
 test('site directory and site file show current occupant overdue balance and open verified resident follow-up', async ({page}, info) => {
