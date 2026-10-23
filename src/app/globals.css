@@ -3277,3 +3277,21 @@ table summary {
 .customer-bill-stats>div{padding:12px;border-radius:9px;border:1px solid var(--line)}
 .customer-bill-stats strong{display:block;font-size:1.3rem;margin-top:4px}
 .customer-receipt-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+
+/* Site utility cards: read-only meter review and authoritative billed charges */
+.site-utility-section{margin:14px 0 18px}
+.site-utility-section h4{margin:10px 0}
+.site-utility-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin:12px 0}
+.site-utility-card{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;min-width:0}
+.site-utility-card-heading{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.site-utility-card .utility-chip{background:var(--surface-2);color:var(--text);padding:3px 7px;border-radius:6px;font-size:.76rem}
+.site-utility-meter{border-top:1px solid var(--line);padding-top:8px;margin-top:9px}
+.site-utility-meter dl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.site-utility-meter dt{color:var(--muted);font-size:.8rem}
+.site-utility-meter dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.site-utility-meter dd small{display:block;font-size:.77rem;color:var(--muted)}
+.site-utility-bill{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.site-utility-bill>strong{font-size:1.2rem;display:block}
+.site-utility-bill>a{display:block;overflow-wrap:anywhere}
+.site-meter-voice{border-top:1px solid var(--line);padding-top:12px}
+.site-meter-voice>.action-group{display:flex;flex-wrap:wrap;gap:8px}
