@@ -71,7 +71,7 @@ export function CustomerBillingFile({
           organizationId={organizationId}
           propertyId={propertyId}
           customerId={customerId}
-          notes={current.data.notes}
+          notes={current?.data?.notes ?? []}
           onSaved={() => {setLoaded(null);setRefresh(version=>version+1);}}
         />}
         <h4>Payment &amp; receipt history</h4>
