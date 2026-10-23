@@ -232,6 +232,52 @@ test('manual payments, deposits, receipts and reconciliation reach the same issu
   expect(final.summary.deposits[0].held_cents).toBe('0');
   expect(final.reconciliations[0].variance_cents).toBe('0');
 });
+test('resident billing file provides reviewed factual overdue reminders without sending or charging', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Actual financial reminder boundaries run once.');
+  await login(page);
+  const i = await invoice(page);
+  await collections(page);
+  await policy(page);
+  const billingRecord = (await (
+    await page.request.get('/api/billing?organization=' + seed.org)
+  ).json()) as BillingSnapshot;
+  await api(page, 'issue_invoice', {
+    invoice_id: i.id,
+    revision_id: billingRecord.invoices.find(row => row.id === i.id)!.current_revision_id,
+    issued_on: addDays(today(), -4),
+    due_on: addDays(today(), -2),
+  });
+  const before = (await (
+    await page.request.get('/api/collections?organization=' + seed.org)
+  ).json()) as CollectionsSnapshot;
+  const outstanding = before.summary.accounts.find(a => a.invoice_id === i.id);
+  expect(outstanding?.state).toBe('overdue');
+
+  await page.goto('/customers?' + new URLSearchParams({
+    organization:seed.org,property:seed.property,
+  }));
+  await page.getByRole('button',{name:'River Sample',exact:true}).click();
+  const dialog = page.getByRole('dialog');
+  const followup = dialog.getByRole('region',{name:'Resident overdue follow-up review'});
+  await expect(followup).toBeVisible();
+  await expect(followup).toContainText(i.number);
+  await expect(followup).toContainText('$100.00');
+  const draft = followup.getByRole('textbox',{name:'Review reminder before copying'});
+  await expect(draft).toHaveValue(/Hello River Sample/);
+  await expect(draft).toHaveValue(/Pine Creek RV Park/);
+  await followup.getByRole('combobox',{name:'Reminder style'}).selectOption('past_due');
+  await expect(draft).toHaveValue(/Our records show an unpaid balance/);
+  await expect(followup).toContainText('Nothing is sent, scheduled or added to the balance here');
+
+  const after = (await (
+    await page.request.get('/api/collections?organization=' + seed.org)
+  ).json()) as CollectionsSnapshot;
+  expect(after.invoices).toEqual(before.invoices);
+  expect(after.summary.accounts).toEqual(before.summary.accounts);
+});
+
 test('collection forms and receipts remain accessible on every viewport in both themes', async ({
   page,
 }, info) => {

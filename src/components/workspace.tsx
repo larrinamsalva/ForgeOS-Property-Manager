@@ -654,7 +654,9 @@ export function Workspace({
         </div>
         {editor.entity === 'customer' && canEditProperty(snapshot, (record as Customer).property_id, true) && (
           <CustomerBillingFile organizationId={snapshot.organizationId}
-            propertyId={(record as Customer).property_id} customerId={record.id} />
+            propertyId={(record as Customer).property_id} customerId={record.id}
+            residentName={customerName(record as Customer)}
+            propertyName={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.name ?? 'Property office'} />
         )}
         <h3>Occupancy history</h3>
         <StayHistory stays={history} snapshot={snapshot} />

@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { cents } from '@/lib/billing-domain';
 import { stateLabel, type CollectionsSnapshot } from '@/lib/collections-domain';
 import { customerBillingSummary } from '@/lib/customer-billing-file';
+import { customerOverdueReminders } from '@/lib/overdue-reminders';
+import { OverdueReminderPanel } from './overdue-reminder-panel';
 
 export function CustomerBillingFile({
-  organizationId, propertyId, customerId,
-}: { organizationId: string; propertyId: string; customerId: string }) {
+  organizationId, propertyId, customerId, residentName, propertyName,
+}: { organizationId: string; propertyId: string; customerId: string; residentName: string; propertyName: string }) {
   const key = organizationId + ':' + propertyId + ':' + customerId;
   const [loaded, setLoaded] = useState<{ key: string; data?: CollectionsSnapshot; error?: boolean } | null>(null);
   useEffect(() => {
@@ -26,6 +28,7 @@ export function CustomerBillingFile({
   }, [organizationId, key]);
   const current = loaded?.key === key ? loaded : null;
   const summary = current?.data ? customerBillingSummary(current.data, customerId, propertyId) : null;
+  const overdue = current?.data ? customerOverdueReminders(current.data, propertyId, customerId) : [];
   const financialUrl = '/collections?' + new URLSearchParams({ organization: organizationId, property: propertyId });
   return (
     <section className="customer-billing-file" aria-label="Customer monthly bills, payments and receipts">
@@ -59,6 +62,12 @@ export function CustomerBillingFile({
           </div>
         )}
         {summary.bills.length > 12 && <p className="muted small">Showing 12 newest bills; open Payments &amp; collections for full history.</p>}
+        {overdue.length > 0 && <OverdueReminderPanel
+          rows={overdue}
+          residentName={residentName}
+          propertyName={propertyName}
+          collectionsUrl={financialUrl}
+        />}
         <h4>Payment &amp; receipt history</h4>
         {!summary.receipts.length ? <p>No receipt recorded yet.</p> :
           <div className="customer-receipt-list">

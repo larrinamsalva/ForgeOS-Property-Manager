@@ -3324,3 +3324,12 @@ table summary {
 /* Month-end invoice follow-up, separate from actual invoice issuance. */
 .monthly-issue-link{display:block;width:fit-content;max-width:100%;margin-top:8px;font-size:.86rem;overflow-wrap:anywhere}
 .monthly-billing-board td>strong{display:block;margin-bottom:4px}
+
+/* Resident overdue follow-up is read-only and never sends messages. */
+.customer-overdue-followup{border:1px solid var(--line);border-radius:10px;margin:16px 0;padding:14px;display:grid;gap:12px}
+.customer-overdue-followup h4{margin:0}
+.customer-overdue-followup p{margin:4px 0}
+.customer-overdue-items{border-inline-start:3px solid var(--line);padding-inline-start:12px}
+.customer-overdue-followup .field{min-width:0}
+.customer-overdue-followup textarea{width:100%;min-width:0;max-width:100%;resize:vertical;white-space:pre-wrap}
+.customer-overdue-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
