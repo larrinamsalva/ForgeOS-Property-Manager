@@ -93,6 +93,59 @@ async function unlock(page: Page) {
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 }
+test('voice assistant confirms a spoken meter number without writing until normal save', async ({ page }) => {
+  test.setTimeout(120000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const s = await setup(page);
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      maxAlternatives = 1;
+      onresult: ((value: {results: {0: {0: {transcript: string}}}}) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((value: {error: string}) => void) | null = null;
+      start() {
+        const words = String((window as unknown as Record<string, unknown>).__spokenMeterTest || '');
+        queueMicrotask(() => {
+          this.onresult?.({results: {0: {0: {transcript: words}}}});
+          this.onend?.();
+        });
+      }
+      abort() { this.onend?.(); }
+    }
+    (window as unknown as Record<string, unknown>).SpeechRecognition = MockSpeechRecognition;
+  });
+  await openReader(page, s.org);
+  await expect(page.locator('#utility-label')).toHaveText('electric');
+  await page.evaluate(() => {
+    (window as unknown as Record<string, unknown>).__spokenMeterTest = 'gas meter 1550';
+  });
+  await page.getByRole('button', {name: 'Speak meter number'}).click();
+  await expect(page.locator('#voice-status')).toContainText('does not match the selected meter');
+  await expect(page.locator('#voice-preview')).toBeHidden();
+  await expect(page.locator('#register')).toHaveValue('');
+  await page.evaluate(() => {
+    (window as unknown as Record<string, unknown>).__spokenMeterTest = 'electric meter 12,450';
+  });
+  await page.getByRole('button', {name: 'Speak meter number'}).click();
+  await expect(page.locator('#voice-preview')).toBeVisible();
+  await expect(page.locator('#voice-number')).toHaveText('12450 kWh');
+  await expect(page.locator('#register')).toHaveValue('');
+  await expect(page.locator('#progress-text')).toHaveText('0 / 2');
+  await page.getByRole('button', {name: 'Use this number in the form'}).click();
+  await expect(page.locator('#register')).toHaveValue('12450');
+  await expect(page.locator('#progress-text')).toHaveText('0 / 2');
+  await page.getByRole('button', {name: 'Save reading & next'}).click();
+  await expect(page.locator('#progress-text')).toHaveText('1 / 2');
+  const server = await (await page.request.get('/api/meters?organization=' + s.org)).json();
+  expect(server.readings).toHaveLength(0); // Still a protected local queue awaiting sync.
+  await noOverflow(page);
+  expect(errors).toEqual([]);
+});
+
 test('meter routes survive offline reload, retry photos once and retain supervisor correction history', async ({
   page,
   context,
