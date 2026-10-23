@@ -3268,3 +3268,12 @@ table summary {
 .meter-file-table{width:100%;min-width:540px}
 .meter-file-table td,.meter-file-table th{vertical-align:top}
 .meter-file-table small{display:block;color:var(--muted)}
+
+/* Customer ledger summary: issued totals and immutable receipt links */
+.customer-billing-file{border:1px solid var(--line);border-radius:10px;padding:14px;margin:16px 0;min-width:0}
+.customer-billing-file h4{margin:16px 0 8px}
+.customer-billing-file small{display:block}
+.customer-bill-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}
+.customer-bill-stats>div{padding:12px;border-radius:9px;border:1px solid var(--line)}
+.customer-bill-stats strong{display:block;font-size:1.3rem;margin-top:4px}
+.customer-receipt-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
