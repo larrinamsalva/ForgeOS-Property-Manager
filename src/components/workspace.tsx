@@ -708,7 +708,8 @@ export function Workspace({
           <CustomerBillingFile organizationId={snapshot.organizationId}
             propertyId={(record as Customer).property_id} customerId={record.id}
             residentName={customerName(record as Customer)}
-            propertyName={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.name ?? 'Property office'} />
+            propertyName={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.name ?? 'Property office'}
+            propertyTimezone={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.timezone ?? 'America/Los_Angeles'} />
         )}
         <h3>Occupancy history</h3>
         <StayHistory stays={history} snapshot={snapshot} />
