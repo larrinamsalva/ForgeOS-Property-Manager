@@ -187,6 +187,21 @@ export function Workspace({
   const properties = snapshot.properties.filter((p) => !propertyId || p.id === propertyId);
   const ids = new Set(properties.map((p) => p.id));
   const sites = snapshot.sites.filter((s) => ids.has(s.property_id));
+  const activeProperties = properties.filter((property) => !property.archived_at);
+  const localDates = new Map(activeProperties.map((property) => [property.id, dateAtProperty(property.timezone)]));
+  const todaysArrivals = snapshot.reservations.filter((reservation) =>
+    ids.has(reservation.property_id) &&
+    reservation.starts_on === localDates.get(reservation.property_id) &&
+    reservation.status === 'confirmed'
+  );
+  const todaysMoveIns = snapshot.stays.filter((stay) =>
+    ids.has(stay.property_id) && stay.starts_on === localDates.get(stay.property_id)
+  );
+  const todaysPlannedDepartures = snapshot.stays.filter((stay) =>
+    ids.has(stay.property_id) &&
+    !stay.ends_on &&
+    stay.planned_ends_on === localDates.get(stay.property_id)
+  );
   const customers = snapshot.customers.filter((c) => ids.has(c.property_id));
   const stays = snapshot.stays.filter((s) => ids.has(s.property_id));
   const editableProperties = properties.filter(
@@ -1014,6 +1029,24 @@ export function Workspace({
                     <span>Resident records</span>
                     <strong>{customers.filter((customer) => !customer.archived_at).length}</strong>
                     <Link href={href('customers')}>View residents <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Expected arrivals today</span>
+                    <strong>{todaysArrivals.length}</strong>
+                    <span>Confirmed reservations, property-local dates</span>
+                    <Link href={href('reservations')}>Review reservations <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Move-ins recorded today</span>
+                    <strong>{todaysMoveIns.length}</strong>
+                    <span>Recorded stay start dates</span>
+                    <Link href={href('occupancy')}>View occupancy <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Planned departures today</span>
+                    <strong>{todaysPlannedDepartures.length}</strong>
+                    <span>Open stays with a planned departure date</span>
+                    <Link href={href('occupancy')}>Review planned moves <ArrowUpRight size={14} aria-hidden="true" /></Link>
                   </div>
                   <div className="stat-card">
                     <span>Past-due sites</span>
