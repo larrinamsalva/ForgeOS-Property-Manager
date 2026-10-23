@@ -1,0 +1,60 @@
+import { describe, it, expect } from 'vitest';
+import { suggestBillingPeriod, siteBillingChecklist } from '../../src/lib/site-billing-prep';
+import type { Site, Stay } from '../../src/lib/domain';
+import type { BillingSnapshot } from '../../src/lib/billing-domain';
+import type { MeterSnapshot } from '../../src/lib/meter-domain';
+
+const site={id:'site',property_id:'property',electric:true,water:false,gas:false} as Site;
+const stay={id:'stay',starts_on:'2026-04-05',ends_on:null} as Stay;
+const period=suggestBillingPeriod(stay,'2026-10-23');
+const billing={
+ policies:[{property_id:'property'}], rates:[{property_id:'property',utility:'electric',
+  status:'active',starts_on:'2026-01-01',ends_on:null}], invoices:[]
+} as BillingSnapshot;
+const meter={
+ meters:[{id:'meter',property_id:'property',utility:'electric'}],
+ assignments:[{id:'assignment',meter_id:'meter',site_id:'site',property_id:'property',
+  starts_at:'2026-01-01T00:00:00Z',ends_at:null}],
+ readings:[
+  {id:'open',meter_id:'meter',assignment_id:'assignment',value:'100'},
+  {id:'close',meter_id:'meter',assignment_id:'assignment',value:'150'}
+ ],
+ occupancy:[
+  {reading_id:'open',site_id:'site',stay_id:'stay',captured_on:'2026-09-01'},
+  {reading_id:'close',site_id:'site',stay_id:'stay',captured_on:'2026-10-01'}
+ ],
+ reviews:[
+  {id:'r1',reading_id:'open',decision:'accepted',created_at:'2026-09-01T00:00:00Z'},
+  {id:'r2',reading_id:'close',decision:'accepted',created_at:'2026-10-01T00:00:00Z'}
+ ]
+} as unknown as MeterSnapshot;
+describe('site-focused monthly billing preparation',()=>{
+ it('defaults to the last completed calendar month with policy-based due date',()=>{
+  expect(period).toEqual({startsOn:'2026-09-01',endsOn:'2026-10-01',dueOn:'2026-10-16',isFutureClosing:false});
+ });
+ it('shows future close if the resident moved in this month, not a fabricated utility bill',()=>{
+  expect(suggestBillingPeriod({...stay,starts_on:'2026-10-09'},'2026-10-23')).toMatchObject({
+   startsOn:'2026-10-09',endsOn:'2026-11-01',isFutureClosing:true
+  });
+ });
+ it('includes property policy, per-utility rate, period and approved boundary evidence',()=>{
+  expect(siteBillingChecklist(site,stay,period,billing,meter)
+    .filter(i=>i.state==='check')).toHaveLength(0);
+ });
+ it('rejects previous occupant readings and unapproved close, without inventing billing totals',()=>{
+  const wrong = {...meter,occupancy:meter.occupancy.map(o=>o.reading_id==='open'?
+   {...o,stay_id:'former'}:o)};
+  expect(siteBillingChecklist(site,stay,period,billing,wrong)
+    .find(i=>i.label==='electric boundary readings')?.state).toBe('check');
+  const pending={...meter,reviews:meter.reviews.slice(0,1)};
+  expect(siteBillingChecklist(site,stay,period,billing,pending)
+    .find(i=>i.label==='electric boundary readings')?.state).toBe('check');
+ });
+ it('warns of existing draft/issued overlap and missing policy',()=>{
+  const data={...billing,policies:[], invoices:[{id:'invoice',stay_id:'stay',site_id:'site',
+   status:'approved',number:'INV-0001',starts_on:'2026-09-01',ends_on:'2026-10-01'}]} as BillingSnapshot;
+  const result=siteBillingChecklist(site,stay,period,data,meter);
+  expect(result.find(i=>i.label==='Property billing policy')?.state).toBe('check');
+  expect(result.find(i=>i.label==='Existing invoices')?.note).toContain('INV-0001');
+ });
+});
