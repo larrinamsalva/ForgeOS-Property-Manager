@@ -30,7 +30,7 @@ export function customerBillingSummary(
   const bills: CustomerBillRow[] = data.invoices.flatMap((invoice) => {
     if (invoice.customer_id !== customerId || invoice.property_id !== propertyId) return [];
     const a = accountByInvoice.get(invoice.id);
-    if (!a?.issued_on || a.state === 'voided' || invoice.status === 'voided') return [];
+    if (!a?.issued_on || !['issued', 'partially_paid', 'paid', 'overdue'].includes(a.state) || invoice.status !== 'approved') return [];
     const revision = revisions.get(invoice.current_revision_id);
     // If invoice evidence is missing, don't claim an accurate statement total.
     if (!revision) return [];
