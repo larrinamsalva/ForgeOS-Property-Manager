@@ -171,7 +171,7 @@ export function Workspace({
     return () => controller.abort();
   }, [snapshot.organizationId, operatingAccess, section, financialKey, financialVersion]);
   const financialVisibility = !operatingAccess ? 'restricted'
-    : financialRead?.key !== financialKey || financialRead.version !== financialVersion ? 'loading'
+    : financialRead?.key !== financialKey || financialRead?.version !== financialVersion ? 'loading'
     : financialRead.error ? 'unavailable' : 'ready';
   const checkedAt = financialVisibility === 'ready' && financialRead?.checkedAt
     ? new Date(financialRead.checkedAt).toLocaleTimeString(undefined, {
