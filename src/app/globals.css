@@ -3370,3 +3370,14 @@ table summary {
 .financial-refresh-bar strong{color:var(--text)}
 .financial-refresh-bar small{color:var(--muted)}
 .financial-refresh-bar .button{max-width:100%;white-space:normal}
+
+/* Overdue contacts: documented staff actions, not outbound messages. */
+.customer-contact-log{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:11px;min-width:0}
+.customer-contact-log h4,.customer-contact-log p{margin:0}
+.customer-contact-log label{display:grid;gap:5px;max-width:100%;color:var(--text);font-weight:600}
+.customer-contact-log select,.customer-contact-log input,.customer-contact-log textarea{background:var(--input);color:var(--text);max-width:100%;min-width:0;font-weight:400}
+.customer-contact-log button{max-width:100%;width:fit-content;min-height:42px;white-space:normal}
+.customer-contact-history{display:grid;gap:8px}
+.customer-contact-history article{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);min-width:0}
+.customer-contact-history article>strong{color:var(--text)}
+.customer-contact-history .contact-record-body{white-space:pre-wrap;overflow-wrap:anywhere}
