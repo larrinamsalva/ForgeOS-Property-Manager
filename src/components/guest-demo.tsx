@@ -6,6 +6,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
+import { GuestSiteLedger, demoRentMonth, demoRentIsPastDue, type DemoMeterReading, type DemoPreparedNotice } from '@/components/guest-site-ledger';
 import {
   ArrowRight, Boxes, Building2, CalendarDays, CheckCircle2, ClipboardList,
   Flame, Gauge, Home, LayoutDashboard, LockKeyhole, MapPinned, Receipt,
@@ -17,7 +18,7 @@ type Status = 'occupied' | 'available' | 'reserved';
 type Site = DemoSite;
 type Job = { id: number; title: string; location: string; status: 'Open' | 'Done' };
 type Stock = { name: string; quantity: number; unit: string };
-type Reading = { site: string; value: number; usage: number };
+type Reading = DemoMeterReading;
 
 const menu = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -64,7 +65,7 @@ export function GuestDemo() {
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
   const [overviewQuery, setOverviewQuery] = useState('');
-  const [overviewStatus, setOverviewStatus] = useState<'all' | Status>('all');
+  const [overviewStatus, setOverviewStatus] = useState<'all' | Status | 'past_due'>('all');
   const [overviewPage, setOverviewPage] = useState(0);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
@@ -86,6 +87,8 @@ export function GuestDemo() {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [demoPaid, setDemoPaid] = useState<Record<string, boolean>>({});
+  const [preparedNotices, setPreparedNotices] = useState<DemoPreparedNotice[]>([]);
   const [meterSite, setMeterSite] = useState('RV-01');
   const [meterValue, setMeterValue] = useState(String(startingRegister('RV-01') + 45));
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -101,8 +104,12 @@ export function GuestDemo() {
   const latest = [...readings].reverse().find((r) => r.site === meterSite);
   const previousRegister = latest?.value ?? startingRegister(meterSite);
   const sampleUsage = readings.reduce((total, r) => total + r.usage, 0);
+  const customerBySite = new Map(customers.filter((customer) => !!customer.siteId).map((customer) => [customer.siteId!, customer]));
+  const rentMonth = demoRentMonth();
+  const isOverdue = (site: Site) => demoRentIsPastDue(site, customerBySite.get(site.id), demoPaid, rentMonth);
+  const overdueCount = sites.filter(isOverdue).length;
   const filteredSites = sites.filter((s) => {
-    if (siteFilter !== 'all' && s.status !== siteFilter) return false;
+    if (siteFilter !== 'all' && (siteFilter === 'past_due' ? !isOverdue(s) : s.status !== siteFilter)) return false;
     const search = siteQuery.toLowerCase().trim();
     return (s.id + ' ' + s.label + ' ' + designationLabel(s.designation)).toLowerCase().includes(search);
   });
@@ -111,9 +118,8 @@ export function GuestDemo() {
   // One indexed view of each site's current customer. Do not duplicate
   // resident details in site records; changes to customer contact info appear
   // immediately in Overview and the linked space record.
-  const customerBySite = new Map(customers.filter((customer) => !!customer.siteId).map((customer) => [customer.siteId!, customer]));
   const overviewRows = sites.filter((site) => {
-    if (overviewStatus !== 'all' && site.status !== overviewStatus) return false;
+    if (overviewStatus !== 'all' && (overviewStatus === 'past_due' ? !isOverdue(site) : site.status !== overviewStatus)) return false;
     const customer = customerBySite.get(site.id);
     const search = overviewQuery.trim().toLowerCase();
     return [site.id, site.label, designationLabel(site.designation), site.section,
@@ -125,6 +131,14 @@ export function GuestDemo() {
   const filteredCustomers = customers.filter((c) => (c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim()));
   const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
   const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
+  function markDemoRentPaid(customerId: number, paid: boolean) {
+    setDemoPaid((current) => ({ ...current, [customerId + ':' + rentMonth.key]: paid }));
+    setNotice(paid ? 'Sample rent marked paid. Any red overdue flag is cleared.' : 'Sample rent marked unpaid. The overdue flag appears after the 5th.');
+  }
+  function prepareDemoNotice(notice: Omit<DemoPreparedNotice, 'id'>) {
+    setPreparedNotices((current) => [...current, { ...notice, id: current.length + 1 }]);
+    setNotice('Sample notice prepared for review, NOT sent by SMS and NOT legally served.');
+  }
   function openSpaceRecord(siteId: string) {
     setSelectedSiteId(siteId);
     setSiteQuery(siteId);
@@ -232,7 +246,7 @@ export function GuestDemo() {
       setNotice('Enter a whole-number meter reading higher than ' + previousRegister + '.');
       return;
     }
-    setReadings((old) => [...old, { site: meterSite, value, usage: value - previousRegister }]);
+    setReadings((old) => [...old, { site: meterSite, value, usage: value - previousRegister, recordedAt: new Date().toISOString(), customerId: customerBySite.get(meterSite)?.id ?? null }]);
     setNotice('Sample reading saved in this browser view. No database was updated.');
     setMeterValue(String(value + 20));
   }
@@ -258,6 +272,8 @@ export function GuestDemo() {
     setJobs(initialJobs());
     setStock(initialStock());
     setReadings([]);
+    setDemoPaid({});
+    setPreparedNotices([]);
     setMeterSite('RV-01');
     setMeterValue(String(startingRegister('RV-01') + 45));
     setInvoiceOpen(false);
@@ -335,6 +351,7 @@ export function GuestDemo() {
                 <Metric label="Open work orders" value={String(unpaidJobs)} detail="Tasks to review" />
                 <Metric label="Customer records" value={customers.length.toLocaleString()} detail="Created as people arrive" />
                 <Metric label="Planned spaces" value={plannedCapacity.toLocaleString()} detail="Adjust in Property layout" />
+                <Metric label="Past-due demo rent" value={String(overdueCount)} detail="After the 5th · sample ledger" />
               </div>
               <section className="demo-panel demo-overview-directory" aria-label="Overview spaces and customers">
                 <div className="demo-section-head">
@@ -348,11 +365,12 @@ export function GuestDemo() {
                   </label>
                   <label htmlFor="demo-overview-status">Occupancy
                     <select id="demo-overview-status" value={overviewStatus}
-                      onChange={(event) => {setOverviewStatus(event.target.value as 'all' | Status);setOverviewPage(0);}}>
+                      onChange={(event) => {setOverviewStatus(event.target.value as 'all' | Status | 'past_due');setOverviewPage(0);}}>
                       <option value="all">All spaces</option>
                       <option value="occupied">Occupied</option>
                       <option value="available">Available</option>
                       <option value="reserved">Reserved</option>
+                      <option value="past_due">Past due (red)</option>
                     </select>
                   </label>
                 </div>
@@ -366,7 +384,7 @@ export function GuestDemo() {
                           <td><strong>{designationLabel(site.designation)} · {site.label}</strong><small>{site.id}{site.section ? ' · ' + site.section : ''}</small></td>
                           <td><strong>{site.status === 'occupied' ? customer?.name || site.resident || 'Customer not recorded' : 'No customer assigned'}</strong></td>
                           <td>{customer ? <><span>{customer.phone || 'No phone on file'}</span><small>{customer.email || 'No email on file'}</small></> : <span>—</span>}</td>
-                          <td><span className={'demo-status ' + site.status}>{site.status}</span></td>
+                          <td><span className={'demo-status ' + site.status}>{site.status}</span>{isOverdue(site) && <span className="demo-overdue-badge">Past due</span>}</td>
                           <td><div className="demo-overview-actions">
                             <button type="button" className="demo-small-button" onClick={() => openSpaceRecord(site.id)} aria-label={'Open space record for ' + site.id}>Space record</button>
                             {customer && <button type="button" className="demo-small-button" onClick={() => openCustomerRecord(customer.id)} aria-label={'Open customer record for ' + site.id}>Customer</button>}
@@ -400,14 +418,14 @@ export function GuestDemo() {
                     <input id="demo-site-search" placeholder="e.g. RV-700" value={siteQuery} onChange={(e) => {setSiteQuery(e.target.value); setSitePage(0);}}/>
                   </label>
                   <label className="demo-filter" htmlFor="demo-site-status">Status
-                    <select id="demo-site-status" value={siteFilter} onChange={(e) => {setSiteFilter(e.target.value); setSitePage(0);}}><option value="all">All spaces</option><option value="occupied">Occupied</option><option value="available">Available</option><option value="reserved">Reserved</option></select>
+                    <select id="demo-site-status" value={siteFilter} onChange={(e) => {setSiteFilter(e.target.value); setSitePage(0);}}><option value="all">All spaces</option><option value="occupied">Occupied</option><option value="available">Available</option><option value="reserved">Reserved</option><option value="past_due">Past due (red)</option></select>
                   </label>
                 </div>
-                <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span></div>
+                <div className="demo-key"><span><i className="demo-dot occupied"/> Occupied</span><span><i className="demo-dot available"/> Available</span><span><i className="demo-dot reserved"/> Reserved</span><span><i className="demo-dot overdue"/> Rent past due (demo)</span></div>
                 <div className="demo-full-map">
                   {filteredSites.slice(visibleSitePage * 60, visibleSitePage * 60 + 60).map((site) => <div key={site.id} className="demo-space-card">
-                    <button type="button" data-site={site.id} className={'demo-map-space ' + site.status} onClick={() => updateSite(site.id)}>
-                      <span><Home size={19}/>{site.id}</span><small>{designationLabel(site.designation)}{site.label !== site.id ? ' · ' + site.label : ''}</small><small>{site.status} · {money(site.rent)} / mo</small>
+                    <button type="button" data-site={site.id} className={'demo-map-space ' + site.status + (isOverdue(site) ? ' overdue' : '')} onClick={() => updateSite(site.id)}>
+                      <span><Home size={19}/>{site.id}</span><small>{designationLabel(site.designation)}{site.label !== site.id ? ' · ' + site.label : ''}</small><small>{site.status} · {money(site.rent)} / mo</small>{isOverdue(site) && <small className="demo-map-overdue">PAST DUE · after the 5th</small>}
                     </button>
                     <button type="button" className="demo-site-details-button" aria-label={'Details and photos for ' + site.id} onClick={() => setSelectedSiteId(site.id)}>
                       Details &amp; photos {photos.some((photo) => photo.siteId === site.id) ? '(' + photos.filter((photo) => photo.siteId === site.id).length + ')' : ''}
@@ -421,6 +439,9 @@ export function GuestDemo() {
                 <GuestSiteEditor key={selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!}
                   customer={customerBySite.get(selectedSiteId)} onOpenCustomer={openCustomerRecord}
                   onSave={saveSpace} onClose={() => setSelectedSiteId(null)}/>
+                <GuestSiteLedger key={'ledger-' + selectedSiteId} site={sites.find((site) => site.id === selectedSiteId)!}
+                  customer={customerBySite.get(selectedSiteId)} customers={customers} readings={readings}
+                  paid={demoPaid} notices={preparedNotices} onSetPaid={markDemoRentPaid} onPrepare={prepareDemoNotice}/>
                 <GuestSiteMedia
                   key={'media-' + selectedSiteId}
                   siteId={selectedSiteId}
@@ -443,6 +464,11 @@ export function GuestDemo() {
             <>
               <GuestCustomerForm sites={sites} onSave={saveCustomer}/>
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestCustomerForm key={'customer-' + selectedCustomerId} customer={customers.find((customer) => customer.id === selectedCustomerId)} sites={sites} onSave={saveCustomer} onClose={() => setSelectedCustomerId(null)}/>}
+              {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestSiteLedger key={'ledger-customer-' + selectedCustomerId}
+                customer={customers.find((customer) => customer.id === selectedCustomerId)} customerView
+                site={sites.find((site) => site.id === customers.find((customer) => customer.id === selectedCustomerId)?.siteId)}
+                customers={customers} readings={readings} paid={demoPaid} notices={preparedNotices}
+                onSetPaid={markDemoRentPaid} onPrepare={prepareDemoNotice}/>}
               <section className="demo-panel">
                 <div className="demo-section-head"><div><h2>Customer directory</h2><p>{customers.length.toLocaleString()} fictional customer files with optional contacts, arrival details, vehicle notes and deposits. Lists display 50 at a time.</p></div>
                   <label className="demo-filter" htmlFor="demo-customer-search">Search
@@ -477,7 +503,7 @@ export function GuestDemo() {
               </section>
               <section className="demo-panel">
                 <h2><ClipboardList size={19}/> Reading history</h2>
-                {readings.length ? <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Site</th><th>Register</th><th>Usage</th></tr></thead><tbody>{[...readings].reverse().map((r, i) => <tr key={i}><td>{r.site}</td><td>{r.value.toLocaleString()}</td><td>+{r.usage} kWh</td></tr>)}</tbody></table></div> : <div className="demo-placeholder">No new readings yet. Save one to see how it appears here.</div>}
+                {readings.length ? <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Site</th><th>Register</th><th>Usage</th><th>Read at</th><th>Resident at reading</th></tr></thead><tbody>{[...readings].reverse().map((r, i) => <tr key={i}><td>{r.site}</td><td>{r.value.toLocaleString()}</td><td>+{r.usage} kWh</td><td>{new Date(r.recordedAt).toLocaleString()}</td><td>{customers.find((c) => c.id === r.customerId)?.name ?? 'Unassigned'}</td></tr>)}</tbody></table></div> : <div className="demo-placeholder">No new readings yet. Save one to see how it appears here.</div>}
                 <p className="demo-caption">Recorded usage in this demo: {sampleUsage} kWh. Nothing is transmitted or billed.</p>
               </section>
             </div>
