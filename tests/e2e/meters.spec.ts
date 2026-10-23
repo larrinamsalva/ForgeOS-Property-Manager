@@ -245,6 +245,19 @@ test('meter routes survive offline reload, retry photos once and retain supervis
   await page.reload();
   await page.getByRole('button', { name: 'Reading history', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Meter reading history' })).toContainText('1234.123456');
+  // The same immutable reading is now discoverable from both linked staff records.
+  await page.goto(`/sites?organization=${s.org}&property=${s.property}`);
+  await page.getByRole('button', { name: 'RV-01', exact: true }).click();
+  const siteFile = page.getByRole('region', { name: 'Linked meter reading table' });
+  await expect(siteFile).toContainText('1234.123457');
+  await expect(siteFile).toContainText('River Sample');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.goto(`/customers?organization=${s.org}&property=${s.property}`);
+  await page.getByRole('button', { name: 'River Sample', exact: true }).click();
+  const customerFile = page.getByRole('region', { name: 'Linked meter reading table' });
+  await expect(customerFile).toContainText('1234.123457');
+  await expect(customerFile).toContainText('RV-01');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await noOverflow(page);
   expect(errors).toEqual([]);
   if (info.project.name === 'tablet')
