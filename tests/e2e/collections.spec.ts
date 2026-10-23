@@ -278,6 +278,44 @@ test('resident billing file provides reviewed factual overdue reminders without 
   expect(after.summary.accounts).toEqual(before.summary.accounts);
 });
 
+test('site directory and site file show current occupant overdue balance and open verified resident follow-up', async ({page}, info) => {
+  test.skip(info.project.name !== 'desktop', 'Full financial lifecycle is checked on desktop; responsive checks run separately.');
+  await login(page);
+  const i=await invoice(page);
+  await collections(page);
+  await policy(page);
+  const billing=(await (
+    await page.request.get('/api/billing?organization='+seed.org)
+  ).json()) as BillingSnapshot;
+  await api(page,'issue_invoice',{
+    invoice_id:i.id,
+    revision_id:billing.invoices.find(row => row.id===i.id)!.current_revision_id,
+    issued_on:addDays(today(),-4),
+    due_on:addDays(today(),-2),
+  });
+  await page.goto('/sites?'+new URLSearchParams({organization:seed.org,property:seed.property}));
+  const directory=page.getByRole('region',{name:'Site directory records'});
+  await expect(directory).toContainText('RV-01');
+  await expect(directory).toContainText('PAST DUE · $100.00');
+  await directory.getByRole('button',{name:'RV-01',exact:true}).click();
+  const siteDialog=page.getByRole('dialog');
+  const summary=siteDialog.getByRole('region',{name:'Site resident billing status'});
+  await expect(summary).toContainText('River Sample');
+  await expect(summary).toContainText('PAST DUE · $100.00');
+  await expect(summary).toContainText('1 overdue issued invoice');
+  await summary.getByRole('button',{name:'Open resident billing and follow-up'}).click();
+  const residentDialog=page.getByRole('dialog');
+  await expect(residentDialog).toContainText('River Sample');
+  const followup=residentDialog.getByRole('region',{name:'Resident overdue follow-up review'});
+  await expect(followup).toContainText(i.number);
+  await expect(followup).toContainText('$100.00');
+  const after=(await (
+    await page.request.get('/api/collections?organization='+seed.org)
+  ).json()) as CollectionsSnapshot;
+  expect(after.summary.accounts.find(a=>a.invoice_id===i.id)?.outstanding_cents).toBe('10000');
+  expect(after.notes).toHaveLength(0);
+});
+
 test('collection forms and receipts remain accessible on every viewport in both themes', async ({
   page,
 }, info) => {
