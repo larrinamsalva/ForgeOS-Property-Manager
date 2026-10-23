@@ -123,7 +123,7 @@ export function Workspace({
   snapshot: Snapshot;
   section: string;
   propertyId: string;
-  billingFocus?: { siteId: string; stayId: string };
+  billingFocus?: { siteId: string; stayId: string; month?: string };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
