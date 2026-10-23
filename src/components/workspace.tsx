@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import {
   Flame,
   LayoutDashboard,
@@ -64,6 +64,8 @@ const OperationsWorkspace = dynamic(() =>
 );
 const PaperlessWorkspace = dynamic(() => import('./paperless-workspace').then((module) => module.PaperlessWorkspace));
 import { pendingMeterCount } from '@/lib/offline-pending';
+import { siteOverdueFlags } from '@/lib/site-overdue';
+import type { CollectionsSnapshot } from '@/lib/collections-domain';
 import { PlanningWorkspace, PlanningHistory } from './planning-workspace';
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -126,6 +128,8 @@ export function Workspace({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
+  const [financialSnapshot, setFinancialSnapshot] = useState<CollectionsSnapshot | null>(null);
+  const [arrearsLoad, setArrearsLoad] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [sectionFilter, setSectionFilter] = useState('');
   const org = snapshot.organizations.find((o) => o.id === snapshot.organizationId);
   const manageOrg = canManageOrganization(snapshot);
@@ -134,6 +138,36 @@ export function Workspace({
     snapshot.propertyMemberships.some(
       (m) => m.user_id === snapshot.userId && ['manager', 'office'].includes(m.role)
     );
+  // Read only. The existing collections endpoint enforces session membership and
+  // database RLS. Never fetch financial records for maintenance/meter-only roles.
+  useEffect(() => {
+    if (!snapshot.organizationId || !operatingAccess || !['overview', 'map'].includes(section)) return;
+    const controller = new AbortController();
+    setArrearsLoad('loading');
+    setFinancialSnapshot(null);
+    fetch('/api/collections?organization=' + encodeURIComponent(snapshot.organizationId), {
+      cache: 'no-store', signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Financial data unavailable');
+        return response.json() as Promise<CollectionsSnapshot>;
+      })
+      .then((records) => {
+        if (!controller.signal.aborted) {
+          setFinancialSnapshot(records);
+          setArrearsLoad('ready');
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setArrearsLoad('unavailable');
+      });
+    return () => controller.abort();
+  }, [snapshot.organizationId, operatingAccess, section]);
+  const arrears = financialSnapshot && arrearsLoad === 'ready'
+    ? siteOverdueFlags(financialSnapshot.summary.accounts, financialSnapshot.invoices, snapshot.stays, snapshot.properties)
+    : {};
+  const financialVisibility = operatingAccess ? arrearsLoad : 'restricted';
+
   const properties = snapshot.properties.filter((p) => !propertyId || p.id === propertyId);
   const ids = new Set(properties.map((p) => p.id));
   const sites = snapshot.sites.filter((s) => ids.has(s.property_id));
@@ -870,6 +904,8 @@ export function Workspace({
                 href={href}
                 addProperty={manageOrg ? () => setEditor({ type: 'property' }) : undefined}
                 viewSite={(id) => setEditor({ type: 'detail', entity: 'site', id })}
+                overdueSites={arrears}
+                financialStatus={financialVisibility}
               />
             </>
           ) : section === 'paperless' ? (
@@ -1164,6 +1200,8 @@ export function Workspace({
                         sites={sites.filter((s) => s.property_id === p.id && !s.archived_at)}
                         snapshot={snapshot}
                         onSelect={(id) => setEditor({ type: 'detail', entity: 'site', id })}
+                        overdueSites={arrears}
+                        financialStatus={financialVisibility}
                       />
                     </div>
                   </section>
