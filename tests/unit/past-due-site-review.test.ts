@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pastDueSiteReviewRows } from '../../src/lib/past-due-site-review';
+import { pastDueSiteReviewRows, pastDueSiteReviewCsv } from '../../src/lib/past-due-site-review';
 import type { SiteOverdueFlag } from '../../src/lib/site-overdue';
 import type { Customer, Property, Site, Stay } from '../../src/lib/domain';
 
@@ -24,6 +24,7 @@ const customers=[
 ] as unknown as Customer[];
 const flag=(siteId:string,customerId:string,amount:string):SiteOverdueFlag=>({
  siteId,customerId,invoiceCount:1,outstandingCents:amount,
+ earliestDueOn:'2026-10-05',maxDaysPastDue:18,
 });
 describe('property map past due review queue',()=>{
  it('lists and sorts actual current-occupant balances by amount, then site',()=>{
@@ -31,6 +32,22 @@ describe('property map past due review queue',()=>{
   const data=pastDueSiteReviewRows(sites,flags,stays,customers,properties,now);
   expect(data.map(item=>[item.siteLabel,item.resident,item.outstandingCents]))
    .toEqual([['RV-01','River Sample','50250'],['RV-02','Sam Payne','12500']]);
+ });
+ it('exports only the filtered rows with real aging and CSV formula escaping',()=>{
+  const flags={s1:flag('s1','river','50250'),s2:flag('s2','sam','12500')};
+  const entries=pastDueSiteReviewRows(sites,flags,stays,customers,properties,now);
+  const csv=pastDueSiteReviewCsv(entries.filter(row=>row.siteId==='s1'));
+  expect(csv).toContain('RV-01');
+  expect(csv).toContain('River Sample');
+  expect(csv).toContain('2026-10-05');
+  expect(csv).toContain('18');
+  expect(csv).toContain('$502.50');
+  expect(csv).not.toContain('RV-02');
+  expect(csv).not.toContain('Sam Payne');
+  expect(csv.split('\r\n')).toHaveLength(3);
+  expect(pastDueSiteReviewCsv([])).not.toContain('River Sample');
+  expect(pastDueSiteReviewCsv([{...entries[0],resident:'=HYPERLINK("x","y")'}]))
+    .toContain("'=HYPERLINK");
  });
  it('does not carry previous occupants or unrelated property/customer flags into queue',()=>{
   const flags={s1:flag('s1','former','10000'),

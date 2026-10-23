@@ -8,6 +8,8 @@ export interface SiteOverdueFlag {
   customerId: string;
   invoiceCount: number;
   outstandingCents: string;
+  earliestDueOn: string | null;
+  maxDaysPastDue: number | null;
 }
 
 // A site is flagged only for an issued, overdue invoice belonging to the
@@ -15,7 +17,8 @@ export interface SiteOverdueFlag {
 // being displayed as the next resident's balance. No flags are guessed from
 // calendar dates, rent prices, drafts or unissued invoices.
 export function siteOverdueFlags(
-  accounts: Pick<CollectionAccount, 'invoice_id' | 'customer_id' | 'property_id' | 'outstanding_cents' | 'state'>[],
+  accounts: (Pick<CollectionAccount, 'invoice_id' | 'customer_id' | 'property_id' | 'outstanding_cents' | 'state'> &
+    Partial<Pick<CollectionAccount, 'due_on' | 'days_past_due' | 'issued_on'>>)[],
   invoices: Pick<Invoice, 'id' | 'property_id' | 'site_id' | 'stay_id' | 'customer_id' | 'status'>[],
   stays: Pick<Stay, 'id' | 'property_id' | 'site_id' | 'customer_id' | 'starts_on' | 'ends_on'>[],
   properties: Pick<Property, 'id' | 'timezone'>[],
@@ -41,12 +44,25 @@ export function siteOverdueFlags(
       currentStay.property_id !== invoice.property_id ||
       currentStay.customer_id !== account.customer_id) continue;
     const prior = flags[invoice.site_id];
+    // Historical debt is sourced only from the verified ledger. Do not infer
+    // a due date from the calendar or a site's monthly rate.
+    const dueOn = account.due_on && /^\d{4}-\d{2}-\d{2}$/.test(account.due_on)
+      ? account.due_on : null;
+    const pastDueDays = typeof account.days_past_due === 'number' &&
+      Number.isSafeInteger(account.days_past_due) && account.days_past_due >= 0
+      ? account.days_past_due : null;
     flags[invoice.site_id] = {
       siteId: invoice.site_id,
       customerId: account.customer_id,
       invoiceCount: (prior?.invoiceCount ?? 0) + 1,
       outstandingCents: ((prior ? BigInt(prior.outstandingCents) : 0n) +
         BigInt(account.outstanding_cents)).toString(),
+      earliestDueOn: dueOn && prior?.earliestDueOn
+        ? (dueOn < prior.earliestDueOn ? dueOn : prior.earliestDueOn)
+        : dueOn ?? prior?.earliestDueOn ?? null,
+      maxDaysPastDue: pastDueDays !== null && prior?.maxDaysPastDue !== null &&
+        prior?.maxDaysPastDue !== undefined ? Math.max(pastDueDays, prior.maxDaysPastDue)
+        : pastDueDays ?? prior?.maxDaysPastDue ?? null,
     };
   }
   return flags;

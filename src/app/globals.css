@@ -3356,3 +3356,10 @@ table summary {
 .map-overdue-queue th small{display:block;font-weight:400;color:var(--muted)}
 .map-overdue-queue .map-overdue-amount{color:var(--danger)}
 .map-overdue-queue .button{white-space:normal;min-height:36px}
+
+/* Map payment review: aging evidence and filtered manager download. */
+.map-overdue-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.map-overdue-controls .map-overdue-queue-search{flex:1 1 180px}
+.map-overdue-controls .button{min-height:42px;max-width:100%}
+.map-overdue-queue .table-wrap{overflow:auto}
+.map-overdue-queue td{overflow-wrap:anywhere}
