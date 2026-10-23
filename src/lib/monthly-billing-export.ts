@@ -1,5 +1,5 @@
 import { csv } from './domain';
-import type { MonthlyRunRow } from './monthly-billing-run';
+import { invoiceStageLabel, type MonthlyRunRow } from './monthly-billing-run';
 import { cents } from './billing-domain';
 
 // A manager-initiated, read-only export of the *currently visible* billing
@@ -14,7 +14,7 @@ export function monthlyBillingCsv(
   const headings = [
     'Property', 'Billing month', 'Site / unit', 'Resident',
     'Stay ID', 'Period begins', 'Period ends (exclusive)', 'Planned due date',
-    'Readiness', 'Warnings to review', 'Checklist details',
+    'Readiness', 'Invoice follow-up', 'Warnings to review', 'Checklist details',
     'Invoice numbers', 'Invoice states', 'Recorded invoice totals (USD)',
   ];
   const values = rows.map(row => {
@@ -34,6 +34,7 @@ export function monthlyBillingCsv(
       row.period.dueOn,
       row.status === 'ready' ? 'Precheck clear' :
         row.status === 'review' ? 'Needs review' : 'Existing invoice',
+      invoiceStageLabel(row.invoiceStage),
       row.warnings.join('; '),
       row.checklist.filter(item => item.state === 'check').map(item =>
         item.label + ': ' + item.note).join('; '),
