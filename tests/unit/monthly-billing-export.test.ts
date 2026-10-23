@@ -3,7 +3,7 @@ import { monthlyBillingCsv } from '../../src/lib/monthly-billing-export';
 import type { MonthlyRunRow } from '../../src/lib/monthly-billing-run';
 const base: MonthlyRunRow = {
  siteId:'site',siteLabel:'Space 88',stayId:'stay',customerId:'resident',
- status:'review',period:{startsOn:'2026-09-01',endsOn:'2026-10-01',dueOn:'2026-10-05',isFutureClosing:false},
+ status:'review',invoiceStage:'none',period:{startsOn:'2026-09-01',endsOn:'2026-10-01',dueOn:'2026-10-05',isFutureClosing:false},
  warnings:['electric boundary readings'],checklist:[
   {label:'electric boundary readings',note:'Requires supervisor review',state:'check'},
  ],invoices:[],
@@ -15,16 +15,19 @@ describe('private, manager-initiated monthly billing CSV',()=>{
   expect(content).toContain('Taylor Resident');
   expect(content).toContain('Requires supervisor review');
   expect(content).toContain('2026-10-05');
+  expect(content).toContain('Invoice follow-up');
+  expect(content).toContain('No invoice');
   expect(content).not.toContain('Other Resident');
   expect(content.split('\r\n')).toHaveLength(3);
  });
  it('exports only actual invoice totals and distinguishes approved/issued from drafts',()=>{
-  const row={...base,status:'existing' as const,warnings:[],invoices:[
+  const row={...base,status:'existing' as const,invoiceStage:'mixed' as const,warnings:[],invoices:[
    {id:'i1',number:'INV-1',status:'approved' as const,totalCents:'2345',issued:false},
    {id:'i2',number:'INV-2',status:'approved' as const,totalCents:'1560',issued:true},
   ]};
   const content=monthlyBillingCsv('RV Park','2026-09',[row],new Map());
   expect(content).toContain('Approved, unissued; Issued');
+  expect(content).toContain('Mixed invoice stages');
   expect(content).toContain('$23.45; $15.60');
   expect(content).not.toContain('estimate');
  });
