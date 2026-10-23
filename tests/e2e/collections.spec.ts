@@ -200,12 +200,36 @@ test('manual payments, deposits, receipts and reconciliation reach the same issu
   await page.getByLabel('Manual follow-up date (optional)').fill(today());
   await submit(page, 'Add account note');
   await expect(page.getByText(/1 unresolved items due/)).toBeVisible();
-  await page.getByRole('button', { name: 'Resolve follow-up', exact: true }).click();
+  const worklist=page.getByRole('region',{name:'Staff follow-up worklist'});
+  await expect(worklist).toContainText('1 due · 0 scheduled');
+  await expect(worklist).toContainText('River Sample');
+  await expect(worklist).toContainText('Manual follow-up after fictional settlement');
+  await worklist.getByRole('button',{name:'Scheduled',exact:true}).click();
+  await expect(worklist).toContainText('No open follow-up tasks match these filters');
+  await worklist.getByRole('button',{name:'Due',exact:true}).click();
+  await expect(worklist.getByRole('article',{name:'Staff task for River Sample'})).toBeVisible();
+  await worklist.getByRole('button',{name:'Resolve staff task for River Sample'}).click();
   await page
     .getByRole('textbox', { name: 'Account note / arrangement details', exact: true })
     .fill('Reviewed fictional account and completed follow-up');
   await submit(page, 'Resolve follow-up');
   await expect(page.getByText(/0 unresolved items due/)).toBeVisible();
+  await expect(worklist).toContainText('0 due · 0 scheduled');
+
+  // Record a future staff task even though the account was already paid.
+  await page.getByRole('button', { name: 'Add account note', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Customer', exact: true }).selectOption(seed.customerId);
+  await page.getByRole('textbox', { name: 'Account note / arrangement details', exact: true })
+    .fill('Staff to verify the completed payment receipt next week');
+  await page.getByLabel('Manual follow-up date (optional)').fill(addDays(today(),5));
+  await submit(page,'Add account note');
+  await expect(worklist).toContainText('0 due · 1 scheduled');
+  await worklist.getByRole('button',{name:'Scheduled',exact:true}).click();
+  await expect(worklist).toContainText('Staff to verify the completed payment receipt next week');
+  await worklist.getByRole('searchbox',{name:'Find follow-up task'}).fill('unknown resident');
+  await expect(worklist).toContainText('No open follow-up tasks match these filters');
+  await worklist.getByRole('searchbox',{name:'Find follow-up task'}).fill('River');
+  await expect(worklist).toContainText('Staff to verify the completed payment receipt next week');
   await page.getByRole('button', { name: 'Reconciliation', exact: true }).click();
   await page.getByRole('button', { name: 'Review reconciliation', exact: true }).click();
   const dialog = page.getByRole('dialog');

@@ -25,6 +25,7 @@ import { RecordForm, type Field } from './record-form';
 import { Modal } from './modal';
 import { Empty } from './workspace-parts';
 import { ReconciliationForm } from './reconciliation-form';
+import { StaffFollowupWorklist } from './staff-followup-worklist';
 type Editor = { type: string; id?: string; requestId: string };
 const reason: Field = {
   name: 'reason',
@@ -1182,6 +1183,14 @@ export function CollectionsWorkspace({
                 No reminder messages or legal notices are sent. Review and contact customers through your
                 authorized process.
               </p>
+              <StaffFollowupWorklist
+                notes={notes}
+                propertyId={selectedProperty}
+                today={today}
+                customerName={name}
+                canResolve={note => note.kind === 'arrangement' ? !!manage : !!prepare}
+                onResolve={id => open('resolve', id)}
+              />
               {!notes.length ? (
                 <Empty title="No account notes">
                   Record a note and optional follow-up date, or open an issued invoice to record a payment
