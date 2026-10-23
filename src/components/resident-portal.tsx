@@ -285,9 +285,9 @@ export function ResidentPortal({
                         <a className="text-button" href={`/api/portal/invoices/${i.id}?format=pdf`}>
                           PDF
                         </a>
-                        <Link className="text-button" href={`/portal/invoices/${i.id}`}>
+                        <a className="text-button" href={`/portal/invoices/${i.id}`}>
                           Printable statement
-                        </Link>
+                        </a>
                       </div>,
                     ])
                   )}
@@ -507,9 +507,9 @@ export function ResidentPortal({
             <a className="button secondary" href={`/api/portal/invoices/${invoice.invoice.id}?format=pdf`}>
               Download PDF
             </a>
-            <Link className="button secondary" href={`/portal/invoices/${invoice.invoice.id}`}>
+            <a className="button secondary" href={`/portal/invoices/${invoice.invoice.id}`}>
               Printable statement
-            </Link>
+            </a>
           </div>
           <PortalInvoiceContent document={invoice} />
         </Modal>

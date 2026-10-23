@@ -107,3 +107,28 @@
 .demo-site-resident-grid strong,.demo-site-resident-grid span{font-size:12px;color:var(--text);overflow-wrap:anywhere}
 .demo-site-resident-grid .demo-site-resident-notes{grid-column:1/-1}
 @media(max-width:650px){.demo-site-resident-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Separate customer placement decisions: Assigned vs Waiting List. */
+.demo-record-grid .demo-customer-placement{
+  grid-column:1/-1;min-width:0;display:grid;gap:9px;
+  border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;background:var(--surface-2);
+}
+.demo-customer-placement legend{font-size:12px;font-weight:800;color:var(--text);padding:0 5px}
+.demo-customer-placement-options{display:flex;gap:9px;flex-wrap:wrap}
+.demo-record-grid .demo-customer-placement-options label{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:9px 13px;border:1px solid var(--line);border-radius:8px;
+  background:var(--surface);font-size:12px;font-weight:800;
+  min-height:40px;cursor:pointer;color:var(--text);
+}
+.demo-record-grid .demo-customer-placement input[type="radio"]{
+  width:17px;height:17px;min-height:0;margin:0;
+  accent-color:var(--primary);flex:none;
+}
+.demo-customer-placement-options label:has(input:checked){
+  border-color:var(--primary);background:var(--blue-bg);
+}
+.demo-customer-placement>small{
+  font-size:11px;line-height:1.45;color:var(--muted);
+}
