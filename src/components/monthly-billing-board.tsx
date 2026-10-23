@@ -40,7 +40,7 @@ export function MonthlyBillingBoard({
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
     existing:rows.filter(r=>r.status==='existing').length,
-    draft:rows.filter(r=>r.invoiceStage==='draft').length,
+    draft:rows.filter(r=>r.invoices.some(i=>i.status==='draft' && !i.issued)).length,
     approved:rows.filter(r=>r.invoiceStage==='approved_unissued' ||
       (r.invoiceStage==='mixed' && r.invoices.some(i=>i.status==='approved' && !i.issued))).length,
     issued:rows.filter(r=>r.invoiceStage==='issued').length,
@@ -58,7 +58,10 @@ export function MonthlyBillingBoard({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const visible = rows.filter(row => (filter === 'all' || row.status === filter) &&
-    (invoiceFilter === 'all' || row.invoiceStage === invoiceFilter) &&
+    (invoiceFilter === 'all' ||
+      (invoiceFilter === 'draft' && row.invoices.some(i=>i.status==='draft' && !i.issued)) ||
+      (invoiceFilter === 'approved_unissued' && row.invoices.some(i=>i.status==='approved' && !i.issued)) ||
+      (invoiceFilter !== 'draft' && invoiceFilter !== 'approved_unissued' && row.invoiceStage === invoiceFilter)) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
   return (
