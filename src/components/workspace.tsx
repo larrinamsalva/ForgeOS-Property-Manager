@@ -188,7 +188,7 @@ export function Workspace({
   const ids = new Set(properties.map((p) => p.id));
   const sites = snapshot.sites.filter((s) => ids.has(s.property_id));
   const activeProperties = properties.filter((property) => !property.archived_at);
-  const localDates = new Map(activeProperties.map((property) => [property.id, dateAtProperty(property.timezone)]));
+  const localDates = new globalThis.Map(activeProperties.map((property) => [property.id, dateAtProperty(property.timezone)]));
   const todaysArrivals = snapshot.reservations.filter((reservation) =>
     ids.has(reservation.property_id) &&
     reservation.starts_on === localDates.get(reservation.property_id) &&
