@@ -1,8 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MeterSnapshot } from '@/lib/meter-domain';
 import { suggestBillingPeriod, siteBillingChecklist } from '@/lib/site-billing-prep';
+import { monthlyBillingRun, suggestedMonthPeriod } from '@/lib/monthly-billing-run';
+import { MonthlyBillingBoard } from './monthly-billing-board';
 import { Receipt, RefreshCw, Plus, Download } from 'lucide-react';
 import { stateLabel } from '@/lib/collections-domain';
 import type { Snapshot } from '@/lib/domain';
@@ -29,7 +31,7 @@ export function BillingWorkspace({
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
-  focus?: { siteId: string; stayId: string };
+  focus?: { siteId: string; stayId: string; month?: string };
 }) {
   const [data, setData] = useState<BillingSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,8 @@ export function BillingWorkspace({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [tab, setTab] = useState('invoices');
+  const [billingMonth, setBillingMonth] = useState(() => calendarMonth(dateAtProperty(
+    snapshot.properties.find(p => p.id === propertyId)?.timezone ?? 'America/Los_Angeles'),-1).slice(0,7));
   const [selectedProperty, setSelectedProperty] = useState(
     propertyId || snapshot.properties.find((p) => canEditProperty(snapshot, p.id, true))?.id || ''
   );
@@ -70,9 +74,9 @@ export function BillingWorkspace({
       });
     return () => controller.abort();
   }, [snapshot.organizationId, refresh]);
-  const meterEvidenceKey = snapshot.organizationId + ':' + selectedProperty + ':' + (focus?.siteId ?? '');
+  const meterEvidenceKey = snapshot.organizationId + ':' + selectedProperty;
   useEffect(() => {
-    if (!focus?.siteId || !focus.stayId || !selectedProperty || !prepare) return;
+    if (!(tab === 'monthly' || (focus?.siteId && focus.stayId)) || !selectedProperty || !prepare) return;
     const controller = new AbortController();
     fetch('/api/meters?organization=' + encodeURIComponent(snapshot.organizationId), {
       cache: 'no-store', signal: controller.signal,
@@ -85,7 +89,7 @@ export function BillingWorkspace({
       if (!controller.signal.aborted) setMeterEvidence({ key: meterEvidenceKey, error: true });
     });
     return () => controller.abort();
-  }, [focus?.siteId, focus?.stayId, selectedProperty, snapshot.organizationId, meterEvidenceKey, prepare]);
+  }, [focus?.siteId, focus?.stayId, tab, selectedProperty, snapshot.organizationId, meterEvidenceKey, prepare, refresh]);
   const reload = () => {
     setLoading(true);
     setRefresh((value) => value + 1);
@@ -134,7 +138,15 @@ export function BillingWorkspace({
   const stays = snapshot.stays.filter((s) => s.property_id === selectedProperty);
   const focusSite = snapshot.sites.find(s => s.id === focus?.siteId && s.property_id === selectedProperty);
   const focusStay = focusSite ? stays.find(s => s.id === focus?.stayId && s.site_id === focusSite.id) : undefined;
-  const suggested = focusStay ? suggestBillingPeriod(focusStay, today, policy?.due_days ?? 15) : null;
+  const suggested = focusStay
+    ? (focus?.month
+      ? suggestedMonthPeriod(focusStay, focus.month, today, policy?.due_days ?? 15)
+      : suggestBillingPeriod(focusStay, today, policy?.due_days ?? 15)) : null;
+  const monthlyRows = useMemo(() => data ? monthlyBillingRun(
+    selectedProperty,billingMonth,today,snapshot.sites,snapshot.stays,data,
+    meterEvidence?.key === meterEvidenceKey ? (meterEvidence.data ?? null) : null,
+  ) : [], [data, selectedProperty, billingMonth, today, snapshot.sites,
+    snapshot.stays, meterEvidence, meterEvidenceKey]);
   const siteChecklist = data && focusSite && focusStay && suggested
     ? siteBillingChecklist(focusSite, focusStay, suggested, data,
         meterEvidence?.key === meterEvidenceKey ? (meterEvidence.data ?? null) : null)
@@ -695,6 +707,7 @@ export function BillingWorkspace({
       <div className="planning-tabs" role="group" aria-label="Billing sections">
         {[
           ['invoices', 'Invoices'],
+          ['monthly', 'Monthly run'],
           ['rates', 'Rates & policy'],
           ['ledger', 'Customer ledger'],
           ['events', 'Register events'],
@@ -760,6 +773,16 @@ export function BillingWorkspace({
       {loading && <p role="status">Loading billing records…</p>}
       {!loading && data && (
         <fieldset className="meter-content" disabled={navigationPending}>
+          {tab === 'monthly' && <MonthlyBillingBoard
+            snapshot={snapshot}
+            propertyId={selectedProperty}
+            month={billingMonth}
+            onMonth={setBillingMonth}
+            rows={monthlyRows}
+            loadingEvidence={meterEvidence?.key !== meterEvidenceKey}
+            evidenceError={meterEvidence?.key === meterEvidenceKey && !!meterEvidence.error}
+            navigationPending={navigationPending}
+          />}
           {tab === 'invoices' && (
             <section className="panel">
               <div className="panel-heading">
