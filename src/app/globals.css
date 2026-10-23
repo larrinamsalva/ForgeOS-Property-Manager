@@ -3320,3 +3320,7 @@ table summary {
 .monthly-billing-board .monthly-billing-warnings{font-size:.84rem;overflow-wrap:anywhere;margin:7px 0}
 .monthly-billing-board .monthly-billing-warnings p{margin:5px 0}
 .monthly-billing-board .table-wrap{max-width:100%}
+
+/* Month-end invoice follow-up, separate from actual invoice issuance. */
+.monthly-issue-link{display:block;width:fit-content;max-width:100%;margin-top:8px;font-size:.86rem;overflow-wrap:anywhere}
+.monthly-billing-board td>strong{display:block;margin-bottom:4px}
