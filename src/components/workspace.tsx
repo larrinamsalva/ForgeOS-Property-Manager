@@ -679,8 +679,8 @@ export function Workspace({
                   <div className="site-account-overdue" role="status">
                     <strong>PAST DUE · {cents(overdueFlag.outstandingCents)}</strong>
                     <span>{overdueFlag.invoiceCount} overdue issued invoice{overdueFlag.invoiceCount === 1 ? '' : 's'}.
-                      This flag belongs only to the current resident's stay.</span>
-                    <p>Review the resident's official account and payments before taking action.</p>
+                      This flag belongs only to the current resident&apos;s stay.</span>
+                    <p>Review the resident&apos;s official account and payments before taking action.</p>
                   </div>
                 ) : <p>No confirmed overdue issued balance for this current stay.</p>)}
                 {snapshot.customers.some(c => c.id === currentSiteStay.customer_id &&
@@ -691,9 +691,9 @@ export function Workspace({
                   </button>
                 )}
               </>
-            ) : <p>No current resident assigned. Past residents' balances are never carried into a new stay.</p>}
+            ) : <p>No current resident assigned. Past residents&apos; balances are never carried into a new stay.</p>}
             <p className="muted small">Only approved and issued overdue balances appear here.
-              Drafts, unissued bills and past residents' debt are excluded. No automatic notice or charge is created.</p>
+              Drafts, unissued bills and past residents&apos; debt are excluded. No automatic notice or charge is created.</p>
           </section>
         )}
         {editor.entity === 'customer' && canEditProperty(snapshot, (record as Customer).property_id, true) && (
