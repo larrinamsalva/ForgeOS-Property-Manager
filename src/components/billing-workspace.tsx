@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MeterSnapshot } from '@/lib/meter-domain';
 import { suggestBillingPeriod, siteBillingChecklist } from '@/lib/site-billing-prep';
 import { monthlyBillingRun, suggestedMonthPeriod } from '@/lib/monthly-billing-run';
@@ -142,11 +142,10 @@ export function BillingWorkspace({
     ? (focus?.month
       ? suggestedMonthPeriod(focusStay, focus.month, today, policy?.due_days ?? 15)
       : suggestBillingPeriod(focusStay, today, policy?.due_days ?? 15)) : null;
-  const monthlyRows = useMemo(() => data ? monthlyBillingRun(
+  const monthlyRows = tab === 'monthly' && data ? monthlyBillingRun(
     selectedProperty,billingMonth,today,snapshot.sites,snapshot.stays,data,
     meterEvidence?.key === meterEvidenceKey ? (meterEvidence.data ?? null) : null,
-  ) : [], [data, selectedProperty, billingMonth, today, snapshot.sites,
-    snapshot.stays, meterEvidence, meterEvidenceKey]);
+  ) : [];
   const siteChecklist = data && focusSite && focusStay && suggested
     ? siteBillingChecklist(focusSite, focusStay, suggested, data,
         meterEvidence?.key === meterEvidenceKey ? (meterEvidence.data ?? null) : null)
