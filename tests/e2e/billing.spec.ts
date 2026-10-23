@@ -250,6 +250,47 @@ test('site customer record opens preselected monthly draft preparation without i
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
+test('monthly billing run lists real stay records by month without auto-issuing', async ({page}) => {
+  await login(page);
+  await billing(page);
+  await policy(page);
+  await page.getByRole('button', {name:'Monthly run', exact:true}).click();
+  const board=page.getByRole('region',{name:'Property monthly billing board'});
+  await expect(board).toBeVisible();
+  // The fictional resident arrived this month, so the last completed month has no stay.
+  await expect(board).toContainText('Every occupied site, one billing view');
+  await board.getByLabel('Billing month').fill(dateAtProperty('America/Los_Angeles').slice(0,7));
+  const table=board.getByRole('region',{name:'Monthly billing site table'});
+  await expect(table).toContainText('RV-01');
+  await expect(table).toContainText('River Sample');
+  await expect(board).toContainText('1 stays');
+  await board.getByLabel('Find billing site or resident').fill('Not here');
+  await expect(board.getByText('No stays match this property, month and filter.')).toBeVisible();
+  await board.getByLabel('Find billing site or resident').fill('River');
+  await expect(table).toContainText('River Sample');
+  await board.getByLabel('Billing readiness filter').selectOption('review');
+  await expect(table).toContainText('Needs review');
+  const link=table.getByRole('link',{name:'Review / prepare draft'});
+  await expect(link).toBeVisible();
+  await link.click();
+  const focused=page.getByRole('region',{name:'Site monthly billing preparation'});
+  await expect(focused).toBeVisible();
+  await expect(focused).toContainText('River Sample');
+  await expect(focused).toContainText('Monthly billing · RV-01');
+  await focused.getByRole('button',{name:'Calculate draft for this site'}).click();
+  const modal=page.getByRole('dialog');
+  const starts=await modal.getByLabel('Billing starts on').inputValue();
+  const ends=await modal.getByLabel('Billing ends on (exclusive)').inputValue();
+  expect(ends).toBeGreaterThan(starts);
+  await expect(focused).toContainText(starts + ' → ' + ends);
+  await modal.getByRole('button',{name:'Cancel'}).click();
+  // Navigating and pre-filling must not even create a draft, much less issue a bill.
+  const url=new URL(page.url());
+  const record=await (await page.request.get('/api/billing?organization='+url.searchParams.get('organization'))).json();
+  expect(record.invoices).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
 test('billing forms, rates and internal statements remain accessible on every viewport and theme', async ({
   page,
 }, info) => {
