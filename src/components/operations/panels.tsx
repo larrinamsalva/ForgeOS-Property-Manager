@@ -823,7 +823,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
           <li><strong>Utility checks:</strong> look for water leaks, electrical hazards and gas concerns; review meter-reading exceptions with authorized staff</li>
           <li><strong>Maintenance:</strong> review new requests, assign technicians, confirm materials and review completed work</li>
           <li><strong>Office:</strong> check arrivals, planned departures, issued balances and resident follow-ups</li>
-          <li><strong>End of day:</strong> verify checklist results, record unresolved work and plan tomorrow's priorities</li>
+          <li><strong>End of day:</strong> verify checklist results, record unresolved work and plan tomorrow&apos;s priorities</li>
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
