@@ -54,6 +54,7 @@ import {
 import { Badge, Empty, Overview, SiteMap, StayHistory } from './workspace-parts';
 import { MeterWorkspace } from './meter-workspace';
 import { SiteMeterFile } from './site-meter-file';
+import { OverviewServiceAlerts } from './overview-service-alerts';
 import { CustomerBillingFile } from './customer-billing-file';
 const BillingWorkspace = dynamic(() =>
   import('./billing-workspace').then((module) => module.BillingWorkspace)
@@ -1064,6 +1065,7 @@ export function Workspace({
                   <Link href={href('collections')}>Payments & follow-ups</Link>
                 </div>
               </section>
+              <OverviewServiceAlerts snapshot={snapshot} propertyId={propertyId} href={href} />
               <OperationsMetrics snapshot={snapshot} propertyId={propertyId} />
               <Overview
                 snapshot={snapshot}
