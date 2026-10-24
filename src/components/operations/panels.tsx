@@ -869,6 +869,13 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
   const priorityRepairs = scoped(ui, ui.data.work).filter((w) =>
     !['closed', 'cancelled'].includes(w.status) && ['urgent', 'high'].includes(w.priority)
   ).sort((a, b) => (a.priority === 'urgent' ? -1 : 1) - (b.priority === 'urgent' ? -1 : 1));
+  const overdueInspections = scoped(ui, ui.data.runs).filter(run =>
+    run.status === 'open' && run.scheduled_for < ui.today
+  ).sort((a,b)=>a.scheduled_for.localeCompare(b.scheduled_for));
+  const urgentRepairs = priorityRepairs.filter(work => work.priority === 'urgent');
+  const overdueRepairs = scoped(ui, ui.data.work).filter(work =>
+    !!work.due_on && work.due_on < ui.today && !['closed','completed','cancelled'].includes(work.status)
+  ).sort((a,b)=>(a.due_on??'').localeCompare(b.due_on??''));
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -899,6 +906,39 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <section className="ops-record" aria-label="Manager safety alerts">
+        <h3>Manager safety alerts</h3>
+        <p>Live review queue based on saved inspection dates and maintenance priority. These are dashboard alerts only: no automatic texts, emails, or claims of safety certification.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Overdue inspections</span><strong>{overdueInspections.length}</strong></div>
+          <div className="stat-card"><span>Urgent repair orders</span><strong>{urgentRepairs.length}</strong></div>
+          <div className="stat-card"><span>Overdue repair orders</span><strong>{overdueRepairs.length}</strong></div>
+          <div className="stat-card"><span>Failed checks to review</span><strong>{failedFindings.length}</strong></div>
+        </div>
+        {overdueInspections.length > 0 && <details>
+          <summary>Overdue inspection alerts ({overdueInspections.length})</summary>
+          {overdueInspections.slice(0, 20).map(run => <article className="ops-history" key={run.id}>
+            <strong>Overdue since {run.scheduled_for}</strong> · {run.label}
+            <button type="button" className="text-button" onClick={()=>ui.open('run_detail',run.id)}>Review inspection</button>
+          </article>)}
+        </details>}
+        {urgentRepairs.length > 0 && <details>
+          <summary>Urgent maintenance alerts ({urgentRepairs.length})</summary>
+          {urgentRepairs.slice(0, 20).map(work => <article className="ops-history" key={work.id}>
+            <strong>Urgent</strong> · {work.number} · {work.title}
+            <p>{ui.data.context.work.find(ctx=>ctx.id===work.id)?.site_label ?? 'Location not specified'} · {opsLabel(work.status)}</p>
+            <button type="button" className="text-button" onClick={()=>ui.open('work_detail',work.id)}>Review urgent repair</button>
+          </article>)}
+        </details>}
+        {overdueRepairs.length > 0 && <details>
+          <summary>Past-due maintenance alerts ({overdueRepairs.length})</summary>
+          {overdueRepairs.slice(0, 20).map(work => <article className="ops-history" key={work.id}>
+            <strong>Due {work.due_on}</strong> · {work.number} · {work.title}
+            <button type="button" className="text-button" onClick={()=>ui.open('work_detail',work.id)}>Review overdue repair</button>
+          </article>)}
+        </details>}
+        <p>Alerts reflect current saved records. Resolve work through its existing workflow and confirm inspection outcomes separately.</p>
+      </section>
       <section className="ops-record" aria-label="Property safety dashboard">
         <h3>Property safety dashboard</h3>
         <p>Current saved checklist findings and high-priority work orders for this property. A skipped item is a review flag, not proof of a safety defect. Findings may need checking against repair history before being considered resolved.</p>
