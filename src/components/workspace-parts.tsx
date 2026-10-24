@@ -238,7 +238,7 @@ export function SiteMap({
       });
     return () => controller.abort();
   }, [snapshot.organizationId, safetySiteIds]);
-  const activeSafety = (safetyWork ?? []).filter((work) => !['closed', 'cancelled'].includes(work.status));
+  const activeSafety = (safetyWork ?? []).filter((work) => !['completed', 'closed', 'cancelled'].includes(work.status));
   const safetyForSite = (siteId: string) => {
     const open = activeSafety.filter((work) => work.site_id === siteId);
     return open.some((work) => work.priority === 'urgent') ? 'red' :
