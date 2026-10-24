@@ -104,11 +104,12 @@ export function WorkPhotoForm({
           />
         </div>
         <div className="field wide">
-          <label htmlFor="work-photo-file">Work photograph</label>
+          <label htmlFor="work-photo-file">Work photograph</label>\n          <small>Take a picture with your camera or choose an image.</small>
           <input
             id="work-photo-file"
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            capture="environment"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
