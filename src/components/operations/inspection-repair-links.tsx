@@ -11,6 +11,14 @@ export function InspectionRepairLinks({ui,runId,items}:{
  const [workId,setWorkId]=useState('');
  const [saving,setSaving]=useState(false);
  const scopedWork=ui.data.work.filter(w=>w.property_id===ui.propertyId);
+ const unresolved=links.filter(link=>{
+  const repair=scopedWork.find(w=>w.id===link.work_order_id);
+  return !repair || !['completed','closed'].includes(repair.status);
+ }).length;
+ const awaitingRecheck=links.filter(link=>{
+  const repair=scopedWork.find(w=>w.id===link.work_order_id);
+  return repair && ['completed','closed'].includes(repair.status);
+ }).length;
  const query=new URLSearchParams({organization:ui.snapshot.organizationId,property:ui.propertyId,run:runId});
  async function refresh(signal?:AbortSignal) {
   try {
@@ -56,6 +64,11 @@ export function InspectionRepairLinks({ui,runId,items}:{
     <option value="">Choose work order</option>{scopedWork.map(w=><option key={w.id} value={w.id}>{w.number} · {w.title}</option>)}</select></label>
    <button type="button" className="button secondary" disabled={saving||!item||!workId} onClick={save}>Link repair</button>
   </div>}
+  <div className="stat-grid" aria-label="Linked repair follow-up status">
+   <div className="stat-card"><span>Repairs needing follow-up</span><strong>{unresolved}</strong></div>
+   <div className="stat-card"><span>Completed repairs to recheck</span><strong>{awaitingRecheck}</strong></div>
+  </div>
+  <p>Completed repairs still require a separate inspection result before the finding can be considered verified. Reopen the inspection checklist item when authorized, or schedule a new follow-up inspection.</p>
   {message&&<p role="status">{message}</p>}
   {links.length===0&&!message&&<p>No linked repair records for this inspection.</p>}
   {links.map(link=>{
@@ -65,6 +78,8 @@ export function InspectionRepairLinks({ui,runId,items}:{
     {repair?<button className="text-button" onClick={()=>ui.open('work_detail',repair.id)}>
      {repair.number} · {repair.title}</button>:'Repair unavailable'}{' '}
     · {repair?.status.replaceAll('_',' ')??'Status unavailable'} · Linked {link.created_at.slice(0,10)}
+    {repair && <span> · {ui.data.photos.filter(photo=>photo.work_order_id===repair.id && photo.status==='uploaded').length} retained work-order photos (open repair to view)</span>}
+    {repair && ['completed','closed'].includes(repair.status) && <strong> · Follow-up inspection needed</strong>}
    </p>;
   })}
   <p>Repairs are still completed through the existing work-order workflow. Links are retained for history.</p>
