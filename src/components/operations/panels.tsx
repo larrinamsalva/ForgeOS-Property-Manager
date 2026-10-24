@@ -5,6 +5,7 @@ import { customerName } from '@/lib/domain';
 import { opsLabel, quantity, checklistState, purchaseState } from '@/lib/operations-domain';
 import { Empty } from '../workspace-parts';
 import type { OpsUI } from './types';
+import { InspectionRepairLinks } from './inspection-repair-links';
 import { PurchasingExpenseSnapshot } from './purchasing-expense-snapshot';
 const scoped = <T extends { property_id: string }>(ui: OpsUI, rows: T[]) =>
   rows.filter((r) => r.property_id === ui.propertyId);
@@ -1013,6 +1014,7 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
           </section>
         );
       })}
+      <InspectionRepairLinks ui={ui} runId={id} items={r.items} />
       <div className="action-group">
         {ui.active && r.status === 'open' && (
           <Action click={() => ui.open('checklist_status', id, undefined, 'closed')}>
