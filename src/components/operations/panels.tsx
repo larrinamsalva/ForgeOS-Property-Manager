@@ -1,3 +1,4 @@
+import { InspectionLocation } from './inspection-location';
 'use client';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
@@ -1014,6 +1015,7 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
           </section>
         );
       })}
+      <InspectionLocation ui={ui} runId={id} />
       <InspectionRepairLinks ui={ui} runId={id} items={r.items} />
       <div className="action-group">
         {ui.active && r.status === 'open' && (
