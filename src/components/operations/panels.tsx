@@ -972,7 +972,7 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
           <section className="ops-record" key={i.key}>
             <h3>{i.label}</h3>
             <p>
-              {state?.notes.startsWith('[Inspection: ') ? state.notes.match(/^\\[Inspection: ([^\\]]+)\\]/)?.[1] ?? opsLabel(state.status) :
+              {state?.notes.startsWith('[Inspection: ') ? state.notes.split(']')[0].replace('[Inspection: ', '') :
                 state ? opsLabel(state.status) : 'Not recorded'} · {state?.notes}
             </p>
             {ui.active && r.status === 'open' && r.scheduled_for <= ui.today && (
