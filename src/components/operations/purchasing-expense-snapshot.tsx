@@ -2,11 +2,13 @@
 import { cents } from '@/lib/billing-domain';
 import { csv } from '@/lib/domain';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
+import { SavedPropertyBudgets } from './saved-property-budgets';
 import { BudgetPlanningPreview } from './budget-planning-preview';
 
-export function PurchasingExpenseSnapshot({ data, propertyId }: {
+export function PurchasingExpenseSnapshot({ data, propertyId, organizationId }: {
   data: OperationsSnapshot;
   propertyId: string;
+  organizationId: string;
 }) {
   const orders = data.orders.filter((order) => order.property_id === propertyId && order.status !== 'cancelled');
   const orderIds = new Set(orders.map((order) => order.id));
@@ -58,6 +60,7 @@ export function PurchasingExpenseSnapshot({ data, propertyId }: {
         <div className="stat-card"><span>Recorded maintenance expenses</span><strong>{format(expenseTotal)}</strong><span>Before reversals</span></div>
         <div className="stat-card"><span>Recorded expense reversals</span><strong>{format(reversedTotal)}</strong><span>Shown separately to avoid double counting</span></div>
       </div>
+      <SavedPropertyBudgets data={data} propertyId={propertyId} organizationId={organizationId} />
       <BudgetPlanningPreview data={data} propertyId={propertyId} />
       <details className="ops-record">
         <summary>Recorded monthly maintenance expenses ({trends.length} months)</summary>
