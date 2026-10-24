@@ -1,4 +1,5 @@
 'use client';
+import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
 import { InspectionLocation } from './inspection-location';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
@@ -906,6 +907,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <SupervisorReviewDashboard ui={ui} />
       <section className="ops-record" aria-label="Manager safety alerts">
         <h3>Manager safety alerts</h3>
         <p>Live review queue based on saved inspection dates and maintenance priority. These are dashboard alerts only: no automatic texts, emails, or claims of safety certification.</p>
