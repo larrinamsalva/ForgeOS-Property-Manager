@@ -987,6 +987,14 @@ export function PlansPanel({
   setRange: (start: string, end: string) => void;
 }) {
   const occurrences = scoped(ui, ui.data.schedule);
+  const scheduledWork = scoped(ui, ui.data.work).filter((w) =>
+    !!w.scheduled_for && w.scheduled_for >= starts && w.scheduled_for <= ends &&
+    !['cancelled', 'closed'].includes(w.status)
+  );
+  const days = [...new Set([
+    ...scheduledWork.map((w) => w.scheduled_for!),
+    ...occurrences.map((o) => o.scheduled_for),
+  ])].sort();
   return (
     <>
       <section className="panel">
@@ -1015,6 +1023,30 @@ export function PlansPanel({
               <Action click={() => ui.open('save_plan', p.id)}>Edit recurring plan</Action>
             )}
           </article>
+        ))}
+      </section>
+      <section className="panel" aria-label="Scheduled maintenance agenda">
+        <h2>Employee maintenance agenda</h2>
+        <p>Real scheduled work orders and recurring preventive tasks, grouped by date. Select a job to review its site, assigned employee, parts and photos. Date range follows the calendar controls below.</p>
+        {!days.length ? <p>No work orders or recurring tasks scheduled within the loaded date range.</p> : days.map((day) => (
+          <details className="ops-record" key={day} open={day === ui.today}>
+            <summary>{day} — {scheduledWork.filter((w) => w.scheduled_for === day).length} work orders, {occurrences.filter((o) => o.scheduled_for === day).length} recurring tasks</summary>
+            {scheduledWork.filter((w) => w.scheduled_for === day).map((w) => (
+              <article key={w.id} className="ops-history">
+                <button className="text-button" onClick={() => ui.open('work_detail', w.id)}>{w.number} · {w.title}</button>
+                <p><span className="badge" data-priority={w.priority}>{opsLabel(w.priority)}</span> · {opsLabel(w.status)} · {staffName(ui, w.assigned_to)}</p>
+                <p>{ui.data.context.work.find((x) => x.id === w.id)?.site_label ?? 'Common area'} · {w.parts_required ? 'Parts: ' + w.parts_required : 'No parts noted'}</p>
+              </article>
+            ))}
+            {occurrences.filter((o) => o.scheduled_for === day).map((o) => (
+              <article key={o.plan_id + ':' + day} className="ops-history">
+                <p><strong>{o.label}</strong> · Recurring {opsLabel(o.kind)}</p>
+                {o.entity_id ? <Action click={() => ui.open(o.kind === 'maintenance' ? 'work_detail' : 'run_detail', o.entity_id!)}>Open scheduled task</Action> :
+                  ui.office && ui.active ? <Action click={() => ui.open('generate_occurrence', o.plan_id, undefined, day)}>Create scheduled task</Action> :
+                  <p>Not yet created</p>}
+              </article>
+            ))}
+          </details>
         ))}
       </section>
       <section className="panel">
