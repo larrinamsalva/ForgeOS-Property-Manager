@@ -983,7 +983,7 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'pass')}>Pass inspection</Action>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'fail')}>Fail</Action>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'needs_attention')}>Needs attention</Action>
-                    <Action click={() => ui.open('checklist_entry', id, i.key, 'skipped')}>Not inspected / skip</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'skipped')}>Skip with reason</Action>
                   </>
                 )}
                 {ui.office && state && state.status !== 'reopen' && (
