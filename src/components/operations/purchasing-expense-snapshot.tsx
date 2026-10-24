@@ -1,5 +1,6 @@
 'use client';
 import { cents } from '@/lib/billing-domain';
+import { csv } from '@/lib/domain';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
 
 export function PurchasingExpenseSnapshot({ data, propertyId }: {
@@ -15,6 +16,32 @@ export function PurchasingExpenseSnapshot({ data, propertyId }: {
   const expenseTotal = costs.filter((item) => item.kind === 'expense').reduce((sum, item) => sum + BigInt(item.amount_cents), 0n);
   const reversedTotal = costs.filter((item) => item.kind === 'reversal').reduce((sum, item) => sum + BigInt(item.amount_cents), 0n);
   const purchaseCommitments = lines.reduce((sum, line) => sum + BigInt(line.total_cost_cents), 0n);
+  const months = Array.from(new Set(costs.filter((c) => ['expense', 'reversal'].includes(c.kind))
+    .map((c) => c.created_at.slice(0, 7)).filter((date) => /^\\d{4}-\\d{2}$/.test(date)))).sort().reverse();
+  const trends = months.map((month) => {
+    const monthCosts = costs.filter((c) => c.created_at.startsWith(month));
+    return {
+      month,
+      expenses: monthCosts.filter((c) => c.kind === 'expense').reduce((sum, c) => sum + BigInt(c.amount_cents), 0n),
+      reversals: monthCosts.filter((c) => c.kind === 'reversal').reduce((sum, c) => sum + BigInt(c.amount_cents), 0n),
+    };
+  });
+  function downloadCosts() {
+    const header = ['Recorded UTC month', 'Work order', 'Category', 'Kind', 'Amount cents', 'Description', 'Reference'];
+    const rows = costs.filter((c) => ['expense', 'reversal'].includes(c.kind)).map((c) => [
+      c.created_at.slice(0, 7),
+      work.find((w) => w.id === c.work_order_id)?.number ?? '',
+      work.find((w) => w.id === c.work_order_id)?.category ?? '',
+      c.kind, c.amount_cents, c.description, c.reference,
+    ]);
+    const output = csv([header, ...rows]);
+    const url = URL.createObjectURL(new Blob([output], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'forgeos-maintenance-costs.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   const format = (amount: bigint) => cents(amount);
   return (
     <section className="panel" aria-label="Purchasing and maintenance cost snapshot">
@@ -30,6 +57,19 @@ export function PurchasingExpenseSnapshot({ data, propertyId }: {
         <div className="stat-card"><span>Recorded maintenance expenses</span><strong>{format(expenseTotal)}</strong><span>Before reversals</span></div>
         <div className="stat-card"><span>Recorded expense reversals</span><strong>{format(reversedTotal)}</strong><span>Shown separately to avoid double counting</span></div>
       </div>
+      <details className="ops-record">
+        <summary>Recorded monthly maintenance expenses ({trends.length} months)</summary>
+        <p>Grouped by record creation month in UTC, not a paid-date ledger. Reversals are listed separately.</p>
+        {trends.length ? <div className="table-wrap" role="region" aria-label="Monthly maintenance expenses" tabIndex={0}>
+          <table>
+            <thead><tr><th>Month</th><th>Recorded expenses</th><th>Recorded reversals</th></tr></thead>
+            <tbody>{trends.map((row) => <tr key={row.month}>
+              <th scope="row">{row.month}</th><td>{format(row.expenses)}</td><td>{format(row.reversals)}</td>
+            </tr>)}</tbody>
+          </table>
+        </div> : <p>No dated maintenance expense records.</p>}
+        <button type="button" className="button secondary" onClick={downloadCosts}>Download maintenance cost CSV</button>
+      </details>
       <details className="ops-record">
         <summary>Purchase order history ({orders.length})</summary>
         {orders.length ? <div className="table-wrap" role="region" aria-label="Purchase order amount history" tabIndex={0}>
