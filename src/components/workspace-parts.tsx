@@ -211,8 +211,10 @@ export function SiteMap({
   const [reviewSearch, setReviewSearch] = useState('');
   const [safetyWork, setSafetyWork] = useState<OperationsSnapshot['work'] | null>(null);
   const [safetyError, setSafetyError] = useState('');
+  const safetySiteIds = sites.map((site) => site.id).sort().join(',');
   useEffect(() => {
-    if (!sites.length || !snapshot.organizationId) return;
+    if (!safetySiteIds || !snapshot.organizationId) return;
+    const visibleSiteIds = new Set(safetySiteIds.split(','));
     const controller = new AbortController();
     const today = new Date().toISOString().slice(0, 10);
     fetch('/api/operations?' + new URLSearchParams({
@@ -224,7 +226,7 @@ export function SiteMap({
       })
       .then((data) => {
         if (!controller.signal.aborted) {
-          setSafetyWork(data.work.filter((work) => sites.some((site) => site.id === work.site_id)));
+          setSafetyWork(data.work.filter((work) => work.site_id !== null && visibleSiteIds.has(work.site_id)));
           setSafetyError('');
         }
       })
@@ -235,7 +237,7 @@ export function SiteMap({
         }
       });
     return () => controller.abort();
-  }, [snapshot.organizationId, sites]);
+  }, [snapshot.organizationId, safetySiteIds]);
   const activeSafety = (safetyWork ?? []).filter((work) => !['closed', 'cancelled'].includes(work.status));
   const safetyForSite = (siteId: string) => {
     const open = activeSafety.filter((work) => work.site_id === siteId);
