@@ -13,6 +13,10 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
   const [linkedRuns, setLinkedRuns] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [inspectionError, setInspectionError] = useState('');
+  const [reviewStatus, setReviewStatus] = useState<'loading'|'ready'|'unavailable'>('loading');
+  const [supervisorReviews, setSupervisorReviews] = useState<Array<{
+    id:string; workOrderId:string; outcome:'verified'|'needs_more_work'; notes:string; signedAt:string;
+  }>>([]);
   const [historyKind, setHistoryKind] = useState<'all'|'work'|'inspection'|'meter'>('all');
   const [historySearch, setHistorySearch] = useState('');
   const [photoView, setPhotoView] = useState<{id:string;url:string;caption:string}|null>(null);
@@ -79,6 +83,34 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
     });
     return () => controller.abort();
   }, [organizationId]);
+  useEffect(() => {
+    if (!linkedRuns.length) return;
+    const controller = new AbortController();
+    const scope = (run:string) => new URLSearchParams({
+      organization:organizationId,property:propertyId,run,
+    });
+    Promise.all(linkedRuns.map(async run => {
+      const [linksResponse,checksResponse] = await Promise.all([
+        fetch('/api/inspection-work-links?'+scope(run),{signal:controller.signal,cache:'no-store'}),
+        fetch('/api/inspection-rechecks?'+scope(run),{signal:controller.signal,cache:'no-store'}),
+      ]);
+      if (!linksResponse.ok || !checksResponse.ok) throw Error('Reinspection history unavailable');
+      const links = await linksResponse.json() as {links:Array<{id:string;work_order_id:string}>};
+      const checks = await checksResponse.json() as {rechecks:Array<{
+        id:string;inspection_link_id:string;outcome:'verified'|'needs_more_work';notes:string;signed_at:string;
+      }>};
+      const workIds = new Map(links.links.map(link=>[link.id,link.work_order_id]));
+      return checks.rechecks.flatMap(check => {
+        const workOrderId = workIds.get(check.inspection_link_id);
+        return workOrderId ? [{id:check.id,workOrderId,outcome:check.outcome,notes:check.notes,signedAt:check.signed_at}] : [];
+      });
+    })).then(results => {
+      if (!controller.signal.aborted) { setSupervisorReviews(results.flat()); setReviewStatus('ready'); }
+    }).catch(() => {
+      if (!controller.signal.aborted) { setSupervisorReviews([]); setReviewStatus('unavailable'); }
+    });
+    return () => controller.abort();
+  }, [organizationId,propertyId,linkedRuns]);
   const meterEntries = meterData ? meterFileEntries(meterData, {siteId}, 100) : [];
   const orders = (data?.work ?? []).filter(work => work.property_id === propertyId && work.site_id === siteId)
     .sort((a,b)=>b.created_at.localeCompare(a.created_at));
@@ -137,6 +169,8 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
         {timeline.length>40 && <p>Showing 40 matching activities. Narrow the search to find older records.</p>}
       </div>
       <h4>Work orders ({orders.length})</h4>
+      {reviewStatus==='unavailable'&&<p role="status">Supervisor reinspection records could not be loaded. No approval is implied.</p>}
+      {reviewStatus==='loading'&&linkedRuns.length>0&&<p role="status">Loading supervisor reinspections…</p>}
       {!orders.length && <p>No work orders found for this space in the retrieved history.</p>}
       {orders.slice(0,30).map(work => {
         const photos = data.photos.filter(photo=>photo.work_order_id===work.id && photo.status==='uploaded');
@@ -144,6 +178,10 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
           <strong>{work.number} · {work.title}</strong>
           <p>{work.status.replaceAll('_',' ')} · {work.priority} priority · Opened {work.requested_on}</p>
           <p>{photos.length} private photo{photos.length===1?'':'s'} · {data.events.filter(event=>event.work_order_id===work.id).length} history event(s)</p>
+          {supervisorReviews.filter(review=>review.workOrderId===work.id).sort((a,b)=>b.signedAt.localeCompare(a.signedAt)).map(review=>
+            <p key={review.id}>Supervisor reinspection · {review.signedAt.slice(0,10)} ·
+              {review.outcome==='verified'?' Verified':' Needs more work'} · {review.notes}</p>
+          )}
           {photos.length>0 && <details>
             <summary>Review repair photos ({photos.length})</summary>
             <p className="muted small">Photos remain in private storage and are opened only through the existing authorized photo service.</p>
