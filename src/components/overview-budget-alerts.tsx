@@ -13,7 +13,7 @@ export function OverviewBudgetAlerts({snapshot,propertyId,href}:{
 }) {
  const managerProperties = snapshot.properties.filter(p =>
    !p.archived_at && (!propertyId || p.id===propertyId) && (
-    snapshot.organizationMemberships.some(m=>m.organization_id===snapshot.organizationId &&
+    snapshot.memberships.some(m=>m.organization_id===snapshot.organizationId &&
       m.user_id===snapshot.userId && ['owner','admin'].includes(m.role)) ||
     snapshot.propertyMemberships.some(m=>m.property_id===p.id && m.user_id===snapshot.userId && m.role==='manager')
    ));
