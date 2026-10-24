@@ -4,7 +4,7 @@ create table public.inspection_run_locations (
  organization_id uuid not null,
  property_id uuid not null,
  run_id uuid not null unique references public.checklist_runs(id),
- site_id uuid references public.sites(id),
+ site_id uuid references public.sites_units(id),
  area_label text,
  created_by uuid not null default auth.uid(),
  created_at timestamptz not null default now(),
@@ -18,7 +18,7 @@ create function private.inspection_location_allowed(org uuid, prop uuid, run uui
 returns boolean language sql stable security definer set search_path='' as $$
  select auth.uid() is not null and private.operations_worker(org,prop,auth.uid())
  and exists (select 1 from public.checklist_runs r where r.id=run and r.organization_id=org and r.property_id=prop)
- and (site is null or exists(select 1 from public.sites s where s.id=site and s.organization_id=org and s.property_id=prop));
+ and (site is null or exists(select 1 from public.sites_units s where s.id=site and s.organization_id=org and s.property_id=prop));
 $$;
 revoke all on function private.inspection_location_allowed(uuid,uuid,uuid,uuid) from public,anon;
 grant execute on function private.inspection_location_allowed(uuid,uuid,uuid,uuid) to authenticated;
