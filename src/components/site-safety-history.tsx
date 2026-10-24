@@ -1,15 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
+import type { MeterSnapshot } from '@/lib/meter-domain';
+import { meterFileEntries } from '@/lib/meter-file';
 
 export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
   organizationId: string; propertyId: string; siteId: string;
 }) {
   const [data, setData] = useState<OperationsSnapshot | null>(null);
+  const [meterData, setMeterData] = useState<MeterSnapshot | null>(null);
+  const [meterError, setMeterError] = useState(false);
   const [linkedRuns, setLinkedRuns] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [inspectionError, setInspectionError] = useState('');
-  const [historyKind, setHistoryKind] = useState<'all'|'work'|'inspection'>('all');
+  const [historyKind, setHistoryKind] = useState<'all'|'work'|'inspection'|'meter'>('all');
   const [historySearch, setHistorySearch] = useState('');
   useEffect(() => {
     const controller = new AbortController();
@@ -47,11 +51,33 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
     });
     return () => controller.abort();
   }, [organizationId,propertyId,siteId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/meters?organization=' + encodeURIComponent(organizationId), {
+      cache:'no-store', signal:controller.signal,
+    }).then(async response => {
+      if (!response.ok) throw new Error('Meter records unavailable');
+      return response.json() as Promise<MeterSnapshot>;
+    }).then(result => {
+      if (!controller.signal.aborted) { setMeterData(result); setMeterError(false); }
+    }).catch(() => {
+      if (!controller.signal.aborted) { setMeterData(null); setMeterError(true); }
+    });
+    return () => controller.abort();
+  }, [organizationId]);
+  const meterEntries = meterData ? meterFileEntries(meterData, {siteId}, 100) : [];
   const orders = (data?.work ?? []).filter(work => work.property_id === propertyId && work.site_id === siteId)
     .sort((a,b)=>b.created_at.localeCompare(a.created_at));
   const inspections = (data?.runs ?? []).filter(run => linkedRuns.includes(run.id))
     .sort((a,b)=>b.scheduled_for.localeCompare(a.scheduled_for));
   const timeline = [
+    ...meterEntries.map(reading => ({
+      id:'meter:'+reading.id, kind:'meter' as const, day:reading.recordedOn,
+      heading:reading.utility+' · '+reading.meterLabel,
+      detail:(reading.reviewStatus==='accepted' ? 'Approved' : reading.reviewStatus==='rejected' ? 'Rejected' : 'Awaiting review')+
+        ' · '+(reading.effective ?? reading.original ?? 'No register value')+' '+reading.unit,
+    })),
+
     ...orders.map(work => ({
       id:'work:'+work.id, kind:'work' as const, day:work.requested_on,
       heading:work.number+' · '+work.title,
@@ -72,13 +98,14 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
     {data && <>
       <div className="ops-record" aria-label="Site activity timeline">
         <h4>Site activity timeline</h4>
-        <p className="muted small">Combines the available site work orders and explicitly located inspections. Occupancy, meter billing and private resident account activity remain in their separate authorized records.</p>
+        <p className="muted small">Combines site work orders, explicitly located inspections, and dated meter readings captured at this site. Meter entries show register values and review status, not resident names, charges or private billing records.</p>
         <div className="action-group">
           <label>Activity type
             <select value={historyKind} onChange={e=>setHistoryKind(e.target.value as typeof historyKind)}>
               <option value="all">All site activity</option>
               <option value="work">Maintenance</option>
               <option value="inspection">Inspections</option>
+              <option value="meter">Meter readings</option>
             </select>
           </label>
           <label>Find activity
@@ -86,9 +113,11 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
               placeholder="Search date, status or description" />
           </label>
         </div>
+        {meterError && <p role="status">Meter history unavailable. The timeline may be incomplete; use the Meter reader to verify records.</p>}
+        {!meterData && !meterError && <p role="status">Loading meter history…</p>}
         {!timeline.length && <p>No site activity matches this filter in the retrieved records.</p>}
         {timeline.slice(0,40).map(item=><article className="ops-history" key={item.id}>
-          <strong>{item.day} · {item.kind==='work'?'Maintenance':'Inspection'}</strong>
+          <strong>{item.day} · {item.kind==='work'?'Maintenance':item.kind==='meter'?'Meter reading':'Inspection'}</strong>
           <p>{item.heading} · {item.detail}</p>
         </article>)}
         {timeline.length>40 && <p>Showing 40 matching activities. Narrow the search to find older records.</p>}
