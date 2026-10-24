@@ -104,7 +104,7 @@ export function WorkPhotoForm({
           />
         </div>
         <div className="field wide">
-          <label htmlFor="work-photo-file">Work photograph — take a picture or choose an image</label>
+          <label htmlFor="work-photo-file">Work photograph</label>\n          <small>Take a picture with your camera or choose an image.</small>
           <input
             id="work-photo-file"
             type="file"
