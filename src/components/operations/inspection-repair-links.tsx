@@ -12,6 +12,8 @@ export function InspectionRepairLinks({ui,runId,items}:{
  const [workId,setWorkId]=useState('');
  const [saving,setSaving]=useState(false);
  const [rechecks,setRechecks]=useState<Recheck[]>([]);
+ const [rechecksAvailable,setRechecksAvailable]=useState(false);
+ const [rechecksError,setRechecksError]=useState('');
  const [recheckNotes,setRecheckNotes]=useState<Record<string,string>>({});
  const [recheckSaving,setRecheckSaving]=useState<string|null>(null);
  const scopedWork=ui.data.work.filter(w=>w.property_id===ui.propertyId);
@@ -20,7 +22,7 @@ export function InspectionRepairLinks({ui,runId,items}:{
   return !repair || !['completed','closed'].includes(repair.status);
  }).length;
  const awaitingRecheck=links.filter(link=>{
-  if(rechecks.find(r=>r.inspection_link_id===link.id)?.outcome==='verified')return false;
+  if(rechecksAvailable&&rechecks.find(r=>r.inspection_link_id===link.id)?.outcome==='verified')return false;
   const repair=scopedWork.find(w=>w.id===link.work_order_id);
   return repair && ['completed','closed'].includes(repair.status);
  }).length;
@@ -33,8 +35,7 @@ export function InspectionRepairLinks({ui,runId,items}:{
    if(!signal?.aborted){setLinks(data.links);setMessage('');}
    const checked=await fetch('/api/inspection-rechecks?'+query,{signal,cache:'no-store'});
    const result=await checked.json();
-   if(!checked.ok)throw Error(result.error??'Reinspection records unavailable');
-   if(!signal?.aborted)setRechecks(result.rechecks);
+   if(!signal?.aborted){setRechecksAvailable(checked.ok);setRechecksError(checked.ok?'':(result.error??'Reinspection database unavailable'));setRechecks(checked.ok?result.rechecks:[]);}
   }catch(e){if(!signal?.aborted)setMessage(e instanceof Error?e.message:'Links unavailable');}
  }
  useEffect(()=>{
@@ -47,8 +48,8 @@ export function InspectionRepairLinks({ui,runId,items}:{
     const j=await r.json();if(!r.ok)throw Error(j.error??'Links unavailable');
     if(!controller.signal.aborted){setLinks(j.links);setMessage('');}
     const response=await fetch('/api/inspection-rechecks?'+new URLSearchParams({organization:ui.snapshot.organizationId,property:ui.propertyId,run:runId}),{signal:controller.signal,cache:'no-store'});
-    const result=await response.json();if(!response.ok)throw Error(result.error??'Follow-up records unavailable');
-    if(!controller.signal.aborted)setRechecks(result.rechecks);
+    const result=await response.json();
+    if(!controller.signal.aborted){setRechecksAvailable(response.ok);setRechecksError(response.ok?'':(result.error??'Reinspection database unavailable'));setRechecks(response.ok?result.rechecks:[]);}
    }catch(e){if(!controller.signal.aborted)setMessage(e instanceof Error?e.message:'Links unavailable');}
   })();
   return ()=>controller.abort();
@@ -68,7 +69,7 @@ export function InspectionRepairLinks({ui,runId,items}:{
  }
  async function signOff(linkId:string,outcome:'verified'|'needs_more_work'){
   const notes=(recheckNotes[linkId]??'').trim();
-  if(notes.length<3)return;
+  if(notes.length<3||!rechecksAvailable)return;
   setRecheckSaving(linkId);setMessage('');
   try{
    const response=await fetch('/api/inspection-rechecks',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -90,10 +91,11 @@ export function InspectionRepairLinks({ui,runId,items}:{
   </div>}
   <div className="stat-grid" aria-label="Linked repair follow-up status">
    <div className="stat-card"><span>Repairs needing follow-up</span><strong>{unresolved}</strong></div>
-   <div className="stat-card"><span>Completed repairs to recheck</span><strong>{awaitingRecheck}</strong></div>
+   <div className="stat-card"><span>Completed repairs needing review</span><strong>{awaitingRecheck}</strong></div>
   </div>
   <p>Completed repairs still require a separate inspection result before the finding can be considered verified. Reopen the inspection checklist item when authorized, or schedule a new follow-up inspection.</p>
   {message&&<p role="status">{message}</p>}
+  {!rechecksAvailable&&<p role="alert">Supervisor sign-off is unavailable: {rechecksError||'Checking reinspection records…'} Repair links and photos can still be reviewed, but verification cannot be saved until the database migration is applied.</p>}
   {links.length===0&&!message&&<p>No linked repair records for this inspection.</p>}
   {links.map(link=>{
    const repair=scopedWork.find(w=>w.id===link.work_order_id);
@@ -118,7 +120,7 @@ export function InspectionRepairLinks({ui,runId,items}:{
       </div>;
      })()}
     <p>{latest ? `Most recent supervisor recheck: ${latest.outcome==='verified'?'Verified':'Needs more work'} · ${latest.signed_at.slice(0,10)} · ${latest.notes}` : complete?'Awaiting supervisor reinspection':'Repair is not yet ready for reinspection'}</p>
-    {ui.office&&ui.active&&complete&&<div className="action-group">
+    {ui.office&&ui.active&&complete&&rechecksAvailable&&<div className="action-group">
       <label>Supervisor reinspection notes
        <textarea value={recheckNotes[link.id]??''} maxLength={2000} onChange={e=>setRecheckNotes(prev=>({...prev,[link.id]:e.target.value}))} placeholder="Describe what you inspected in person…" />
       </label>
