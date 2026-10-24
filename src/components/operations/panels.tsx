@@ -334,6 +334,11 @@ export function StockPanel({ ui, search }: { ui: OpsUI; search: string }) {
   const rows = scoped(ui, ui.data.items).filter((i) =>
     `${i.sku} ${i.name} ${i.category} ${i.location}`.toLowerCase().includes(search.toLowerCase())
   );
+  const reorder = scoped(ui, ui.data.items).filter((item) => {
+    if (item.archived) return false;
+    const balance = ui.data.summary.stock.find((entry) => entry.id === item.id)?.quantity_milli ?? '0';
+    return BigInt(balance) <= BigInt(item.reorder_milli);
+  }).sort((a, b) => a.name.localeCompare(b.name));
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -345,6 +350,30 @@ export function StockPanel({ ui, search }: { ui: OpsUI; search: string }) {
         </div>
         {ui.manage && ui.active && <Action click={() => ui.open('save_item')}>Add stock item</Action>}
       </div>
+      <details className="ops-record">
+        <summary>Reorder shopping list — {reorder.length} low-stock items</summary>
+        <p>Based on recorded stock movements and reorder thresholds. Suggested quantities are not purchase orders.</p>
+        {reorder.length === 0 ? <p>No active items are at or below their reorder thresholds.</p> : (
+          <div className="table-wrap" role="region" aria-label="Supplies shopping list" tabIndex={0}>
+            <table>
+              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested order</th><th>Standard unit cost</th></tr></thead>
+              <tbody>{reorder.map((item) => {
+                const available = BigInt(ui.data.summary.stock.find((entry) => entry.id === item.id)?.quantity_milli ?? '0');
+                const target = BigInt(item.restock_milli);
+                const suggested = target > available ? target - available : 0n;
+                return <tr key={item.id}>
+                  <th scope="row">{item.name}<small>{item.sku}</small></th>
+                  <td>{item.location || 'Not specified'}</td>
+                  <td>{quantity(available.toString())} {item.unit}</td>
+                  <td>{quantity(suggested.toString())} {item.unit}</td>
+                  <td>{cents(item.unit_cost_cents)} / {item.unit}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+        )}
+        <p>Review supplier prices and stock counts before placing an order. Open Purchasing to request or approve supplies.</p>
+      </details>
       {!rows.length ? (
         <Empty title="No matching stock items">
           Add a stock item, then record a delivery or receive an approved purchase.
