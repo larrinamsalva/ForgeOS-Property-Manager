@@ -960,6 +960,12 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
       <p>
         {r.scheduled_for} · {staffName(ui, r.assigned_to)} · {opsLabel(r.status)}
       </p>
+      <p>Inspection result guide: use Complete item for a verified satisfactory check; use Skip with reason when you could not complete a check or discovered a condition needing follow-up. Skipped does not mean passed, and a repair request must be created separately.</p>
+      <div className="stat-grid" aria-label="Inspection results overview">
+        <div className="stat-card"><span>Completed items</span><strong>{r.items.filter((item) => checklistState(ui.data.entries, id, item.key)?.status === 'done').length}</strong></div>
+        <div className="stat-card"><span>Skipped / follow-up</span><strong>{r.items.filter((item) => checklistState(ui.data.entries, id, item.key)?.status === 'skipped').length}</strong></div>
+        <div className="stat-card"><span>Not recorded</span><strong>{r.items.filter((item) => !['done','skipped'].includes(checklistState(ui.data.entries, id, item.key)?.status ?? '')).length}</strong></div>
+      </div>
       {r.items.map((i) => {
         const state = checklistState(ui.data.entries, id, i.key);
         return (
@@ -983,6 +989,15 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
                 )}
               </div>
             )}
+            <div className="action-group">
+              {ui.office && ui.active && (
+                <Action click={() => ui.open('new_work')}>Create repair for this inspection finding</Action>
+              )}
+              {!ui.office && ui.active && (
+                <Action click={() => ui.open('maintenance_self_task')}>Report repair as my task</Action>
+              )}
+            </div>
+            <small>When reporting a repair, include this inspection date, checklist name and item in the request description so staff can find the original checklist. The new work order is not automatically linked to this item.</small>
             <details>
               <summary>Item history</summary>
               {ui.data.entries
