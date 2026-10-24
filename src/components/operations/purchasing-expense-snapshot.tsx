@@ -34,7 +34,7 @@ export function PurchasingExpenseSnapshot({ data, propertyId }: {
       work.find((w) => w.id === c.work_order_id)?.category ?? '',
       c.kind, c.amount_cents, c.description, c.reference,
     ]);
-    const output = [header, ...rows].map((row) => row.map((value) => csv(String(value))).join(',')).join('\\r\\n');
+    const output = csv([header, ...rows]);
     const url = URL.createObjectURL(new Blob([output], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
