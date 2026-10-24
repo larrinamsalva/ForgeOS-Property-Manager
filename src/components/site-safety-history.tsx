@@ -11,7 +11,6 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
   const [inspectionError, setInspectionError] = useState('');
   useEffect(() => {
     const controller = new AbortController();
-    setData(null); setLinkedRuns([]); setError(''); setInspectionError('');
     const ends = new Date().toISOString().slice(0,10);
     const starts = new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10);
     fetch('/api/operations?' + new URLSearchParams({organization:organizationId,starts,ends}), {
