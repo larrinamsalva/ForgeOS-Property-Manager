@@ -869,6 +869,16 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
   const priorityRepairs = scoped(ui, ui.data.work).filter((w) =>
     !['closed', 'cancelled'].includes(w.status) && ['urgent', 'high'].includes(w.priority)
   ).sort((a, b) => (a.priority === 'urgent' ? -1 : 1) - (b.priority === 'urgent' ? -1 : 1));
+  const siteSafety = ui.snapshot.sites.filter(site => site.property_id === ui.propertyId)
+    .map(site => {
+      const jobs = scoped(ui, ui.data.work).filter(work =>
+        work.site_id === site.id && !['closed', 'cancelled'].includes(work.status)
+      );
+      const high = jobs.filter(work => work.priority === 'urgent' || work.priority === 'high');
+      const pending = jobs.filter(work => !['completed'].includes(work.status));
+      return { site, jobs, high, pending, level: high.length ? 'red' : jobs.length ? 'yellow' : 'none' };
+    });
+  const flaggedSites = siteSafety.filter(record => record.level !== 'none');
   const overdueInspections = scoped(ui, ui.data.runs).filter(run =>
     run.status === 'open' && run.scheduled_for < ui.today
   ).sort((a,b)=>a.scheduled_for.localeCompare(b.scheduled_for));
@@ -906,6 +916,34 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <section className="ops-record" aria-label="Site maintenance flag overview">
+        <h3>Property site safety flags</h3>
+        <p>Site-by-site maintenance indicator board, not a scaled property map or a safety certification. Flags use open or completed-but-not-closed work orders assigned to each space. A site with no recorded open work is not necessarily safe or inspected.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Sites with urgent / high work</span><strong>{siteSafety.filter(row=>row.level==='red').length}</strong></div>
+          <div className="stat-card"><span>Other sites with outstanding work</span><strong>{siteSafety.filter(row=>row.level==='yellow').length}</strong></div>
+          <div className="stat-card"><span>Sites without recorded open work</span><strong>{siteSafety.filter(row=>row.level==='none').length}</strong></div>
+        </div>
+        <details>
+          <summary>View property spaces and maintenance flags ({siteSafety.length})</summary>
+          <div className="stat-grid">
+            {siteSafety.map(({site,jobs,high,level}) => (
+              <article className="ops-record" key={site.id}>
+                <h4>{site.label}</h4>
+                <p><strong>{level==='red'?'🔴 High-priority repair flagged':level==='yellow'?'🟡 Maintenance follow-up':'⚪ No open work recorded'}</strong></p>
+                <p>{jobs.length} open or awaiting-approval repairs · {high.length} high/urgent</p>
+                {jobs.slice(0,3).map(work => (
+                  <button type="button" key={work.id} className="text-button" onClick={()=>ui.open('work_detail',work.id)}>
+                    {work.number} · {work.title}
+                  </button>
+                ))}
+                {jobs.length>3&&<p>Showing three of {jobs.length} repair orders.</p>}
+              </article>
+            ))}
+          </div>
+        </details>
+        {flaggedSites.length>0&&<p>{flaggedSites.length} sites have recorded maintenance requiring review. Inspectors should still check for hazards not yet reported in ForgeOS.</p>}
+      </section>
       <section className="ops-record" aria-label="Manager safety alerts">
         <h3>Manager safety alerts</h3>
         <p>Live review queue based on saved inspection dates and maintenance priority. These are dashboard alerts only: no automatic texts, emails, or claims of safety certification.</p>
