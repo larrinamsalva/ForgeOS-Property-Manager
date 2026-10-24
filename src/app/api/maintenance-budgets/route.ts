@@ -4,7 +4,7 @@ import { serverClient } from '@/lib/supabase/server';
 import { sameOrigin } from '@/lib/request-origin';
 export const dynamic = 'force-dynamic';
 const uuid=z.uuid();
-const month=z.string().regex(/^\\d{4}-(0[1-9]|1[0-2])$/);
+const month=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const budget=z.object({
  organization_id:uuid, property_id:uuid, month, category:z.string().trim().min(1).max(100),
  limit_cents:z.number().int().min(1).max(99999999999),
