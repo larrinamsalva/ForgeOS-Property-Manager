@@ -986,14 +986,30 @@ export function PlansPanel({
   ends: string;
   setRange: (start: string, end: string) => void;
 }) {
+  const [calendarView, setCalendarView] = useState<'day' | 'week' | 'month'>('week');
+  const [anchorDay, setAnchorDay] = useState(ui.today);
+  const [employee, setEmployee] = useState('all');
   const occurrences = scoped(ui, ui.data.schedule);
+  const dayDate = new Date(anchorDay + 'T12:00:00Z');
+  const weekStart = new Date(dayDate);
+  weekStart.setUTCDate(dayDate.getUTCDate() - ((dayDate.getUTCDay() + 6) % 7));
+  const displayStart = calendarView === 'day' ? anchorDay :
+    calendarView === 'week' ? weekStart.toISOString().slice(0, 10) : anchorDay.slice(0, 7) + '-01';
+  const displayEnd = calendarView === 'day' ? anchorDay :
+    calendarView === 'week' ? new Date(weekStart.getTime() + 6 * 86400000).toISOString().slice(0, 10) :
+    new Date(Date.UTC(dayDate.getUTCFullYear(), dayDate.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+  const planAssignee = new Map(ui.data.plans.filter((p) => p.property_id === ui.propertyId).map((p) => [p.id, p.assigned_to]));
+  const visibleOccurrences = occurrences.filter((o) => o.scheduled_for >= displayStart &&
+    o.scheduled_for <= displayEnd && (employee === 'all' || planAssignee.get(o.plan_id) === employee));
   const scheduledWork = scoped(ui, ui.data.work).filter((w) =>
     !!w.scheduled_for && w.scheduled_for >= starts && w.scheduled_for <= ends &&
     !['cancelled', 'closed'].includes(w.status)
   );
+  const filteredWork = scheduledWork.filter((w) => w.scheduled_for! >= displayStart &&
+    w.scheduled_for! <= displayEnd && (employee === 'all' || w.assigned_to === employee));
   const days = [...new Set([
-    ...scheduledWork.map((w) => w.scheduled_for!),
-    ...occurrences.map((o) => o.scheduled_for),
+    ...filteredWork.map((w) => w.scheduled_for!),
+    ...visibleOccurrences.map((o) => o.scheduled_for),
   ])].sort();
   return (
     <>
@@ -1026,19 +1042,36 @@ export function PlansPanel({
         ))}
       </section>
       <section className="panel" aria-label="Scheduled maintenance agenda">
-        <h2>Employee maintenance agenda</h2>
-        <p>Real scheduled work orders and recurring preventive tasks, grouped by date. Select a job to review its site, assigned employee, parts and photos. Date range follows the calendar controls below.</p>
+        <h2>Employee maintenance calendar</h2>
+        <p>Switch between daily, weekly, and monthly schedules. Jobs stay in existing work orders; tap one to view or edit its assignment and date.</p>
+        <div className="meter-controls">
+          <label>View
+            <select value={calendarView} onChange={(e) => setCalendarView(e.target.value as 'day' | 'week' | 'month')}>
+              <option value="day">Day</option><option value="week">Week</option><option value="month">Month</option>
+            </select>
+          </label>
+          <label>Choose date<input type="date" value={anchorDay} onChange={(e) => setAnchorDay(e.target.value || ui.today)} /></label>
+          <label>Assigned employee
+            <select value={employee} onChange={(e) => setEmployee(e.target.value)}>
+              <option value="all">Whole crew</option>
+              {scoped(ui, ui.data.staff).map((staff) => <option key={staff.user_id} value={staff.user_id}>{staff.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <p>Showing {displayStart} through {displayEnd}. {displayStart < starts || displayEnd > ends ?
+          'Part of this view falls outside the loaded range; expand Calendar starts/ends below to load all dates.' :
+          'All displayed dates are in the loaded range.'}</p>
         {!days.length ? <p>No work orders or recurring tasks scheduled within the loaded date range.</p> : days.map((day) => (
           <details className="ops-record" key={day} open={day === ui.today}>
-            <summary>{day} — {scheduledWork.filter((w) => w.scheduled_for === day).length} work orders, {occurrences.filter((o) => o.scheduled_for === day).length} recurring tasks</summary>
-            {scheduledWork.filter((w) => w.scheduled_for === day).map((w) => (
+            <summary>{day} — {filteredWork.filter((w) => w.scheduled_for === day).length} work orders, {visibleOccurrences.filter((o) => o.scheduled_for === day).length} recurring tasks</summary>
+            {filteredWork.filter((w) => w.scheduled_for === day).map((w) => (
               <article key={w.id} className="ops-history">
                 <button className="text-button" onClick={() => ui.open('work_detail', w.id)}>{w.number} · {w.title}</button>
                 <p><span className="badge" data-priority={w.priority}>{opsLabel(w.priority)}</span> · {opsLabel(w.status)} · {staffName(ui, w.assigned_to)}</p>
                 <p>{ui.data.context.work.find((x) => x.id === w.id)?.site_label ?? 'Common area'} · {w.parts_required ? 'Parts: ' + w.parts_required : 'No parts noted'}</p>
               </article>
             ))}
-            {occurrences.filter((o) => o.scheduled_for === day).map((o) => (
+            {visibleOccurrences.filter((o) => o.scheduled_for === day).map((o) => (
               <article key={o.plan_id + ':' + day} className="ops-history">
                 <p><strong>{o.label}</strong> · Recurring {opsLabel(o.kind)}</p>
                 {o.entity_id ? <Action click={() => ui.open(o.kind === 'maintenance' ? 'work_detail' : 'run_detail', o.entity_id!)}>Open scheduled task</Action> :
