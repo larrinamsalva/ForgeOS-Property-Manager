@@ -850,6 +850,20 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
   const recordedToday = todaysRuns.reduce((total, run) => total + run.items.filter((item) =>
     ['done', 'skipped'].includes(checklistState(ui.data.entries, run.id, item.key)?.status ?? '')
   ).length, 0);
+  const inspectionFindings = scoped(ui, ui.data.runs).flatMap((run) =>
+    run.items.flatMap((item) => {
+      const entry = checklistState(ui.data.entries, run.id, item.key);
+      if (!entry || entry.status !== 'skipped') return [];
+      const severity = entry.notes.startsWith('[Inspection: Fail]') ? 'Failed inspection' :
+        entry.notes.startsWith('[Inspection: Needs attention]') ? 'Needs attention' : 'Skipped — review';
+      return [{ id: entry.id, run, item, entry, severity }];
+    })
+  ).sort((a, b) => b.entry.created_at.localeCompare(a.entry.created_at));
+  const failedFindings = inspectionFindings.filter((f) => f.severity === 'Failed inspection');
+  const needsAttention = inspectionFindings.filter((f) => f.severity === 'Needs attention');
+  const priorityRepairs = scoped(ui, ui.data.work).filter((w) =>
+    !['closed', 'cancelled'].includes(w.status) && ['urgent', 'high'].includes(w.priority)
+  ).sort((a, b) => (a.priority === 'urgent' ? -1 : 1) - (b.priority === 'urgent' ? -1 : 1));
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -880,6 +894,44 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <section className="ops-record" aria-label="Property safety dashboard">
+        <h3>Property safety dashboard</h3>
+        <p>Current saved checklist findings and high-priority work orders for this property. A skipped item is a review flag, not proof of a safety defect. Findings may need checking against repair history before being considered resolved.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Failed inspection findings</span><strong>{failedFindings.length}</strong></div>
+          <div className="stat-card"><span>Needs-attention findings</span><strong>{needsAttention.length}</strong></div>
+          <div className="stat-card"><span>Other skipped checks</span><strong>{inspectionFindings.length - failedFindings.length - needsAttention.length}</strong></div>
+          <div className="stat-card"><span>Open urgent / high-priority repairs</span><strong>{priorityRepairs.length}</strong></div>
+        </div>
+        <details>
+          <summary>Inspect saved findings ({inspectionFindings.length})</summary>
+          {!inspectionFindings.length && <p>No skipped or flagged checklist results currently recorded.</p>}
+          {inspectionFindings.slice(0, 30).map((finding) => (
+            <article className="ops-history" key={finding.id}>
+              <strong>{finding.severity}</strong> · {finding.run.scheduled_for} · {finding.item.label}
+              <p>{finding.run.label} · {finding.entry.notes}</p>
+              <button type="button" className="text-button" onClick={() => ui.open('run_detail', finding.run.id)}>
+                Open inspection and related repairs
+              </button>
+            </article>
+          ))}
+          {inspectionFindings.length > 30 && <p>Showing the 30 most recent findings. Open a checklist run to review its complete history.</p>}
+        </details>
+        <details>
+          <summary>High-priority maintenance queue ({priorityRepairs.length})</summary>
+          {!priorityRepairs.length && <p>No open urgent or high-priority work orders recorded.</p>}
+          {priorityRepairs.slice(0, 30).map((work) => (
+            <article className="ops-history" key={work.id}>
+              <strong>{opsLabel(work.priority)}</strong> · {work.number} · {work.title}
+              <p>{opsLabel(work.status)} · {ui.data.context.work.find((ctx) => ctx.id === work.id)?.site_label ?? 'Location not specified'} · Due {work.due_on ?? 'Not scheduled'}</p>
+              <button type="button" className="text-button" onClick={() => ui.open('work_detail', work.id)}>
+                View work order and photo evidence
+              </button>
+            </article>
+          ))}
+          {priorityRepairs.length > 30 && <p>Showing 30 work orders; see Maintenance for the full queue.</p>}
+        </details>
+      </section>
       <section className="ops-record" aria-label="Property inspection and safety center">
         <h3>Property inspection &amp; safety center</h3>
         <p>Use a saved recurring checklist plan to record inspections. These categories are suggested inspection items, not completed checks or certified safety assessments.</p>
