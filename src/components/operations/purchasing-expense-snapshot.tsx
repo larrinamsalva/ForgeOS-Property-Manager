@@ -2,6 +2,7 @@
 import { cents } from '@/lib/billing-domain';
 import { csv } from '@/lib/domain';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
+import { BudgetPlanningPreview } from './budget-planning-preview';
 
 export function PurchasingExpenseSnapshot({ data, propertyId }: {
   data: OperationsSnapshot;
@@ -57,6 +58,7 @@ export function PurchasingExpenseSnapshot({ data, propertyId }: {
         <div className="stat-card"><span>Recorded maintenance expenses</span><strong>{format(expenseTotal)}</strong><span>Before reversals</span></div>
         <div className="stat-card"><span>Recorded expense reversals</span><strong>{format(reversedTotal)}</strong><span>Shown separately to avoid double counting</span></div>
       </div>
+      <BudgetPlanningPreview data={data} propertyId={propertyId} />
       <details className="ops-record">
         <summary>Recorded monthly maintenance expenses ({trends.length} months)</summary>
         <p>Grouped by record creation month in UTC, not a paid-date ledger. Reversals are listed separately.</p>
