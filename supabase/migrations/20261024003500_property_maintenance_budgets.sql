@@ -40,7 +40,7 @@ create or replace function private.audit_maintenance_budget()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin
  if not private.can_manage_maintenance_budget(new.organization_id,new.property_id) then raise insufficient_privilege; end if;
- if tg_op='UPDATE' and (old.organization_id<>new.organization_id or old.property_id<>new.property_id or old.budget_month<>new.budget_month or old.category<>new.category or old.created_by<>new.created_by)
+ if tg_op='UPDATE' and (old.organization_id<>new.organization_id or old.property_id<>new.property_id or old.budget_month<>new.budget_month or old.category<>new.category)
  then raise exception 'budget_identity_immutable'; end if;
  if tg_op='INSERT' then
    new.created_by:=auth.uid();
@@ -60,9 +60,9 @@ create or replace function private.budget_before_write()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin
  if not private.can_manage_maintenance_budget(new.organization_id,new.property_id) then raise insufficient_privilege; end if;
- if tg_op='UPDATE' and (old.organization_id<>new.organization_id or old.property_id<>new.property_id or old.budget_month<>new.budget_month or old.category<>new.category or old.created_by<>new.created_by)
+ if tg_op='UPDATE' and (old.organization_id<>new.organization_id or old.property_id<>new.property_id or old.budget_month<>new.budget_month or old.category<>new.category)
  then raise exception 'budget_identity_immutable'; end if;
- if tg_op='INSERT' then new.created_by:=auth.uid(); new.created_at:=now(); else new.created_at:=old.created_at; end if;
+ if tg_op='INSERT' then new.created_by:=auth.uid(); new.created_at:=now(); else new.created_at:=old.created_at; new.created_by:=old.created_by; end if;
  new.updated_by:=auth.uid(); new.updated_at:=now();
  return new;
 end;
