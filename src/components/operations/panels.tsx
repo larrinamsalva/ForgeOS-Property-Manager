@@ -493,7 +493,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const { data, open } = ui;
   return (
     <>
-      <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} />
+      <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} organizationId={ui.snapshot.organizationId} />
       <section className="panel">
         <div className="panel-heading">
           <div>
