@@ -1,5 +1,5 @@
-import { InspectionLocation } from './inspection-location';
 'use client';
+import { InspectionLocation } from './inspection-location';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
 import { customerName } from '@/lib/domain';
