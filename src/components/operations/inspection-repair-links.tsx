@@ -105,7 +105,18 @@ export function InspectionRepairLinks({ui,runId,items}:{
     {repair?<button type="button" className="text-button" onClick={()=>ui.open('work_detail',repair.id)}>
      {repair.number} · {repair.title}</button>:'Repair unavailable'}{' '}
     · {repair?.status.replaceAll('_',' ')??'Status unavailable'} · Linked {link.created_at.slice(0,10)}</p>
-    {repair&&<p>{ui.data.photos.filter(photo=>photo.work_order_id===repair.id&&photo.status==='uploaded').length} retained work-order photos (open repair to view)</p>}
+    {repair&&(()=>{
+      const photos=ui.data.photos.filter(photo=>photo.work_order_id===repair.id&&photo.status==='uploaded');
+      return <div>
+       <p>Private photo evidence: {photos.filter(p=>p.kind==='request').length} issue, {photos.filter(p=>p.kind==='before').length} before, {photos.filter(p=>p.kind==='after').length} after</p>
+       <div className="action-group">
+        <button type="button" className="text-button" onClick={()=>ui.open('work_detail',repair.id)}>View photos and work history</button>
+        {ui.active&&!['completed','closed','cancelled'].includes(repair.status)&&
+         <button type="button" className="text-button" onClick={()=>ui.open('photo',repair.id)}>Add inspection evidence photo</button>}
+       </div>
+       <small>Photos are securely attached to this linked work order, not directly to the inspection finding. Use the caption to identify the inspection item and location; upload allows JPEG, PNG or WebP up to 5 MB.</small>
+      </div>;
+     })()}
     <p>{latest ? `Most recent supervisor recheck: ${latest.outcome==='verified'?'Verified':'Needs more work'} · ${latest.signed_at.slice(0,10)} · ${latest.notes}` : complete?'Awaiting supervisor reinspection':'Repair is not yet ready for reinspection'}</p>
     {ui.office&&ui.active&&complete&&<div className="action-group">
       <label>Supervisor reinspection notes
