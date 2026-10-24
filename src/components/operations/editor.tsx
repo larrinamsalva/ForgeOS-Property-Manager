@@ -730,10 +730,22 @@ export function OperationsEditor({
     onSave = (v) => save('generate_occurrence', { ...v, plan_id: id, scheduled_for: editor.value });
   }
   if (editor.type === 'checklist_entry') {
-    title = `${opsLabel(editor.value ?? 'done')} checklist item`;
-    description = run?.items.find((i) => i.key === ref)?.label ?? '';
+    const finding = editor.value;
+    const findings: Record<string, { label: string; status: 'done' | 'skipped'; prefix: string }> = {
+      pass: { label: 'Pass', status: 'done', prefix: '[Inspection: Pass]' },
+      fail: { label: 'Fail', status: 'skipped', prefix: '[Inspection: Fail]' },
+      needs_attention: { label: 'Needs attention', status: 'skipped', prefix: '[Inspection: Needs attention]' },
+    };
+    const findingType = finding ? findings[finding] : undefined;
+    title = findingType ? `Record inspection: ${findingType.label}` : `${opsLabel(finding ?? 'done')} checklist item`;
+    description = (run?.items.find((i) => i.key === ref)?.label ?? '') +
+      (findingType ? ' · Add findings, observations and any follow-up needed. This result is saved in checklist history.' : '');
     fields = [reason];
-    onSave = (v) => save('checklist_entry', { ...v, run_id: id, item_key: ref, status: editor.value });
+    onSave = (v) => save('checklist_entry', {
+      ...v,
+      reason: findingType ? `${findingType.prefix} ${String(v.reason ?? '').trim()}` : v.reason,
+      run_id: id, item_key: ref, status: findingType?.status ?? finding,
+    });
   }
   if (editor.type === 'checklist_status' && run) {
     title = `${opsLabel(editor.value ?? 'closed')} checklist run`;
