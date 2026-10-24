@@ -36,7 +36,7 @@ export function SavedPropertyBudgets({data,propertyId,organizationId}:{
   return ()=>controller.abort();
  },[propertyId,organizationId]);
  async function save() {
-  if(!/^(?:0|[1-9]\\d{0,8})(?:\\.\\d{1,2})?$/.test(limit)||Number(limit)<=0){setState('Enter a valid positive budget amount.');return;}
+  if(!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,2})?$/.test(limit)||Number(limit)<=0){setState('Enter a valid positive budget amount.');return;}
   setSaving(true);
   try{
    const [whole,decimal='']=limit.split('.');
