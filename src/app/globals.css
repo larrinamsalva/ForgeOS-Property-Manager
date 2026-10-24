@@ -3440,3 +3440,15 @@ table summary {
 .quick-actions { display: flex; flex-wrap: wrap; gap: 0.65rem; }
 .quick-actions a { display: inline-flex; align-items: center; border: 1px solid var(--border, currentColor); border-radius: 0.65rem; padding: 0.55rem 0.8rem; font-weight: 600; }
 .quick-actions a:hover, .quick-actions a:focus-visible { outline-offset: 2px; text-decoration: underline; }
+
+
+/* Manager's printed operational report; all other workspace chrome is excluded. */
+@media print {
+  body:has(#daily-manager-report) * { visibility: hidden !important; }
+  body:has(#daily-manager-report) #daily-manager-report,
+  body:has(#daily-manager-report) #daily-manager-report * { visibility: visible !important; }
+  #daily-manager-report { position: absolute; left: 0; top: 0; width: 100%; border: 0; box-shadow: none; color: #000; background: #fff; }
+  #daily-manager-report button, #daily-manager-report .daily-report-links { display: none !important; }
+  #daily-manager-report .daily-report-property { break-inside: avoid; }
+  #daily-manager-report .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
