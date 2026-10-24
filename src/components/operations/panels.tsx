@@ -979,7 +979,8 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
               <div className="action-group">
                 {(!state || state.status === 'reopen') && (
                   <>
-                    <Action click={() => ui.open('checklist_entry', id, i.key, 'pass')}>Pass</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'done')}>Complete item</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'pass')}>Pass inspection</Action>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'fail')}>Fail</Action>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'needs_attention')}>Needs attention</Action>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'skipped')}>Not inspected / skip</Action>
