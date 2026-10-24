@@ -9,6 +9,8 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
   const [linkedRuns, setLinkedRuns] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [inspectionError, setInspectionError] = useState('');
+  const [historyKind, setHistoryKind] = useState<'all'|'work'|'inspection'>('all');
+  const [historySearch, setHistorySearch] = useState('');
   useEffect(() => {
     const controller = new AbortController();
     const ends = new Date().toISOString().slice(0,10);
@@ -49,12 +51,48 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
     .sort((a,b)=>b.created_at.localeCompare(a.created_at));
   const inspections = (data?.runs ?? []).filter(run => linkedRuns.includes(run.id))
     .sort((a,b)=>b.scheduled_for.localeCompare(a.scheduled_for));
+  const timeline = [
+    ...orders.map(work => ({
+      id:'work:'+work.id, kind:'work' as const, day:work.requested_on,
+      heading:work.number+' · '+work.title,
+      detail:work.status.replaceAll('_',' ')+' · '+work.priority+' priority',
+    })),
+    ...inspections.map(run => ({
+      id:'inspection:'+run.id, kind:'inspection' as const, day:run.scheduled_for,
+      heading:run.label, detail:'Inspection · '+run.status,
+    })),
+  ].filter(item => (historyKind==='all'||item.kind===historyKind) &&
+    (item.heading+' '+item.detail+' '+item.day).toLowerCase().includes(historySearch.trim().toLowerCase()))
+    .sort((a,b)=>b.day.localeCompare(a.day));
   return <section className="site-account-review" aria-label="Site maintenance and inspection history">
     <h3>Site maintenance &amp; inspection history</h3>
     <p className="muted small">Recent authorized property records. Photos are saved privately with their work orders; only photo counts are shown here.</p>
     {error && <p role="alert">{error}. Open Maintenance to review work records.</p>}
     {!data && !error && <p role="status">Loading site history…</p>}
     {data && <>
+      <div className="ops-record" aria-label="Site activity timeline">
+        <h4>Site activity timeline</h4>
+        <p className="muted small">Combines the available site work orders and explicitly located inspections. Occupancy, meter billing and private resident account activity remain in their separate authorized records.</p>
+        <div className="action-group">
+          <label>Activity type
+            <select value={historyKind} onChange={e=>setHistoryKind(e.target.value as typeof historyKind)}>
+              <option value="all">All site activity</option>
+              <option value="work">Maintenance</option>
+              <option value="inspection">Inspections</option>
+            </select>
+          </label>
+          <label>Find activity
+            <input type="search" value={historySearch} onChange={e=>setHistorySearch(e.target.value)}
+              placeholder="Search date, status or description" />
+          </label>
+        </div>
+        {!timeline.length && <p>No site activity matches this filter in the retrieved records.</p>}
+        {timeline.slice(0,40).map(item=><article className="ops-history" key={item.id}>
+          <strong>{item.day} · {item.kind==='work'?'Maintenance':'Inspection'}</strong>
+          <p>{item.heading} · {item.detail}</p>
+        </article>)}
+        {timeline.length>40 && <p>Showing 40 matching activities. Narrow the search to find older records.</p>}
+      </div>
       <h4>Work orders ({orders.length})</h4>
       {!orders.length && <p>No work orders found for this space in the retrieved history.</p>}
       {orders.slice(0,30).map(work => {
