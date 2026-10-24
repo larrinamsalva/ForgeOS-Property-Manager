@@ -1,4 +1,5 @@
 'use client';
+import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
 import { InspectionLocation } from './inspection-location';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
@@ -843,7 +844,6 @@ export function EquipmentDetail({ ui, id }: { ui: OpsUI; id: string }) {
     </>
   );
 }
-import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
 export function DailyPanel({ ui }: { ui: OpsUI }) {
   const [safetyFilter, setSafetyFilter] = useState<'all' | 'failed' | 'attention' | 'skipped'>('all');
   const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
