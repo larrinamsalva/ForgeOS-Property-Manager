@@ -20,7 +20,7 @@ export function InspectionRepairLinks({ui,runId,items}:{
   return !repair || !['completed','closed'].includes(repair.status);
  }).length;
  const awaitingRecheck=links.filter(link=>{
-  if(rechecks.some(r=>r.inspection_link_id===link.id&&r.outcome==='verified'))return false;
+  if(rechecks.find(r=>r.inspection_link_id===link.id)?.outcome==='verified')return false;
   const repair=scopedWork.find(w=>w.id===link.work_order_id);
   return repair && ['completed','closed'].includes(repair.status);
  }).length;
