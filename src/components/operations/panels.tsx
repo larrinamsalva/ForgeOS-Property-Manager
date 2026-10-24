@@ -843,6 +843,7 @@ export function EquipmentDetail({ ui, id }: { ui: OpsUI; id: string }) {
     </>
   );
 }
+import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
 export function DailyPanel({ ui }: { ui: OpsUI }) {
   const [safetyFilter, setSafetyFilter] = useState<'all' | 'failed' | 'attention' | 'skipped'>('all');
   const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
@@ -906,6 +907,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <SupervisorReviewDashboard ui={ui} />
       <section className="ops-record" aria-label="Manager safety alerts">
         <h3>Manager safety alerts</h3>
         <p>Live review queue based on saved inspection dates and maintenance priority. These are dashboard alerts only: no automatic texts, emails, or claims of safety certification.</p>
