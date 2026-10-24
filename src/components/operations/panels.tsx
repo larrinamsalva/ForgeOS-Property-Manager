@@ -844,6 +844,7 @@ export function EquipmentDetail({ ui, id }: { ui: OpsUI; id: string }) {
   );
 }
 export function DailyPanel({ ui }: { ui: OpsUI }) {
+  const [safetyFilter, setSafetyFilter] = useState<'all' | 'failed' | 'attention' | 'skipped'>('all');
   const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
   const openToday = todaysRuns.filter((run) => run.status === 'open');
   const itemsToday = todaysRuns.reduce((total, run) => total + run.items.length, 0);
@@ -859,6 +860,10 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
       return [{ id: entry.id, run, item, entry, severity }];
     })
   ).sort((a, b) => b.entry.created_at.localeCompare(a.entry.created_at));
+  const visibleFindings = inspectionFindings.filter((f) => safetyFilter === 'all' ||
+    (safetyFilter === 'failed' && f.severity === 'Failed inspection') ||
+    (safetyFilter === 'attention' && f.severity === 'Needs attention') ||
+    (safetyFilter === 'skipped' && f.severity === 'Skipped — review'));
   const failedFindings = inspectionFindings.filter((f) => f.severity === 'Failed inspection');
   const needsAttention = inspectionFindings.filter((f) => f.severity === 'Needs attention');
   const priorityRepairs = scoped(ui, ui.data.work).filter((w) =>
@@ -903,10 +908,20 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
           <div className="stat-card"><span>Other skipped checks</span><strong>{inspectionFindings.length - failedFindings.length - needsAttention.length}</strong></div>
           <div className="stat-card"><span>Open urgent / high-priority repairs</span><strong>{priorityRepairs.length}</strong></div>
         </div>
-        <details>
-          <summary>Inspect saved findings ({inspectionFindings.length})</summary>
-          {!inspectionFindings.length && <p>No skipped or flagged checklist results currently recorded.</p>}
-          {inspectionFindings.slice(0, 30).map((finding) => (
+        <div className="action-group">
+          <label>Filter inspection findings
+            <select value={safetyFilter} onChange={(event) => setSafetyFilter(event.target.value as typeof safetyFilter)}>
+              <option value="all">All findings</option>
+              <option value="failed">Failed inspections</option>
+              <option value="attention">Needs attention</option>
+              <option value="skipped">Skipped checks</option>
+            </select>
+          </label>
+        </div>
+        <details open>
+          <summary>Inspect saved findings ({visibleFindings.length})</summary>
+          {!visibleFindings.length && <p>No checklist findings match this filter.</p>}
+          {visibleFindings.slice(0, 30).map((finding) => (
             <article className="ops-history" key={finding.id}>
               <strong>{finding.severity}</strong> · {finding.run.scheduled_for} · {finding.item.label}
               <p>{finding.run.label} · {finding.entry.notes}</p>
@@ -915,7 +930,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
               </button>
             </article>
           ))}
-          {inspectionFindings.length > 30 && <p>Showing the 30 most recent findings. Open a checklist run to review its complete history.</p>}
+          {visibleFindings.length > 30 && <p>Showing the 30 most recent matching findings. Open a checklist run to review its complete history.</p>}
         </details>
         <details>
           <summary>High-priority maintenance queue ({priorityRepairs.length})</summary>
