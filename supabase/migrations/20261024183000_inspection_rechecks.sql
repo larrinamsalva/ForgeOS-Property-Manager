@@ -22,7 +22,7 @@ revoke all on function private.inspection_recheck_valid(uuid,uuid,uuid) from pub
 grant execute on function private.inspection_recheck_valid(uuid,uuid,uuid) to authenticated;
 alter table public.inspection_rechecks enable row level security;
 create policy inspection_rechecks_read on public.inspection_rechecks for select to authenticated
- using (private.operations_worker(organization_id,property_id));
+ using (private.operations_worker(organization_id,property_id,auth.uid()));
 create policy inspection_rechecks_insert on public.inspection_rechecks for insert to authenticated
  with check (signed_by=auth.uid() and private.operations_manager(organization_id,property_id)
  and private.inspection_recheck_valid(organization_id,property_id,inspection_link_id));
