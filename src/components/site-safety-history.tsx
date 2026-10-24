@@ -15,6 +15,20 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
   const [inspectionError, setInspectionError] = useState('');
   const [historyKind, setHistoryKind] = useState<'all'|'work'|'inspection'|'meter'>('all');
   const [historySearch, setHistorySearch] = useState('');
+  const [photoView, setPhotoView] = useState<{id:string;url:string;caption:string}|null>(null);
+  const [photoError, setPhotoError] = useState('');
+  const [photoLoading, setPhotoLoading] = useState<string|null>(null);
+  async function openRepairPhoto(id:string,caption:string) {
+    setPhotoError(''); setPhotoLoading(id); setPhotoView(null);
+    try {
+      const response = await fetch('/api/operations/photo?id='+encodeURIComponent(id), {cache:'no-store'});
+      const result = await response.json() as {url?:string;error?:string};
+      if (!response.ok || !result.url) throw new Error(result.error ?? 'Photo unavailable');
+      setPhotoView({id,url:result.url,caption});
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'Photo unavailable');
+    } finally { setPhotoLoading(null); }
+  }
   useEffect(() => {
     const controller = new AbortController();
     const ends = new Date().toISOString().slice(0,10);
@@ -92,7 +106,7 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
     .sort((a,b)=>b.day.localeCompare(a.day));
   return <section className="site-account-review" aria-label="Site maintenance and inspection history">
     <h3>Site maintenance &amp; inspection history</h3>
-    <p className="muted small">Recent authorized property records. Photos are saved privately with their work orders; only photo counts are shown here.</p>
+    <p className="muted small">Recent authorized property records. Photos are saved privately with their work orders. Authorized users can open a photo on demand.</p>
     {error && <p role="alert">{error}. Open Maintenance to review work records.</p>}
     {!data && !error && <p role="status">Loading site history…</p>}
     {data && <>
@@ -130,9 +144,29 @@ export function SiteSafetyHistory({ organizationId, propertyId, siteId }: {
           <strong>{work.number} · {work.title}</strong>
           <p>{work.status.replaceAll('_',' ')} · {work.priority} priority · Opened {work.requested_on}</p>
           <p>{photos.length} private photo{photos.length===1?'':'s'} · {data.events.filter(event=>event.work_order_id===work.id).length} history event(s)</p>
+          {photos.length>0 && <details>
+            <summary>Review repair photos ({photos.length})</summary>
+            <p className="muted small">Photos remain in private storage and are opened only through the existing authorized photo service.</p>
+            {photos.map(photo=><div key={photo.id} className="action-group">
+              <button type="button" className="text-button" disabled={photoLoading!==null}
+                onClick={()=>void openRepairPhoto(photo.id,photo.caption)}>
+                View {photo.kind} photo{photo.caption?' · '+photo.caption:''}
+              </button>
+            </div>)}
+          </details>}
         </article>;
       })}
       {orders.length>30 && <p>Showing 30 most recent work orders. Open Maintenance for more history.</p>}
+      {photoError && <p role="alert">{photoError}</p>}
+      {photoView && <section className="ops-record" aria-label="Private repair photograph">
+        <h4>Repair photo · {photoView.caption || 'No caption'}</h4>
+        {/* The authorized endpoint issues the temporary URL only on demand. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photoView.url} alt={photoView.caption || 'Saved repair photograph'}
+          style={{maxWidth:'100%',height:'auto'}} referrerPolicy="no-referrer" />
+        <div className="action-group"><button type="button" className="button secondary"
+          onClick={()=>setPhotoView(null)}>Close photo</button></div>
+      </section>}
       <h4>Located inspection runs ({inspections.length})</h4>
       {inspectionError && <p role="status">{inspectionError}</p>}
       {!inspections.length && <p>No linked inspections found in the checked period. Unlocated checklist runs are not attributed to this space.</p>}
