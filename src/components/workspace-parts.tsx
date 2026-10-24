@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
   Building2,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Property, Site, Snapshot, Stay } from '@/lib/domain';
 import type { SiteOverdueFlag } from '@/lib/site-overdue';
+import type { OperationsSnapshot } from '@/lib/operations-domain';
 import type { AccountNote } from '@/lib/collections-domain';
 import { overviewStaffTasks } from '@/lib/overview-staff-tasks';
 import { pastDueSiteReviewRows, pastDueSiteReviewCsv } from '@/lib/past-due-site-review';
@@ -208,6 +209,41 @@ export function SiteMap({
   financialStatus?: string;
 }) {
   const [reviewSearch, setReviewSearch] = useState('');
+  const [safetyWork, setSafetyWork] = useState<OperationsSnapshot['work'] | null>(null);
+  const [safetyError, setSafetyError] = useState('');
+  const safetySiteIds = sites.map((site) => site.id).sort().join(',');
+  useEffect(() => {
+    if (!safetySiteIds || !snapshot.organizationId) return;
+    const visibleSiteIds = new Set(safetySiteIds.split(','));
+    const controller = new AbortController();
+    const today = new Date().toISOString().slice(0, 10);
+    fetch('/api/operations?' + new URLSearchParams({
+      organization: snapshot.organizationId, starts: today, ends: today,
+    }), { cache: 'no-store', signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Safety maintenance records unavailable');
+        return response.json() as Promise<OperationsSnapshot>;
+      })
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setSafetyWork(data.work.filter((work) => work.site_id !== null && visibleSiteIds.has(work.site_id)));
+          setSafetyError('');
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setSafetyWork(null);
+          setSafetyError(error instanceof Error ? error.message : 'Safety records unavailable');
+        }
+      });
+    return () => controller.abort();
+  }, [snapshot.organizationId, safetySiteIds]);
+  const activeSafety = (safetyWork ?? []).filter((work) => !['completed', 'closed', 'cancelled'].includes(work.status));
+  const safetyForSite = (siteId: string) => {
+    const open = activeSafety.filter((work) => work.site_id === siteId);
+    return open.some((work) => work.priority === 'urgent') ? 'red' :
+      open.length ? 'yellow' : 'green';
+  };
   if (!sites.length)
     return (
       <Empty title="Your layout starts with a site">
@@ -308,6 +344,13 @@ export function SiteMap({
             No reminder is automatically sent and no late fee is applied.</p>
         </section>
       )}
+      <section aria-label="Property safety map status">
+        <h3>Maintenance safety indicators</h3>
+        <p className="muted small">Red = urgent open work order; yellow = another open work order; green = no open work orders currently recorded. Green does not certify a site as safe or inspected. Indicators are separate from rent and occupancy flags.</p>
+        {safetyError && <p role="status">{safetyError}. Safety indicators are unavailable; do not assume sites are clear.</p>}
+        {!safetyError && safetyWork === null && <p role="status">Loading site maintenance indicators…</p>}
+        {safetyWork && <p role="status">{sites.filter((site) => safetyForSite(site.id) === 'red').length} urgent sites · {sites.filter((site) => safetyForSite(site.id) === 'yellow').length} sites with other open work orders.</p>}
+      </section>
       <div className="map-scroll">
         <div
           className="property-grid"
@@ -346,6 +389,9 @@ export function SiteMap({
                     </span>
                     <strong>{site.label}</strong>
                     <span>{status.replaceAll('_', ' ')}</span>
+                    {safetyWork && <span className="map-safety-label" aria-label={'Maintenance status: ' + safetyForSite(site.id)}>
+                      {safetyForSite(site.id) === 'red' ? '🔴 Urgent repair' : safetyForSite(site.id) === 'yellow' ? '🟡 Open repair' : '🟢 No open repairs'}
+                    </span>}
                     {overdue && <span className="map-arrears-label">PAST DUE · {cents(overdue.outstandingCents)}</span>}
                   </button>
                 );
