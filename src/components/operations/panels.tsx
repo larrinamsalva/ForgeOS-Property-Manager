@@ -34,10 +34,23 @@ export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI;
         (!mineOnly || w.assigned_to === ui.snapshot.userId) &&
         `${w.number} ${w.title} ${w.category} ${w.description}`.toLowerCase().includes(search.toLowerCase())
     )
-    .sort(
-      (a, b) =>
-        (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') || b.created_at.localeCompare(a.created_at)
-    );
+    .sort((a, b) => {
+      const open = (status: string) => !['completed', 'closed', 'cancelled'].includes(status);
+      const urgency = (item: typeof a) =>
+        !open(item.status) ? 5 : item.priority === 'urgent' ? 0 :
+        item.due_on && item.due_on < ui.today ? 1 :
+        item.priority === 'high' ? 2 : item.priority === 'normal' ? 3 : 4;
+      return urgency(a) - urgency(b) ||
+        (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') ||
+        b.created_at.localeCompare(a.created_at);
+    });
+  const activeWork = scoped(ui, ui.data.work).filter((w) =>
+    !['completed', 'closed', 'cancelled'].includes(w.status) &&
+    (!mineOnly || w.assigned_to === ui.snapshot.userId));
+  const urgentCount = activeWork.filter((w) => w.priority === 'urgent').length;
+  const overdueCount = activeWork.filter((w) => w.due_on && w.due_on < ui.today).length;
+  const awaitingParts = activeWork.filter((w) => w.status === 'waiting_parts').length;
+  const unassignedCount = activeWork.filter((w) => !w.assigned_to).length;
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -51,6 +64,13 @@ export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI;
           {!ui.office && ui.active && <Action click={() => ui.open('maintenance_self_task')}>Create my task</Action>}
         </div>
       </div>
+      <div className="stat-grid" aria-label="Open maintenance work summary">
+        <div className="stat-card"><span>Urgent open jobs</span><strong>{urgentCount}</strong></div>
+        <div className="stat-card"><span>Overdue open jobs</span><strong>{overdueCount}</strong></div>
+        <div className="stat-card"><span>Waiting for parts</span><strong>{awaitingParts}</strong></div>
+        {!mineOnly && <div className="stat-card"><span>Unassigned jobs</span><strong>{unassignedCount}</strong></div>}
+      </div>
+      <p>Active jobs appear first: urgent, overdue, high priority, then others. Completed and closed jobs remain in history. Summary counts cover this property independently of search and status filters.</p>
       {!work.length ? (
         <Empty title="No matching work orders">
           Requests and assignments for this property will appear here.
