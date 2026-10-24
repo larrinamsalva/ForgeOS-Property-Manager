@@ -5,6 +5,7 @@ import { customerName } from '@/lib/domain';
 import { opsLabel, quantity, checklistState, purchaseState } from '@/lib/operations-domain';
 import { Empty } from '../workspace-parts';
 import type { OpsUI } from './types';
+import { PurchasingExpenseSnapshot } from './purchasing-expense-snapshot';
 const scoped = <T extends { property_id: string }>(ui: OpsUI, rows: T[]) =>
   rows.filter((r) => r.property_id === ui.propertyId);
 const staffName = (ui: OpsUI, id: string | null) =>
@@ -492,6 +493,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const { data, open } = ui;
   return (
     <>
+      <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} />
       <section className="panel">
         <div className="panel-heading">
           <div>
