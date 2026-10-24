@@ -878,6 +878,47 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         </ul>
         <p>Use the Add checklist plan action above to set owners, real inspection items and a recurrence schedule. Use the recurring calendar to create saved runs.</p>
       </details>
+      <section className="ops-record" aria-label="Property inspection and safety center">
+        <h3>Property inspection &amp; safety center</h3>
+        <p>Use a saved recurring checklist plan to record inspections. These categories are suggested inspection items, not completed checks or certified safety assessments.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Open inspection runs</span><strong>{scoped(ui, ui.data.runs).filter((run) => run.status === 'open').length}</strong></div>
+          <div className="stat-card"><span>Overdue inspection runs</span><strong>{scoped(ui, ui.data.runs).filter((run) => run.status === 'open' && run.scheduled_for < ui.today).length}</strong></div>
+          <div className="stat-card"><span>Unrecorded checklist items</span><strong>{scoped(ui, ui.data.runs).filter((run) => run.status === 'open').reduce((count, run) => count + run.items.filter((item) => !['done', 'skipped'].includes(checklistState(ui.data.entries, run.id, item.key)?.status ?? '')).length, 0)}</strong></div>
+        </div>
+        <details>
+          <summary>RV site inspection guide</summary>
+          <ul>
+            <li>Electrical pedestal: visible damage, covers and exposed wiring; refer hazards to qualified personnel</li>
+            <li>Water hookups: leaks, damaged fittings, hose connections and standing water</li>
+            <li>Sewer connections: leaks, damaged caps, odor or overflow concerns</li>
+            <li>Parking pad and site: trip hazards, branches, debris and lighting</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Bathhouse and laundry inspection guide</summary>
+          <ul>
+            <li>Restrooms: cleanliness, fixtures, drains, soap, paper goods and accessibility concerns</li>
+            <li>Laundry: machine leaks, lint buildup, floor conditions and ventilation concerns</li>
+            <li>Common areas: trash overflow, damaged surfaces, signage and lighting</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Grounds, landscaping and safety guide</summary>
+          <ul>
+            <li>Sprinklers: broken heads, leaks, overspray and damaged irrigation</li>
+            <li>Trees and paths: fallen limbs, obstructed walkways and trip hazards</li>
+            <li>Safety equipment: visible extinguisher condition, access routes and emergency signage; follow applicable inspection rules</li>
+            <li>Emergency access: blocked roads, exits, hydrants or service areas</li>
+          </ul>
+        </details>
+        <div className="action-group">
+          {ui.manage && ui.active && <Action click={() => ui.open('save_plan', undefined, undefined, 'checklist')}>Create inspection checklist</Action>}
+          {ui.office && ui.active && <Action click={() => ui.open('new_work')}>Report inspection repair</Action>}
+          {!ui.office && ui.active && <Action click={() => ui.open('maintenance_self_task')}>Create my repair task</Action>}
+        </div>
+        <p>Record dated item results in the checklist run below. Link repair notes and before/after photos to the existing work order. For suspected electrical, gas or fire hazards, isolate the area and follow your emergency and qualified-contractor procedures.</p>
+      </section>
       {!scoped(ui, ui.data.runs).length ? (
         <Empty title="No checklist runs">
           Create a recurring checklist plan, then create an occurrence from the calendar.
