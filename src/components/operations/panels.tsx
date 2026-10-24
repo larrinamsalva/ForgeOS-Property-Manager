@@ -960,7 +960,7 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
       <p>
         {r.scheduled_for} · {staffName(ui, r.assigned_to)} · {opsLabel(r.status)}
       </p>
-      <p>Inspection result guide: use Complete item for a verified satisfactory check; use Skip with reason when you could not complete a check or discovered a condition needing follow-up. Skipped does not mean passed, and a repair request must be created separately.</p>
+      <p>Record Pass, Fail or Needs attention for each inspection item. Fail and Needs attention are saved as skipped checklist outcomes with a labeled finding in retained notes, not as completed work. Repairs must still be created separately.</p>
       <div className="stat-grid" aria-label="Inspection results overview">
         <div className="stat-card"><span>Completed items</span><strong>{r.items.filter((item) => checklistState(ui.data.entries, id, item.key)?.status === 'done').length}</strong></div>
         <div className="stat-card"><span>Skipped / follow-up</span><strong>{r.items.filter((item) => checklistState(ui.data.entries, id, item.key)?.status === 'skipped').length}</strong></div>
@@ -972,16 +972,18 @@ export function RunDetail({ ui, id }: { ui: OpsUI; id: string }) {
           <section className="ops-record" key={i.key}>
             <h3>{i.label}</h3>
             <p>
-              {state ? opsLabel(state.status) : 'Not recorded'} · {state?.notes}
+              {state?.notes.startsWith('[Inspection: ') ? state.notes.split(']')[0].replace('[Inspection: ', '') :
+                state ? opsLabel(state.status) : 'Not recorded'} · {state?.notes}
             </p>
             {ui.active && r.status === 'open' && r.scheduled_for <= ui.today && (
               <div className="action-group">
                 {(!state || state.status === 'reopen') && (
                   <>
                     <Action click={() => ui.open('checklist_entry', id, i.key, 'done')}>Complete item</Action>
-                    <Action click={() => ui.open('checklist_entry', id, i.key, 'skipped')}>
-                      Skip with reason
-                    </Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'pass')}>Pass inspection</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'fail')}>Fail</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'needs_attention')}>Needs attention</Action>
+                    <Action click={() => ui.open('checklist_entry', id, i.key, 'skipped')}>Skip with reason</Action>
                   </>
                 )}
                 {ui.office && state && state.status !== 'reopen' && (
