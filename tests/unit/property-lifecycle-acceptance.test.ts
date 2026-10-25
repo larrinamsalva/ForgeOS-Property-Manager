@@ -65,7 +65,7 @@ describe('Space 88 resident-to-payment acceptance regression',()=>{
     expect(residentReadings[0].exceptions).toContain('unusual');
   });
   it('never treats an unissued invoice or settled balance as confirmed site arrears',()=>{
-    expect(siteOverdueFlags([{...ledger,issued_on:null}],[invoice],[former,current],properties,now)).toEqual({});
+    expect(siteOverdueFlags([{...ledger,issued_on:null,state:'approved_unissued' as const}],[invoice],[former,current],properties,now)).toEqual({});
     expect(siteOverdueFlags([{...ledger,outstanding_cents:'0'}],[invoice],[former,current],properties,now)).toEqual({});
   });
 });
