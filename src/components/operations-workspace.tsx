@@ -337,7 +337,7 @@ export function OperationsWorkspace({
                 </button>
               ))}
           </div>
-          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} />}{' '}
+          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} />}{' '}
           {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly />}{' '}
           {tab === 'stock' && <StockPanel ui={ui} search={search} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
