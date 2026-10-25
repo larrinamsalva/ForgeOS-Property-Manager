@@ -65,6 +65,13 @@ export function SiteMeterFile({
     ? siteUtilitySummaries(current.data, site.id, {
       electric: site.electric, water: site.water, gas: site.gas,
     }, currentStayId, billCurrent?.data) : [];
+  const siteUtilityAlerts = siteId ? (['electric', 'water', 'gas'] as const).map(kind => {
+    const history = entries.filter(entry => entry.utility === kind);
+    const pending = history.filter(entry => entry.reviewStatus === 'pending').length;
+    const flagged = history.filter(entry => entry.exceptions.length > 0).length;
+    const latestApproved = history.find(entry => entry.effective !== null);
+    return {kind, pending, flagged, latestApproved, total: history.length};
+  }) : [];
   const customerUtilityStatus = customerId ? (['electric', 'water', 'gas'] as const).map(kind => {
     const history = entries.filter(entry => entry.utility === kind);
     const approved = history.find(entry => entry.effective !== null);
@@ -117,6 +124,25 @@ export function SiteMeterFile({
           <Link className="button secondary" href={'/billing?' + new URLSearchParams({
             organization: organizationId, property: propertyId,
           })}>Open utility billing and invoice preview</Link>
+        </section>
+      )}
+      {site && current?.data && (
+        <section className="site-utility-section" aria-label="Site utility meter review alerts">
+          <h4>Meter review alerts · site profile</h4>
+          <p className="muted small">Recent captured readings only. This is a review queue, not a statement that a monthly bill is ready. Use the billing preview for verified period boundaries and rate schedules.</p>
+          <div className="site-utility-grid">
+            {siteUtilityAlerts.map(row => <article key={row.kind} className="site-utility-card">
+              <strong>{utilityName(row.kind)}</strong>
+              <p>Latest approved: <strong>{row.latestApproved ?
+                row.latestApproved.effective + ' ' + row.latestApproved.unit : 'Not found in recent history'}</strong></p>
+              {row.latestApproved && <small>Recorded {row.latestApproved.recordedOn} · {row.latestApproved.meterLabel}</small>}
+              <p>{row.pending} awaiting review · {row.flagged} flagged capture(s)</p>
+              <p className="muted small">{row.total ? row.total + ' recent captures' : 'No recent recorded readings'}</p>
+            </article>)}
+          </div>
+          <Link className="button secondary" href={'/meters?' + new URLSearchParams({
+            organization: organizationId, property: propertyId,
+          })}>Review meter exceptions</Link>
         </section>
       )}
       {site && current?.data && (
