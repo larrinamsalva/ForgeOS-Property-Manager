@@ -432,3 +432,48 @@ test('operations boundaries reject cross-origin and forged stock while unassigne
   await signout(page);
   expect((await page.request.get(`/api/operations?organization=${seed.org}`)).status()).toBe(401);
 });
+
+test('supervisor reinspection API refuses anonymous, forged and unlinked approvals', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Boundary checks run once.');
+  const runId = randomUUID();
+  const linkId = randomUUID();
+  const endpoint = '/api/inspection-rechecks';
+  const payload = {
+    organization_id: seed.org,
+    property_id: seed.property,
+    run_id: runId,
+    inspection_link_id: linkId,
+    outcome: 'verified',
+    notes: 'Fictional supervisor reinspection',
+  };
+  expect((await page.request.post(endpoint, { headers: { origin }, data: payload })).status()).toBe(401);
+  expect((await page.request.get(endpoint + '?' + new URLSearchParams({
+    organization: seed.org, property: seed.property, run: runId,
+  }))).status()).toBe(401);
+
+  await login(page);
+  expect((await page.request.post(endpoint, {
+    headers: { origin: 'https://untrusted.example' }, data: payload,
+  })).status()).toBe(403);
+  expect((await page.request.post(endpoint, {
+    headers: { origin }, data: { ...payload, outcome: 'approved' },
+  })).status()).toBe(400);
+  expect((await page.request.post(endpoint, {
+    headers: { origin }, data: { ...payload, notes: ' ' },
+  })).status()).toBe(400);
+  expect((await page.request.post(endpoint, {
+    headers: { origin }, data: payload,
+  })).status()).toBe(403);
+  const empty = await page.request.get(endpoint + '?' + new URLSearchParams({
+    organization: seed.org, property: seed.property, run: runId,
+  }));
+  // The test fixture has no inspection-link records. The scoped endpoint
+  // denies a read when that backing store is unavailable; it must not leak
+  // records or pretend that an empty history was verified.
+  expect(empty.status()).toBe(403);
+  expect((await empty.json()).error).toBe('Inspection links unavailable.');
+
+  await signout(page);
+  await login(page, 'maintenance');
+  expect((await page.request.post(endpoint, { headers: { origin }, data: payload })).status()).toBe(403);
+});
