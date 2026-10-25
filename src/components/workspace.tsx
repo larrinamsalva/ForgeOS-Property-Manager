@@ -1034,6 +1034,24 @@ export function Workspace({
                     <Link href={href('sites')}>View spaces <ArrowUpRight size={14} aria-hidden="true" /></Link>
                   </div>
                   <div className="stat-card">
+                    <span>Occupied spaces</span>
+                    <strong>{sites.filter(site => !site.archived_at && siteStatus(
+                      site, snapshot.stays,
+                      dateAtProperty(snapshot.properties.find(p => p.id === site.property_id)?.timezone ?? 'America/Los_Angeles'),
+                      snapshot.reservations
+                    ) === 'occupied').length}</strong>
+                    <Link href={href('occupancy')}>Review occupancy <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
+                    <span>Available spaces</span>
+                    <strong>{sites.filter(site => !site.archived_at && siteStatus(
+                      site, snapshot.stays,
+                      dateAtProperty(snapshot.properties.find(p => p.id === site.property_id)?.timezone ?? 'America/Los_Angeles'),
+                      snapshot.reservations
+                    ) === 'available').length}</strong>
+                    <Link href={href('sites')}>Choose a site <ArrowUpRight size={14} aria-hidden="true" /></Link>
+                  </div>
+                  <div className="stat-card">
                     <span>Resident records</span>
                     <strong>{customers.filter((customer) => !customer.archived_at).length}</strong>
                     <Link href={href('customers')}>View residents <ArrowUpRight size={14} aria-hidden="true" /></Link>
@@ -1064,6 +1082,7 @@ export function Workspace({
                   </div>
                 </div>
                 <div className="quick-actions" aria-label="Operations shortcuts">
+                  <Link href={href('customers')}>Customer records</Link>
                   <Link href={href('meters')}>Meter readings</Link>
                   <Link href={href('billing')}>Monthly billing</Link>
                   <Link href={href('maintenance')}>Maintenance tasks</Link>
