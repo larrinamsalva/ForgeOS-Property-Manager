@@ -13,6 +13,7 @@ import {
   unbase64,
 } from './vault.mjs';
 import { mountVoiceEntry } from './voice-entry.mjs';
+import { shouldRetryMeterSync } from './reconnect.mjs';
 const $ = (id) => document.getElementById(id);
 let vault = null,
   snapshot = null,
@@ -753,6 +754,10 @@ $('forget').addEventListener('click', () =>
     lock();
   })
 );
+function retryWhenSafe() {
+  if (shouldRetryMeterSync({online:navigator.onLine,unlocked:!!vault,busy,dirty,operations}))
+    void sync();
+}
 window.addEventListener('offline', () => {
   setConnection();
   renderDisabled();
@@ -760,7 +765,7 @@ window.addEventListener('offline', () => {
 window.addEventListener('online', () => {
   setConnection();
   renderDisabled();
-  if (vault && !busy && !dirty && pending().some((o) => o.state !== 'conflict' || !o.conflictId)) sync();
+  retryWhenSafe();
 });
 window.addEventListener('beforeunload', (event) => {
   if (dirty || (vault && pending().length)) {
@@ -781,6 +786,7 @@ document.addEventListener('visibilitychange', () => {
   } else {
     clearTimeout(lockTimer);
     if (vault && Date.now() - lastActivity > 600000 && !busy) autoLock();
+    else retryWhenSafe(); // The browser may miss an 'online' event while suspended.
   }
 });
 setInterval(() => {
