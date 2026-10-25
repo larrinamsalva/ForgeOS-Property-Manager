@@ -12,18 +12,17 @@ vi.mock('@/lib/supabase/server',()=>({
  serverClient:async()=>({
   auth:{getUser:async()=>({data:{user:fake.user?{id:fake.user}:null}})},
   from:(table:string)=>({
-   select:()=>({
-    eq:(_key:string,_value:string)=>({
-     eq:(_k:string,_v:string)=>({
-      eq:(_run:string,_id:string)=>({
-       maybeSingle:async()=>({data:fake.links[0],error:null}),
-      }),
-      in:(_key2:string,_ids:string[])=>({
-       order:async()=>({data:[...fake.records].reverse(),error:null}),
-      }),
+   select:()=>{
+    const filters:Record<string,string>={};
+    const builder={
+     eq:(key:string,value:string)=>{filters[key]=value;return builder;},
+     maybeSingle:async()=>({data:fake.links.find(link=>Object.entries(filters).every(([key,value])=>link[key as keyof typeof link]===value))??null,error:null}),
+     in:(_key:string,_ids:string[])=>({
+      order:async()=>({data:[...fake.records].reverse(),error:null}),
      }),
-    }),
-   }),
+    };
+    return builder;
+   },
    insert:async(row:Omit<(typeof fake.records)[number],'id'|'signed_at'>)=>{
     if(!fake.manager||table!=='inspection_rechecks')return {error:{message:'Permission denied'}};
     fake.records.push({...row,id:crypto.randomUUID(),signed_at:new Date(Date.UTC(2026,9,24,0,0,fake.records.length)).toISOString()});
