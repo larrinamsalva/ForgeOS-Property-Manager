@@ -33,7 +33,7 @@ describe('inspection supervisor approval full database lifecycle',()=>{
   });
   const plan=await command('save_plan',{
    id:null,version:null,kind:'checklist',label:'Fictional fitting inspection',
-   description:'Test only',category:'Safety',site_id:null,assigned_to:null,
+   description:'Test only',category:'Safety',site_id:null,assigned_to:identities.technician,
    anchor_on:today,interval_days:1,ends_on:null,items:['Inspect fictional valve'],active:true,
   });
   const run=await command('generate_occurrence',{plan_id:plan,scheduled_for:today});
