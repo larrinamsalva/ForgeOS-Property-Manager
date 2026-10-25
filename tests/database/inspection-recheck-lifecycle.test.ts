@@ -31,6 +31,11 @@ describe('inspection supervisor approval full database lifecycle',()=>{
    name:'Fictional Maintenance Tech',email:'',phone:'',employment_status:'active',
    starts_on:today,supervisor_id:null,notes:'',
   });
+  await command('save_staff',{
+   id:null,version:null,user_id:identities.manager,employee_code:'M-01',
+   name:'Fictional Property Manager',email:'',phone:'',employment_status:'active',
+   starts_on:today,supervisor_id:null,notes:'',
+  });
   const plan=await command('save_plan',{
    id:null,version:null,kind:'checklist',label:'Fictional fitting inspection',
    description:'Test only',category:'Safety',site_id:null,assigned_to:identities.technician,
@@ -42,7 +47,7 @@ describe('inspection supervisor approval full database lifecycle',()=>{
    values($1,$2,$3,'item-1',$4,$5) returning id`,[org,property,run,work,identities.technician])).rows[0].id);
   const sign=(id:string,outcome:string,notes:string)=>asUser(db,id,tx=>tx.query(
    `insert into public.inspection_rechecks(organization_id,property_id,inspection_link_id,outcome,notes,signed_by)
-   values($1,$2,$3,$4,$5,$6) returning id`,[org,property,link,outcome,notes,id]));
+   values($1,$2,$3,$4,$5,$6)`,[org,property,link,outcome,notes,id]));
   await expect(sign(identities.technician,'verified','Forbidden maintenance signoff')).rejects.toThrow();
   await expect(sign(identities.other,'verified','Forbidden cross-property signoff')).rejects.toThrow();
   await sign(identities.manager,'needs_more_work','Valve still leaks after repair');
