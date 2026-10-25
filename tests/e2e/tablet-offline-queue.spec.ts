@@ -14,7 +14,7 @@ test('offline meter queue survives reload, remains encrypted, and restores on un
         assignment_id:crypto.randomUUID(),value:'125.125000'},
     };
     await vault.saveOperation(session,operation,true);
-    const raw=(await vault.rawRecords()).find(r=>r.kind==='operation'&&r.scope===session.meta.scope);
+    const raw=(await vault.rawRecords()).find((r: {kind:string;scope:string})=>r.kind==='operation'&&r.scope===session.meta.scope);
     return {scope:session.meta.scope,operationId:operation.payload.id,
       plaintextNotStored:!JSON.stringify(raw).includes('125.125000')};
   });
