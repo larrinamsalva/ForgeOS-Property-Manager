@@ -5,7 +5,7 @@ import { asUser, database, foundation, identities } from '../support/database.mj
 // Real ForgeOS migration-backed billing relationship test, with no live Supabase access.
 let db: PGlite;
 let scope: {org:string;property:string};
-let ids: {site:string;customer:string;stay:string;invoice:string};
+let ids: {site:string;customer:string;stay:string;invoice?:string};
 beforeAll(async()=>{
   db=await database();
   scope=await foundation(db);
@@ -22,14 +22,19 @@ beforeAll(async()=>{
       insert into public.occupancy_stays(organization_id,property_id,site_id,customer_id,starts_on,created_by,updated_by)
       values($1,$2,$3,$4,'2026-10-01',auth.uid(),auth.uid()) returning id
     `,[scope.org,scope.property,site,customer])).rows[0].id;
-    const invoice=(await tx.query<{id:string}>(`
+    return {site,customer,stay};
+  });
+  // Fixture-only privileged seed: production invoice writes must use billing_command.
+  const invoice=await db.transaction(async tx=>{
+    await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[identities.owner]);
+    return (await tx.query<{id:string}>(`
       insert into public.invoices(id,organization_id,property_id,customer_id,site_id,stay_id,
         number,starts_on,ends_on,due_on,created_by,updated_by)
       values(gen_random_uuid(),$1,$2,$3,$4,$5,'TEST-SPACE-88',
         '2026-10-01','2026-11-01','2026-10-05',auth.uid(),auth.uid()) returning id
     `,[scope.org,scope.property,customer,site,stay])).rows[0].id;
-    return {site,customer,stay,invoice};
-  });
+      });
+  ids={...ids,invoice};
 },30000);
 afterAll(async()=>{await db?.close();});
 
@@ -53,11 +58,14 @@ describe('actual ForgeOS invoice to resident and site relationship',()=>{
     expect(outsider.rows).toHaveLength(0);
   });
   it('rejects an invoice referencing a nonexistent resident',async()=>{
-    await expect(asUser(db,identities.owner,tx=>tx.query(`
+    await expect(db.transaction(async tx=>{
+      await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[identities.owner]);
+      return tx.query(`
       insert into public.invoices(id,organization_id,property_id,customer_id,site_id,stay_id,
         number,starts_on,ends_on,due_on,created_by,updated_by)
       values(gen_random_uuid(),$1,$2,gen_random_uuid(),$3,$4,'INVALID-88',
         '2026-10-01','2026-11-01','2026-10-05',auth.uid(),auth.uid())
-    `,[scope.org,scope.property,ids.site,ids.stay]))).rejects.toThrow();
+    `,[scope.org,scope.property,ids.site,ids.stay]);
+    })).rejects.toThrow();
   });
 });
