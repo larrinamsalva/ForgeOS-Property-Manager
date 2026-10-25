@@ -563,9 +563,9 @@ export function MeterWorkspace({
                     const captures = readings.filter((read) =>
                       items.some((i) => i.id === read.route_item_id)
                     );
-                    const missing = items.filter(
-                      (i) => !captures.some((read) => read.route_item_id === i.id)
-                    );
+                    const capturedStops = new Set(captures.map((read) => read.route_item_id));
+                    const collectedCount = items.filter((i) => capturedStops.has(i.id)).length;
+                    const missing = items.filter((i) => !capturedStops.has(i.id));
                     const photoPending = data.photos.filter(
                       (p) => captures.some((read) => read.id === p.reading_id) && p.status !== 'uploaded'
                     );
@@ -588,14 +588,14 @@ export function MeterWorkspace({
                         </p>
                         <progress
                           max={items.length || 1}
-                          value={captures.length}
+                          value={collectedCount}
                           aria-label={`${r.label} collection progress`}
                         />
                         <p>
                           <strong>
-                            {captures.length} / {items.length}
+                            {collectedCount} / {items.length}
                           </strong>{' '}
-                          stops collected ·{' '}
+                          stops collected · {missing.length} remaining ·{' '}
                           {
                             captures.filter((c) => latestReview(c.id, reviews)?.decision === 'accepted')
                               .length
@@ -607,12 +607,22 @@ export function MeterWorkspace({
                           {items.map((i) => {
                             const a = assignments.find((a) => a.id === i.assignment_id);
                             const capture = captures.find((c) => c.route_item_id === i.id);
+                            const meter = data.meters.find((m) => m.id === a?.meter_id);
+                            const previous = readings.find((read) =>
+                              read.meter_id === a?.meter_id && read.assignment_id === i.assignment_id &&
+                              read.route_item_id !== i.id && read.value !== null);
                             return (
-                              <p key={i.id}>
-                                {i.position}. {a?.site_label} ·{' '}
-                                {data.meters.find((m) => m.id === a?.meter_id)?.label} —{' '}
-                                {capture ? (capture.value ?? capture.flag) : 'Missing reading'}
-                              </p>
+                              <div key={i.id} className="route-stop">
+                                <p><strong>{i.position}. {a?.site_label ?? 'Site not available'}</strong> ·{' '}
+                                  {meter?.label ?? 'Meter not available'} ({meter?.utility ?? 'unknown utility'})</p>
+                                <p>{capture ? `Collected: ${capture.value ?? capture.flag}` : 'Reading needed'}
+                                  {previous && <> · Previous: {previous.value} ({previous.captured_at.slice(0, 10)})</>}
+                                </p>
+                                {meter && <button type="button" className="button secondary small" onClick={() => {
+                                  setHistoryMeterId(meter.id);
+                                  setTab('history');
+                                }}>View meter history</button>}
+                              </div>
                             );
                           })}
                         </details>
