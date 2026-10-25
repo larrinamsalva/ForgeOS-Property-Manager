@@ -63,6 +63,21 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
     { value: 'completed', label: 'Awaiting closeout', count: completedCount },
     { value: 'closed', label: 'Closed', count: scoped(ui, ui.data.work).filter(w => w.status === 'closed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length },
   ];
+  const todayDue = activeWork.filter(w => w.due_on === ui.today).length;
+  const futureDue = activeWork.filter(w => !!w.due_on && w.due_on > ui.today).length;
+  const noDueDate = activeWork.filter(w => !w.due_on).length;
+  const workload = Array.from(
+    activeWork.reduce((groups, w) => {
+      const key = w.assigned_to ?? 'unassigned';
+      const entry = groups.get(key) ?? { id: key, open: 0, urgent: 0, overdue: 0 };
+      entry.open++;
+      if (w.priority === 'urgent') entry.urgent++;
+      if (w.due_on && w.due_on < ui.today) entry.overdue++;
+      groups.set(key, entry);
+      return groups;
+    }, new Map<string, { id: string; open: number; urgent: number; overdue: number }>())
+    .values()
+  ).sort((a, b) => b.overdue - a.overdue || b.open - a.open || a.id.localeCompare(b.id));
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -95,6 +110,32 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
         {!mineOnly && <div className="stat-card"><span>Unassigned jobs</span><strong>{unassignedCount}</strong></div>}
       </div>
       <p>Active jobs appear first: urgent, overdue, high priority, then others. Completed and closed jobs remain in history. Summary counts cover this property independently of search and status filters.</p>
+      <div className="stat-grid" aria-label="Maintenance scheduling overview">
+        <div className="stat-card"><span>Due today</span><strong>{todayDue}</strong></div>
+        <div className="stat-card"><span>Due later</span><strong>{futureDue}</strong></div>
+        <div className="stat-card"><span>No due date</span><strong>{noDueDate}</strong></div>
+      </div>
+      {!mineOnly && (
+        <section aria-label="Maintenance employee workload">
+          <h3>Employee workload</h3>
+          <p>Open jobs by assigned employee, across all workflow filters for this property.</p>
+          {workload.length === 0 ? <p>No open maintenance jobs.</p> : (
+            <div className="table-wrap" role="region" aria-label="Maintenance workload by employee" tabIndex={0}>
+              <table>
+                <thead><tr><th>Assigned to</th><th>Open jobs</th><th>Urgent</th><th>Overdue</th></tr></thead>
+                <tbody>
+                  {workload.map(row => (
+                    <tr key={row.id}>
+                      <th scope="row">{row.id === 'unassigned' ? 'Unassigned' : staffName(ui, row.id)}</th>
+                      <td>{row.open}</td><td>{row.urgent}</td><td>{row.overdue}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
       {!work.length ? (
         <Empty title="No matching work orders">
           Requests and assignments for this property will appear here.
