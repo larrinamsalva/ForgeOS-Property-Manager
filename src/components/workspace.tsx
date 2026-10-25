@@ -1081,6 +1081,20 @@ export function Workspace({
                     {operatingAccess && <Link href={href('collections')}>Review accounts <ArrowUpRight size={14} aria-hidden="true" /></Link>}
                   </div>
                 </div>
+                <div className="quick-actions" aria-label="Property manager quick actions">
+                  {customerProperties.length > 0 && <button type="button" className="button secondary"
+                    disabled={isPending} onClick={() => setEditor({ type: 'customer' })}>
+                    <Plus size={16} aria-hidden="true" /> Add customer
+                  </button>}
+                  {customerProperties.length === 1 && <button type="button" className="button secondary"
+                    disabled={isPending} onClick={() => setEditor({ type: 'stay', property: customerProperties[0].id })}>
+                    <Plus size={16} aria-hidden="true" /> Assign a space
+                  </button>}
+                  {customerProperties.length > 1 && <Link href={href('occupancy')}>Assign a space</Link>}
+                  <Link href={href('meters')}>Record meter reading</Link>
+                  <Link href={href('maintenance')}>Create maintenance task</Link>
+                  {operatingAccess && <Link href={href('collections')}>Record payment</Link>}
+                </div>
                 <div className="quick-actions" aria-label="Operations shortcuts">
                   <Link href={href('customers')}>Customer records</Link>
                   <Link href={href('meters')}>Meter readings</Link>
