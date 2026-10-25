@@ -174,29 +174,42 @@ export async function exportVault(vault) {
     records: (await rawRecords()).filter((r) => r.scope === vault.meta.scope),
   };
 }
-export async function importVault(bundle) {
+// Reject corrupted or cross-account recovery metadata before IndexedDB writes.
+// Check duplicate IDs/route stops to avoid partially importing an unsyncable queue.
+export function validateRecoveryBundle(bundle) {
   if (
     bundle?.format !== 'ForgeOS encrypted meter recovery' ||
     bundle.version !== 1 ||
-    !bundle.vault?.scope ||
+    typeof bundle.vault?.scope !== 'string' ||
+    !bundle.vault.scope ||
     !Array.isArray(bundle.records)
-  )
-    throw new Error('Choose a ForgeOS encrypted recovery file.');
+  ) throw new Error('Choose a ForgeOS encrypted recovery file.');
+  const ids = new Set(), stops = new Set();
+  for (const r of bundle.records) {
+    if (r?.scope !== bundle.vault.scope ||
+      typeof r.id !== 'string' ||
+      !r.id.startsWith(`${bundle.vault.scope}:`) ||
+      typeof r.cipher?.data !== 'string' || !r.cipher.data ||
+      typeof r.cipher?.iv !== 'string' || !r.cipher.iv ||
+      !['snapshot', 'operation', 'draft'].includes(r.kind) ||
+      typeof r.pending !== 'boolean' || ids.has(r.id))
+      throw new Error('Recovery file is invalid.');
+    ids.add(r.id);
+    if (r.kind === 'operation') {
+      if (typeof r.stopKey !== 'string' || !r.stopKey.startsWith(`${bundle.vault.scope}:`) ||
+        stops.has(r.stopKey)) throw new Error('Recovery file is invalid.');
+      stops.add(r.stopKey);
+    }
+  }
+  return true;
+}
+export async function importVault(bundle) {
+  validateRecoveryBundle(bundle);
   const existing = (await listVaults()).find((v) => v.scope === bundle.vault.scope);
   if (existing)
     throw new Error(
       'This queue already exists on this browser. Unlock the existing queue; import never overwrites local records.'
     );
-  if (
-    bundle.records.some(
-      (r) =>
-        r.scope !== bundle.vault.scope ||
-        !r.id.startsWith(`${bundle.vault.scope}:`) ||
-        !r.cipher?.data ||
-        !r.cipher?.iv
-    )
-  )
-    throw new Error('Recovery file is invalid.');
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['vaults', 'records'], 'readwrite');
