@@ -28,6 +28,7 @@ export function MeterWorkspace({
   const [selectedProperty, setSelectedProperty] = useState(propertyId || snapshot.properties[0]?.id || '');
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
+  const [attentionOnly, setAttentionOnly] = useState(false);
   const [editor, setEditor] = useState<{ type: string; id?: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
   const property = snapshot.properties.find((p) => p.id === selectedProperty);
@@ -94,6 +95,8 @@ export function MeterWorkspace({
   const reviews = data?.reviews ?? [];
   const pending = readings.filter((r) => !latestReview(r.id, reviews));
   const exceptions = readings.filter((r) => r.exceptions.length > 0);
+  const needsAttention = readings.filter((r) => !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none');
+  const damagedMeters = readings.filter((r) => ['damaged', 'missing', 'problem', 'reset'].includes(r.flag));
   const today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
   function renderEditor() {
     if (!editor || !data) return null;
@@ -405,6 +408,26 @@ export function MeterWorkspace({
           <strong>{exceptions.length}</strong>
         </article>
       </div>
+      {data && (
+        <section className="panel" aria-label="Meter reading attention summary">
+          <div className="panel-heading">
+            <div>
+              <h2>Meter reading alerts</h2>
+              <p>Review existing automatic exceptions, meter problem flags and captures awaiting supervisor approval. No new usage or billing thresholds are applied.</p>
+            </div>
+            <button type="button" className="button secondary" onClick={() => {
+              setTab('review');
+              setHistoryMeterId('');
+              setAttentionOnly(true);
+            }}>Open attention queue ({needsAttention.length})</button>
+          </div>
+          <div className="stat-grid">
+            <div className="stat-card"><span>Awaiting supervisor review</span><strong>{pending.length}</strong></div>
+            <div className="stat-card"><span>Automatic usage exceptions</span><strong>{exceptions.length}</strong></div>
+            <div className="stat-card"><span>Meter problem or reset flags</span><strong>{damagedMeters.length}</strong></div>
+          </div>
+        </section>
+      )}
       <div className="planning-tabs" role="group" aria-label="Meter views">
         {[
           ['directory', 'Meter directory'],
@@ -419,6 +442,7 @@ export function MeterWorkspace({
             onClick={() => {
               setTab(id);
               setHistoryMeterId('');
+              setAttentionOnly(false);
             }}
           >
             {label}
@@ -690,6 +714,12 @@ export function MeterWorkspace({
                     })}
                 </div>
               )}
+              <div className="quick-actions" role="group" aria-label="Reading attention filter">
+                <button type="button" className={`button ${attentionOnly ? 'secondary' : 'primary'}`}
+                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({readings.length})</button>
+                <button type="button" className={`button ${attentionOnly ? 'primary' : 'secondary'}`}
+                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({needsAttention.length})</button>
+              </div>
               <label className="history-meter-filter">
                 Meter history filter
                 <select value={historyMeterId} onChange={(e) => setHistoryMeterId(e.target.value)}>
@@ -703,8 +733,8 @@ export function MeterWorkspace({
                     ))}
                 </select>
               </label>
-              {!readings.filter((r) => !historyMeterId || r.meter_id === historyMeterId).length ? (
-                <Empty title="No readings collected">
+              {!readings.filter((r) => (!historyMeterId || r.meter_id === historyMeterId) && (!attentionOnly || !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none')).length ? (
+                <Empty title={attentionOnly ? 'No readings needing attention' : 'No readings collected'}>
                   Use the tablet reader to collect an assigned route.
                 </Empty>
               ) : (
