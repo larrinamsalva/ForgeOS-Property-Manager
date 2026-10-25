@@ -37,9 +37,9 @@ describe('inspection supervisor approval full database lifecycle',()=>{
    anchor_on:today,interval_days:1,ends_on:null,items:['Inspect fictional valve'],active:true,
   });
   const run=await command('generate_occurrence',{plan_id:plan,scheduled_for:today});
-  const link=await asUser(db,identities.owner,async tx=>(await tx.query<{id:string}>(`
+  const link=await asUser(db,identities.technician,async tx=>(await tx.query<{id:string}>(`
    insert into public.inspection_work_links(organization_id,property_id,run_id,item_key,work_order_id,created_by)
-   values($1,$2,$3,'item-1',$4,$5) returning id`,[org,property,run,work,identities.owner])).rows[0].id);
+   values($1,$2,$3,'item-1',$4,$5) returning id`,[org,property,run,work,identities.technician])).rows[0].id);
   const sign=(id:string,outcome:string,notes:string)=>asUser(db,id,tx=>tx.query(
    `insert into public.inspection_rechecks(organization_id,property_id,inspection_link_id,outcome,notes,signed_by)
    values($1,$2,$3,$4,$5,$6) returning id`,[org,property,link,outcome,notes,id]));
