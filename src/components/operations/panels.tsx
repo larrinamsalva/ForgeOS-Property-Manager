@@ -968,7 +968,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
       </div>
       <section className="ops-record" aria-label="Daily property walkthrough progress">
         <h3>Property walkthrough progress</h3>
-        <p>Today's assigned checklist runs for RV sites, apartments and common areas. A skipped check is recorded but still needs review; these counts do not certify an inspection as passed.</p>
+        <p>Today&apos;s assigned checklist runs for RV sites, apartments and common areas. A skipped check is recorded but still needs review; these counts do not certify an inspection as passed.</p>
         <div className="stat-grid">
           <div className="stat-card"><span>Scheduled walkthroughs</span><strong>{walkthroughRows.length}</strong></div>
           <div className="stat-card"><span>All items recorded</span><strong>{completedWalkthroughs}</strong></div>
