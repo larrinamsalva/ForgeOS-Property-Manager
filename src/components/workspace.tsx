@@ -229,6 +229,12 @@ export function Workspace({
       snapshot.reservations
     );
   const match = (value: string) => value.toLowerCase().includes(search.toLowerCase().trim());
+  const currentResidents = new globalThis.Map(sites.map(site => {
+    const localDate = dateAtProperty(snapshot.properties.find(p => p.id === site.property_id)?.timezone ?? 'America/Los_Angeles');
+    const stay = snapshot.stays.find(stay => stay.site_id === site.id && isCurrentStay(stay, localDate));
+    const customer = stay ? snapshot.customers.find(customer => customer.id === stay.customer_id && customer.property_id === site.property_id) : undefined;
+    return [site.id, customer] as const;
+  }));
   const visibleSites = sites
     .filter(
       (s) =>
@@ -1238,6 +1244,7 @@ export function Workspace({
                       <tr>
                         <th>Site / unit</th>
                         <th>Property</th>
+                        <th>Current resident</th>
                         <th>Type & section</th>
                         <th>Status</th>
                         <th>Monthly rate</th>
@@ -1263,6 +1270,14 @@ export function Workspace({
                             </small>
                           </td>
                           <td>{snapshot.properties.find((p) => p.id === site.property_id)?.name}</td>
+                          <td>
+                            {currentResidents.get(site.id) ? (
+                              <button type="button" className="text-button"
+                                onClick={() => setEditor({ type: 'detail', entity: 'customer', id: currentResidents.get(site.id)!.id })}>
+                                {customerName(currentResidents.get(site.id)!)}
+                              </button>
+                            ) : <span className="muted">No current resident</span>}
+                          </td>
                           <td className="capitalize">
                             {site.kind}
                             <small>{site.section || 'No section'}</small>
