@@ -10,6 +10,7 @@ describe('inspection supervisor approval full database lifecycle',()=>{
   const {org,property}=await foundation(db);
   const scope={organization_id:org,property_id:property};
   await asUser(db,identities.owner,async tx=>{
+   await tx.query("update public.properties set timezone='UTC' where id=$1",[property]);
    await tx.query('select grant_property_access($1,$2,$3,$4)',[org,property,identities.manager,'manager']);
    await tx.query('select grant_property_access($1,$2,$3,$4)',[org,property,identities.technician,'maintenance']);
   });
