@@ -16,6 +16,7 @@ vi.mock('@/lib/supabase/server',()=>({
     const filters:Record<string,string>={};
     const builder={
      eq:(key:string,value:string)=>{filters[key]=value;return builder;},
+     then:(resolve:(value:{data:typeof fake.links;error:null})=>unknown)=>resolve({data:fake.links.filter(link=>Object.entries(filters).every(([key,value])=>link[key as keyof typeof link]===value)),error:null}),
      maybeSingle:async()=>({data:fake.links.find(link=>Object.entries(filters).every(([key,value])=>link[key as keyof typeof link]===value))??null,error:null}),
      in:(_key:string,_ids:string[])=>({
       order:async()=>({data:[...fake.records].reverse(),error:null}),
