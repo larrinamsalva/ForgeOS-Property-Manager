@@ -209,6 +209,12 @@ export function Workspace({
     !stay.ends_on &&
     stay.planned_ends_on === localDates.get(stay.property_id)
   );
+  const commandSites = sites.filter(site => !site.archived_at &&
+    !snapshot.properties.find(p => p.id === site.property_id)?.archived_at);
+  const commandOccupied = commandSites.filter(site => siteStatus(site, snapshot.stays,
+    localDates.get(site.property_id) ?? '2000-01-01', snapshot.reservations) === 'occupied').length;
+  const commandAvailable = commandSites.filter(site => siteStatus(site, snapshot.stays,
+    localDates.get(site.property_id) ?? '2000-01-01', snapshot.reservations) === 'available').length;
   const customers = snapshot.customers.filter((c) => ids.has(c.property_id));
   const stays = snapshot.stays.filter((s) => ids.has(s.property_id));
   const editableProperties = properties.filter(
@@ -1161,6 +1167,37 @@ export function Workspace({
                   <Link href={href('operations')}>Team & daily checks</Link>
                   <Link href={href('collections')}>Payments & follow-ups</Link>
                 </div>
+              </section>
+              <section className="panel" aria-label="ForgeOS property command center">
+                <div className="panel-heading">
+                  <div>
+                    <span className="eyebrow">MILESTONE · PR #100</span>
+                    <h2>ForgeOS Property Command Center</h2>
+                    <p>Start your day here: property occupancy, arrivals, departures and account attention in one place. Maintenance, meter and inspection alerts are available immediately below.</p>
+                  </div>
+                </div>
+                <div className="stat-grid">
+                  <div className="stat-card"><span>Active spaces &amp; units</span><strong>{commandSites.length}</strong></div>
+                  <div className="stat-card"><span>Occupied</span><strong>{commandOccupied}</strong></div>
+                  <div className="stat-card"><span>Available</span><strong>{commandAvailable}</strong></div>
+                  <div className="stat-card"><span>Arrivals today</span><strong>{todaysArrivals.length}</strong></div>
+                  <div className="stat-card"><span>Planned departures today</span><strong>{todaysPlannedDepartures.length}</strong></div>
+                  <div className="stat-card"><span>Account attention</span><strong>{
+                    financialVisibility === 'ready'
+                      ? Object.keys(arrears).filter(siteId => commandSites.some(site => site.id === siteId)).length
+                      : financialVisibility === 'restricted' ? 'Restricted' : 'Checking / unavailable'
+                  }</strong></div>
+                </div>
+                <div className="quick-actions" aria-label="Command center actions">
+                  <Link href={href('sites')}>Review site profiles</Link>
+                  <Link href={href('reservations')}>Review arrivals</Link>
+                  <Link href={href('occupancy')}>Review departures</Link>
+                  <Link href={href('maintenance')}>Urgent maintenance</Link>
+                  <Link href={href('meters')}>Meter exceptions</Link>
+                  <Link href={href('operations')}>Daily inspections</Link>
+                  {operatingAccess && <Link href={href('collections')}>Past-due accounts</Link>}
+                </div>
+                <p className="muted small">Counts cover your selected property scope and current property-local dates. Account attention counts only authorized, confirmed site overdue flags. No payments, meter approvals, alerts or notices are created by this dashboard.</p>
               </section>
               <OverviewServiceAlerts snapshot={snapshot} propertyId={propertyId} href={href} />
               <OverviewBudgetAlerts snapshot={snapshot} propertyId={propertyId} href={href} />
