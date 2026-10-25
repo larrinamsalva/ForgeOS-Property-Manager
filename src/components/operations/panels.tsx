@@ -1,5 +1,6 @@
 'use client';
 import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
+import { MaintenanceMonthCalendar } from './maintenance-month-calendar';
 import { InspectionLocation } from './inspection-location';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
@@ -136,6 +137,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           )}
         </section>
       )}
+      {!mineOnly && <MaintenanceMonthCalendar ui={ui} />}
       {!work.length ? (
         <Empty title="No matching work orders">
           Requests and assignments for this property will appear here.
