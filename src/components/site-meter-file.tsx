@@ -65,6 +65,13 @@ export function SiteMeterFile({
     ? siteUtilitySummaries(current.data, site.id, {
       electric: site.electric, water: site.water, gas: site.gas,
     }, currentStayId, billCurrent?.data) : [];
+  const customerUtilityStatus = customerId ? (['electric', 'water', 'gas'] as const).map(kind => {
+    const history = entries.filter(entry => entry.utility === kind);
+    const approved = history.find(entry => entry.effective !== null);
+    const needsReview = history.filter(entry => entry.reviewStatus === 'pending').length;
+    const flagged = history.filter(entry => entry.exceptions.length > 0).length;
+    return { kind, count: history.length, approved, needsReview, flagged };
+  }) : [];
   const utilityName = (kind: string) => kind === 'electric' ? 'Electricity'
     : kind === 'water' ? 'Water' : 'Gas';
   return (
@@ -90,6 +97,27 @@ export function SiteMeterFile({
             organization: organizationId, property: propertyId, site: site.id, stay: currentStayId,
           })}>Prepare monthly bill</Link>
         </div>
+      )}
+      {customerId && current?.data && (
+        <section className="site-utility-section" aria-label="Customer utility reading and billing readiness">
+          <h4>Customer utility records · water, electric &amp; gas</h4>
+          <p className="muted small">Read-only meter captures linked to this customer at the time of each reading. The latest 50 linked readings are shown; this is not a complete billing-period calculation or a new charge.</p>
+          <div className="site-utility-grid">
+            {customerUtilityStatus.map(row => <article className="site-utility-card" key={row.kind}>
+              <strong>{utilityName(row.kind)}</strong>
+              <p>{row.count ? row.count + ' recent recorded capture(s)' : 'No linked readings in recent history'}</p>
+              <p>Latest approved: <strong>{row.approved
+                ? row.approved.effective + ' ' + row.approved.unit
+                : 'None in recent history'}</strong></p>
+              {row.approved && <small>{row.approved.siteLabel} · {row.approved.recordedOn}</small>}
+              <p>{row.needsReview} awaiting review · {row.flagged} flagged</p>
+            </article>)}
+          </div>
+          <p className="muted small">Do not subtract readings across different sites, stays or meters. Open the site's utility summary or Billing for usage calculations, approved rate rules, bill preview and issued charges.</p>
+          <Link className="button secondary" href={'/billing?' + new URLSearchParams({
+            organization: organizationId, property: propertyId,
+          })}>Open utility billing and invoice preview</Link>
+        </section>
       )}
       {site && current?.data && (
         <section className="site-utility-section" aria-label="Site water electric gas utility summary">
