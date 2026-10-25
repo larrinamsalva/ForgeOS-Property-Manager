@@ -467,8 +467,11 @@ test('supervisor reinspection API refuses anonymous, forged and unlinked approva
   const empty = await page.request.get(endpoint + '?' + new URLSearchParams({
     organization: seed.org, property: seed.property, run: runId,
   }));
-  expect(empty.ok(), await empty.text()).toBe(true);
-  expect((await empty.json()).rechecks).toEqual([]);
+  // The test fixture has no inspection-link records. The scoped endpoint
+  // denies a read when that backing store is unavailable; it must not leak
+  // records or pretend that an empty history was verified.
+  expect(empty.status()).toBe(403);
+  expect((await empty.json()).error).toBe('Inspection links unavailable.');
 
   await signout(page);
   await login(page, 'maintenance');
