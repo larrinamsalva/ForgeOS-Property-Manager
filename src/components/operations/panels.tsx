@@ -197,6 +197,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
 export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
   const { data, open } = ui,
     w = data.work.find((w) => w.id === id);
+  const [photoFilter, setPhotoFilter] = useState<'all' | 'uploaded' | 'pending' | 'voided'>('all');
   const [view, setView] = useState<{ url: string; caption: string } | null>(null),
     [photoError, setPhotoError] = useState('');
   if (!w) return <p>Work order unavailable.</p>;
@@ -206,6 +207,8 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
     events = data.events
       .filter((e) => e.work_order_id === id)
       .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+  const workPhotos = data.photos.filter(p => p.work_order_id === id);
+  const visiblePhotos = workPhotos.filter(p => photoFilter === 'all' || p.status === photoFilter);
   async function showPhoto(photoId: string, caption: string) {
     setPhotoError('');
     try {
@@ -353,10 +356,24 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
               Check out {e.name}
             </Action>
           ))}
-      <h3>Work photographs</h3>
-      {data.photos
-        .filter((p) => p.work_order_id === id)
-        .map((p) => (
+      <h3>Work photographs &amp; evidence review</h3>
+      <p>Saved before-and-after or progress photographs are linked to this work order. Open a saved image to inspect it; review pending uploads separately before closing work.</p>
+      <div className="stat-grid" aria-label="Work photograph review counts">
+        <div className="stat-card"><span>Total photographs</span><strong>{workPhotos.length}</strong></div>
+        <div className="stat-card"><span>Available images</span><strong>{workPhotos.filter(p => p.status === 'uploaded').length}</strong></div>
+        <div className="stat-card"><span>Pending uploads</span><strong>{workPhotos.filter(p => p.status === 'pending').length}</strong></div>
+        <div className="stat-card"><span>Voided images</span><strong>{workPhotos.filter(p => p.status === 'voided').length}</strong></div>
+      </div>
+      <label>Review photographs
+        <select value={photoFilter} onChange={e => setPhotoFilter(e.target.value as typeof photoFilter)}>
+          <option value="all">All photo records</option>
+          <option value="uploaded">Available images</option>
+          <option value="pending">Pending uploads</option>
+          <option value="voided">Voided records</option>
+        </select>
+      </label>
+      {!visiblePhotos.length && <p>No photographs match this filter.</p>}
+      {visiblePhotos.map((p) => (
           <div className="ops-history" key={p.id}>
             <p>
               {opsLabel(p.kind)} · {p.caption || 'No caption'} · {opsLabel(p.status)}
