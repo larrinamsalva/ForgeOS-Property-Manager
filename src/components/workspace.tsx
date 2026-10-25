@@ -698,6 +698,24 @@ export function Workspace({
             </p>
           )}
         </div>
+        {editor.entity === 'site' && canEditProperty(snapshot, (record as Site).property_id, true) && (
+          <section className="site-account-review" aria-label="Site profile shortcuts">
+            <h3>Site profile · quick access</h3>
+            <p className="muted small">Space {(record as Site).label} · {(record as Site).section || 'No section assigned'} · {(record as Site).kind}</p>
+            <p>Current resident: <strong>{currentSiteStay
+              ? customerName(snapshot.customers.find(c => c.id === currentSiteStay.customer_id &&
+                c.property_id === (record as Site).property_id))
+              : 'No current resident'}</strong></p>
+            <div className="action-group">
+              <Link className="button secondary" href={href('paperless')}>Site &amp; vehicle photos</Link>
+              <Link className="button secondary" href={href('meters')}>Meter reader</Link>
+              <Link className="button secondary" href={href('maintenance')}>Maintenance &amp; repairs</Link>
+              <Link className="button secondary" href={href('collections')}>Payments &amp; receipts</Link>
+              <Link className="button secondary" href={href('billing')}>Utility billing</Link>
+            </div>
+            <p className="muted small">Open the selected workspace and choose this space or resident there. These links do not automatically select a record or change account access.</p>
+          </section>
+        )}
         {editor.entity === 'site' &&
           canEditProperty(snapshot, (record as Site).property_id, true) && (
           <section className="site-account-review" aria-label="Site resident billing status">
@@ -766,8 +784,8 @@ export function Workspace({
           />
         )}
         <p className="future-caption">
-          Use Maintenance for repair requests linked to a property, site or customer. General document
-          attachments are planned.
+          Use the existing Maintenance workspace for repairs and Paperless photos &amp; files for private
+          customer and site attachments. Records remain subject to your property permissions.
         </p>
       </Modal>
     );
