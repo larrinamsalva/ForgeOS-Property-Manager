@@ -260,6 +260,7 @@ test('meter routes survive offline reload, retry photos once and retain supervis
         '/tablet/index.html',
         '/tablet/reader.css',
         '/tablet/reader.mjs',
+        '/tablet/reconnect.mjs',
         '/tablet/voice-entry.mjs',
         '/tablet/voice-register.mjs',
         '/tablet/vault.mjs',
@@ -268,6 +269,7 @@ test('meter routes survive offline reload, retry photos once and retain supervis
       ].includes(path)
     )
   ).toBe(true);
+  expect(caches).toContain('/tablet/reconnect.mjs');
   expect(caches).toContain('/tablet/voice-entry.mjs');
   expect(caches).toContain('/tablet/voice-register.mjs');
   await page.getByRole('button', { name: 'Outdoor mode' }).click();
