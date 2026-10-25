@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 test('offline meter queue survives reload, remains encrypted, and restores on unlock',async({page})=>{
   await page.goto('/tablet/');
   const initial=await page.evaluate(async()=>{
-    const vault=await import('/tablet/vault.mjs');
+    const vault=await import(/* @vite-ignore */ '/tablet/vault.mjs' as string);
     const userId=crypto.randomUUID(),organizationId=crypto.randomUUID();
     const session=await vault.createVault(userId,organizationId,'Fictional-passphrase-123');
     const operation={
@@ -21,13 +21,13 @@ test('offline meter queue survives reload, remains encrypted, and restores on un
   expect(initial.plaintextNotStored).toBe(true);
   await page.reload();
   const restored=await page.evaluate(async(scope)=>{
-    const vault=await import('/tablet/vault.mjs');
-    const meta=(await vault.listVaults()).find(v=>v.scope===scope);
+    const vault=await import(/* @vite-ignore */ '/tablet/vault.mjs' as string);
+    const meta=(await vault.listVaults()).find((v: {scope:string})=>v.scope===scope);
     if(!meta)throw Error('Vault missing after reload');
     const session=await vault.unlockVault(meta,'Fictional-passphrase-123');
     const contents=await vault.readVault(session);
     return {operations:contents.operations,
-      pending:(await vault.rawRecords()).filter(r=>r.scope===scope&&r.pending).length};
+      pending:(await vault.rawRecords()).filter((r: {scope:string;pending:boolean})=>r.scope===scope&&r.pending).length};
   },initial.scope);
   expect(restored.operations).toHaveLength(1);
   expect(restored.operations[0].payload.id).toBe(initial.operationId);
@@ -38,7 +38,7 @@ test('offline meter queue survives reload, remains encrypted, and restores on un
 test('pending offline operation blocks deleting the local vault',async({page})=>{
   await page.goto('/tablet/');
   const result=await page.evaluate(async()=>{
-    const vault=await import('/tablet/vault.mjs');
+    const vault=await import(/* @vite-ignore */ '/tablet/vault.mjs' as string);
     const session=await vault.createVault(crypto.randomUUID(),crypto.randomUUID(),'Recovery-passphrase-123');
     await vault.saveOperation(session,{
       state:'queued',payload:{id:crypto.randomUUID(),route_item_id:crypto.randomUUID()}, 
