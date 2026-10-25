@@ -25,6 +25,8 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
   const [title,setTitle] = useState('');
   const [filter,setFilter] = useState<'customer'|'site'>('customer');
   const [files,setFiles] = useState<StoredFile[]>([]);
+  const [historyCategory,setHistoryCategory] = useState('all');
+  const [historySort,setHistorySort] = useState<'newest'|'oldest'>('newest');
   const [loading,setLoading] = useState(false);
   const [uploading,setUploading] = useState(false);
   const [removingId,setRemovingId] = useState<string | null>(null);
@@ -35,6 +37,8 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
   const customers = snapshot.customers.filter((c) => c.property_id===selectedProperty && !c.archived_at);
   const sites = snapshot.sites.filter((s) => s.property_id===selectedProperty && !s.archived_at);
   const chosen = filter === 'customer' ? customerId : siteId;
+  const historyFiles = files.filter(file => historyCategory === 'all' || file.category === historyCategory)
+    .sort((a,b) => historySort === 'newest' ? b.created_at.localeCompare(a.created_at) : a.created_at.localeCompare(b.created_at));
 
   useEffect(() => {
     if (!selectedProperty || !chosen) return;
@@ -193,8 +197,24 @@ export function PaperlessWorkspace({ snapshot, propertyId }: {snapshot: Snapshot
         {!chosen ? <p className="muted">Choose a {filter==='customer'?'customer':'space'} above to see their private files.</p> :
           <p className="muted small">Authorized staff may delete any saved photo or document attached to their property. A confirmation is required; deleted files cannot be restored. Showing up to 100 newest files for the selected {filter==='customer'?'customer':'space'}. Use the customer and space selectors to switch files.</p>}
         {chosen && !files.length && <p className="muted">{loading ? 'Loading private files…' : 'No saved files found for this record.'}</p>}
-        {files.length>0 && <div className="paperless-file-list">
-          {files.map((f)=><article key={f.id}>
+        {files.length>0 && <div className="paperless-grid" aria-label="Photo history filters">
+          <label>File type or photo category
+            <select aria-label="Filter saved files by category" value={historyCategory} onChange={e=>setHistoryCategory(e.target.value)}>
+              <option value="all">All saved categories</option>
+              {categories.map(([value,label])=><option value={value} key={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>Photo history order
+            <select aria-label="Sort saved file history" value={historySort} onChange={e=>setHistorySort(e.target.value as 'newest'|'oldest')}>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </label>
+        </div>}
+        {files.length>0 && <p className="muted small">Showing {historyFiles.length} of {files.length} saved file records in this authorized {filter==='site'?'space':'customer'} file.</p>}
+        {files.length>0 && historyFiles.length===0 && <p className="muted">No saved files match that category.</p>}
+        {historyFiles.length>0 && <div className="paperless-file-list">
+          {historyFiles.map((f)=><article key={f.id}>
             <span className="paperless-file-icon"><FileText size={20}/></span>
             <div><strong>{f.title}</strong><small>{categories.find(([key])=>key===f.category)?.[1]??f.category} · {new Date(f.created_at).toLocaleDateString()} · {(f.byte_size/1024).toFixed(0)} KB</small></div>
             <div className="paperless-file-actions">
