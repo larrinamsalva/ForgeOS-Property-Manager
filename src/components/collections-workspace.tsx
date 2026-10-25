@@ -157,6 +157,12 @@ export function CollectionsWorkspace({
   const customerOpenCents = issuedAccounts.reduce((sum, a) => sum + BigInt(a.outstanding_cents), 0n);
   const customerOpenInvoices = issuedAccounts.filter(a => BigInt(a.outstanding_cents) > 0n).length;
 
+  const overdueAccounts = accounts.filter(a =>
+    !!a.issued_on && a.state !== 'voided' && !!a.aging_bucket &&
+    a.aging_bucket !== 'current' && BigInt(a.outstanding_cents) > 0n
+  ).sort((a, b) => (b.days_past_due ?? 0) - (a.days_past_due ?? 0));
+  const overdueTotal = overdueAccounts.reduce((sum, a) => sum + BigInt(a.outstanding_cents), 0n);
+  const overdueCustomers = new Set(overdueAccounts.map(a => a.customer_id)).size;
   const customerField: Field = {
     name: 'customer_id',
     label: 'Customer',
@@ -824,6 +830,35 @@ export function CollectionsWorkspace({
                   <p className="muted small">Partial payments reduce the outstanding amount through the existing collections ledger. Refunds, reversals and receipts remain governed by the original transaction workflow.</p>
                 </section>
               )}
+              <section className="panel" aria-label="Past-due collections attention">
+                <div className="panel-heading"><div>
+                  <h2>Past-due accounts requiring review</h2>
+                  <p>Read-only issued balances based on the existing aging ledger. Payment history, follow-ups and applicable late-fee rules remain in their established workspaces.</p>
+                </div></div>
+                <div className="stat-grid">
+                  <div className="stat-card"><span>Past-due balance</span><strong>{cents(overdueTotal.toString())}</strong></div>
+                  <div className="stat-card"><span>Overdue invoices</span><strong>{overdueAccounts.length}</strong></div>
+                  <div className="stat-card"><span>Customers affected</span><strong>{overdueCustomers}</strong></div>
+                  <div className="stat-card"><span>Open follow-ups</span><strong>{followups.length}</strong></div>
+                </div>
+                {overdueAccounts.length > 0 ? (
+                  <div className="table-wrap" role="region" aria-label="Past-due invoice attention list" tabIndex={0}>
+                    <table>
+                      <thead><tr><th>Customer / invoice</th><th>Past due</th><th>Remaining balance</th><th>Review</th></tr></thead>
+                      <tbody>{overdueAccounts.map(a => <tr key={a.invoice_id}>
+                        <th scope="row">{name(a.customer_id)}<small>{a.number}</small></th>
+                        <td><span className="badge" data-state={a.state}>{a.days_past_due} days</span></td>
+                        <td>{cents(a.outstanding_cents)}</td>
+                        <td><button type="button" className="button secondary small" onClick={() => {
+                          setCustomerId(a.customer_id);
+                          setTab('accounts');
+                        }}>Select customer</button></td>
+                      </tr>)}</tbody>
+                    </table>
+                  </div>
+                ) : <p>No past-due issued balances in this selection.</p>}
+                <p className="muted small">This view does not add late fees, send reminders or issue legal notices. Review individual accounts and the configured collections policy before taking action.</p>
+              </section>
               <div className="collection-totals">
                 {Object.entries(totals).map(([bucket, total]) => (
                   <div className="collection-total" key={bucket}>
