@@ -13,7 +13,6 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
   const [result,setResult]=useState<{key:string; operations?:OperationsSnapshot; meters?:MeterSnapshot; workError?:boolean; meterError?:boolean}|null>(null);
   useEffect(()=>{
     const controller=new AbortController();
-    setResult(null);
     const load=async <T,>(url:string):Promise<T>=>{
       const response=await fetch(url,{cache:'no-store',signal:controller.signal});
       if(!response.ok)throw Error('Unavailable');
