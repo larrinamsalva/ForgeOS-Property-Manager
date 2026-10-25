@@ -17,7 +17,7 @@ describe('inspection supervisor approval full database lifecycle',()=>{
    (await tx.query<{result:{id:string}}>('select operations_command($1,$2::jsonb) result',[
     name,JSON.stringify({...scope,request_id:randomUUID(),reason:'Fictional repair review test',...extra})
    ])).rows[0].result.id);
-  const today=(await db.query<{day:string}>('select current_date::text day')).rows[0].day;
+  const today=(await db.query<{d:string}>('select current_date::text as d')).rows[0].d;
   const work=await command('new_work',{
    title:'Replace fictional valve',description:'Fictional repair for supervisor testing',
    category:'Plumbing',priority:'normal',site_id:null,customer_id:null,
