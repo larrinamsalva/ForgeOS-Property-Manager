@@ -113,7 +113,7 @@ export function SiteMeterFile({
               <p>{row.needsReview} awaiting review · {row.flagged} flagged</p>
             </article>)}
           </div>
-          <p className="muted small">Do not subtract readings across different sites, stays or meters. Open the site's utility summary or Billing for usage calculations, approved rate rules, bill preview and issued charges.</p>
+          <p className="muted small">Do not subtract readings across different sites, stays or meters. Open the site&apos;s utility summary or Billing for usage calculations, approved rate rules, bill preview and issued charges.</p>
           <Link className="button secondary" href={'/billing?' + new URLSearchParams({
             organization: organizationId, property: propertyId,
           })}>Open utility billing and invoice preview</Link>
