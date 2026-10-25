@@ -29,7 +29,7 @@ function Action({
     </button>
   );
 }
-export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean }) {
+export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean; onStatusChange?: (value: string) => void }) {
   const work = scoped(ui, ui.data.work)
     .filter(
       (w) =>
@@ -54,6 +54,15 @@ export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI;
   const overdueCount = activeWork.filter((w) => w.due_on && w.due_on < ui.today).length;
   const awaitingParts = activeWork.filter((w) => w.status === 'waiting_parts').length;
   const unassignedCount = activeWork.filter((w) => !w.assigned_to).length;
+  const completedCount = scoped(ui, ui.data.work).filter(w => w.status === 'completed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length;
+  const boardGroups = [
+    { value: 'all', label: 'All jobs', count: scoped(ui, ui.data.work).filter(w => !mineOnly || w.assigned_to === ui.snapshot.userId).length },
+    { value: 'new', label: 'New', count: activeWork.filter(w => w.status === 'new').length },
+    { value: 'in_progress', label: 'In progress', count: activeWork.filter(w => w.status === 'in_progress').length },
+    { value: 'waiting_parts', label: 'Waiting for parts', count: awaitingParts },
+    { value: 'completed', label: 'Awaiting closeout', count: completedCount },
+    { value: 'closed', label: 'Closed', count: scoped(ui, ui.data.work).filter(w => w.status === 'closed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length },
+  ];
   return (
     <section className="panel">
       <div className="panel-heading">
@@ -67,6 +76,18 @@ export function WorkPanel({ ui, search, status, mineOnly = false }: { ui: OpsUI;
           {!ui.office && ui.active && <Action click={() => ui.open('maintenance_self_task')}>Create my task</Action>}
         </div>
       </div>
+      {!mineOnly && onStatusChange && (
+        <div className="quick-actions" role="group" aria-label="Maintenance workflow filters">
+          {boardGroups.map(group => (
+            <button key={group.value} type="button"
+              className={`button ${status === group.value ? 'primary' : 'secondary'}`}
+              aria-pressed={status === group.value}
+              onClick={() => onStatusChange(group.value)}>
+              {group.label} ({group.count})
+            </button>
+          ))}
+        </div>
+      )}
       <div className="stat-grid" aria-label="Open maintenance work summary">
         <div className="stat-card"><span>Urgent open jobs</span><strong>{urgentCount}</strong></div>
         <div className="stat-card"><span>Overdue open jobs</span><strong>{overdueCount}</strong></div>
