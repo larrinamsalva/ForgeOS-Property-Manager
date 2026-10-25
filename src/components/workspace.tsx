@@ -57,6 +57,7 @@ import { SiteMeterFile } from './site-meter-file';
 import { SiteSafetyHistory } from './site-safety-history';
 import { SiteMaintenanceSummary } from './site-maintenance-summary';
 import { SitePhotoSummary } from './site-photo-summary';
+import { SiteAttentionCenter } from './site-attention-center';
 import { OverviewServiceAlerts } from './overview-service-alerts';
 import { OverviewBudgetAlerts } from './overview-budget-alerts';
 import { EndOfDayReport } from './end-of-day-report';
@@ -768,6 +769,13 @@ export function Workspace({
             residentName={customerName(record as Customer)}
             propertyName={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.name ?? 'Property office'}
             propertyTimezone={snapshot.properties.find(p => p.id === (record as Customer).property_id)?.timezone ?? 'America/Los_Angeles'} />
+        )}
+        {editor.entity === 'site' && canEditProperty(snapshot, (record as Site).property_id, true) && (
+          <SiteAttentionCenter key={record.id}
+            organizationId={snapshot.organizationId}
+            propertyId={(record as Site).property_id}
+            siteId={record.id}
+            overdue={!!overdueFlag} />
         )}
         {editor.entity === 'site' && canEditProperty(snapshot, (record as Site).property_id, true) && (
           <SitePhotoSummary key={record.id}
