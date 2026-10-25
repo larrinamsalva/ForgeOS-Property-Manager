@@ -153,6 +153,10 @@ export function CollectionsWorkspace({
   )[0];
   const totals = agingTotals(accounts);
   const followups = openFollowups(notes, today);
+  const issuedAccounts = accounts.filter(a => !!a.issued_on && a.state !== 'voided');
+  const customerOpenCents = issuedAccounts.reduce((sum, a) => sum + BigInt(a.outstanding_cents), 0n);
+  const customerOpenInvoices = issuedAccounts.filter(a => BigInt(a.outstanding_cents) > 0n).length;
+
   const customerField: Field = {
     name: 'customer_id',
     label: 'Customer',
@@ -801,6 +805,25 @@ export function CollectionsWorkspace({
           )}
           {tab === 'accounts' && (
             <>
+              {customerId && (
+                <section className="panel" aria-label="Selected customer payment and receipt summary">
+                  <div className="panel-heading"><div>
+                    <h2>{name(customerId)} · payment &amp; receipt center</h2>
+                    <p>Issued invoice balances and recorded transactions for this selected customer only. Drafts and unissued charges are excluded.</p>
+                  </div></div>
+                  <div className="stat-grid">
+                    <div className="stat-card"><span>Outstanding issued balance</span><strong>{cents(customerOpenCents.toString())}</strong></div>
+                    <div className="stat-card"><span>Issued invoices with balance</span><strong>{customerOpenInvoices}</strong></div>
+                    <div className="stat-card"><span>Recorded payments</span><strong>{payments.length}</strong></div>
+                    <div className="stat-card"><span>Available receipts</span><strong>{receipts.length}</strong></div>
+                  </div>
+                  <div className="quick-actions" aria-label="Customer payment shortcuts">
+                    <button className="button secondary" type="button" onClick={() => setTab('payments')}>View payment history</button>
+                    <button className="button secondary" type="button" onClick={() => setTab('receipts')}>Open receipts</button>
+                  </div>
+                  <p className="muted small">Partial payments reduce the outstanding amount through the existing collections ledger. Refunds, reversals and receipts remain governed by the original transaction workflow.</p>
+                </section>
+              )}
               <div className="collection-totals">
                 {Object.entries(totals).map(([bucket, total]) => (
                   <div className="collection-total" key={bucket}>
