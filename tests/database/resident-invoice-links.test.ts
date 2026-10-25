@@ -32,7 +32,7 @@ beforeAll(async()=>{
         number,starts_on,ends_on,due_on,created_by,updated_by)
       values(gen_random_uuid(),$1,$2,$3,$4,$5,'TEST-SPACE-88',
         '2026-10-01','2026-11-01','2026-10-05',auth.uid(),auth.uid()) returning id
-    `,[scope.org,scope.property,customer,site,stay])).rows[0].id;
+    `,[scope.org,scope.property,ids.customer,ids.site,ids.stay])).rows[0].id;
       });
   ids={...ids,invoice};
 },30000);
