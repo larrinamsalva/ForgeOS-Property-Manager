@@ -18,8 +18,8 @@ beforeAll(async()=>{
  values($1,$2,'WO-RECHECK','Recheck fitting','Fictional completed fitting repair','plumbing','normal',current_date,'completed','')
  returning id`,[org,property])).rows[0].id;
  const plan=(await db.query<{id:string}>(`insert into public.operations_plans
- (organization_id,property_id,name,description,category,assigned_to,items,recurrence,starts_on,ends_on,active)
- values($1,$2,'Fictional safety round','Reinspection checks','inspection',$3,'[{"key":"item-1","label":"Inspect fitting"}]'::jsonb,'daily',current_date,null,true)
+ (organization_id,property_id,kind,label,description,category,assigned_to,anchor_on,interval_days,items,active)
+ values($1,$2,'checklist','Fictional safety round','Reinspection checks','inspection',$3,current_date,1,'[{"key":"item-1","label":"Inspect fitting"}]'::jsonb,true)
  returning id`,[org,property,identities.owner])).rows[0].id;
  const run=(await db.query<{id:string}>(`insert into public.checklist_runs
  (organization_id,property_id,plan_id,label,scheduled_for,assigned_to,items)
