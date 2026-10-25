@@ -916,6 +916,13 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
   const recordedToday = todaysRuns.reduce((total, run) => total + run.items.filter((item) =>
     ['done', 'skipped'].includes(checklistState(ui.data.entries, run.id, item.key)?.status ?? '')
   ).length, 0);
+  const walkthroughRows = todaysRuns.map(run => {
+    const recorded = run.items.filter(item => ['done', 'skipped'].includes(
+      checklistState(ui.data.entries, run.id, item.key)?.status ?? ''
+    )).length;
+    return { run, recorded, remaining: run.items.length - recorded };
+  }).sort((a, b) => b.remaining - a.remaining || a.run.label.localeCompare(b.run.label));
+  const completedWalkthroughs = walkthroughRows.filter(row => row.remaining === 0 && row.run.items.length > 0).length;
   const inspectionFindings = scoped(ui, ui.data.runs).flatMap((run) =>
     run.items.flatMap((item) => {
       const entry = checklistState(ui.data.entries, run.id, item.key);
@@ -959,6 +966,29 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         <p>{todaysRuns.length} scheduled checklist runs · {openToday.length} open · {recordedToday}/{itemsToday} item results recorded</p>
         <p>Recorded includes completed and explicitly skipped items; a skipped item is not the same as completed work.</p>
       </div>
+      <section className="ops-record" aria-label="Daily property walkthrough progress">
+        <h3>Property walkthrough progress</h3>
+        <p>Today&apos;s assigned checklist runs for RV sites, apartments and common areas. A skipped check is recorded but still needs review; these counts do not certify an inspection as passed.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Scheduled walkthroughs</span><strong>{walkthroughRows.length}</strong></div>
+          <div className="stat-card"><span>All items recorded</span><strong>{completedWalkthroughs}</strong></div>
+          <div className="stat-card"><span>Walkthroughs with items remaining</span><strong>{walkthroughRows.filter(row => row.remaining > 0).length}</strong></div>
+        </div>
+        {!walkthroughRows.length ? <p>No checklists scheduled for today. Create a checklist plan and generate a run from the recurring calendar.</p> :
+          <div className="table-wrap" role="region" aria-label="Today's walkthroughs" tabIndex={0}>
+            <table>
+              <thead><tr><th>Inspection</th><th>Results recorded</th><th>Remaining</th><th>Open</th></tr></thead>
+              <tbody>{walkthroughRows.map(({run,recorded,remaining}) => <tr key={run.id}>
+                <th scope="row">{run.label}<small>{opsLabel(run.status)}</small></th>
+                <td>{recorded} / {run.items.length}</td>
+                <td><strong>{remaining}</strong></td>
+                <td><button type="button" className="button secondary small"
+                  onClick={() => ui.open('run_detail', run.id)}>Open walkthrough</button></td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+        <p>Open a walkthrough to record item results, document location, and link repair work through the existing inspection controls.</p>
+      </section>
       <details className="ops-record">
         <summary>Suggested manager checklist — morning, utilities, office and closing</summary>
         <p>Use these as a guide when creating a recurring checklist plan. These examples are not saved tasks until a manager creates a plan and schedules a run.</p>
