@@ -35,6 +35,7 @@ export function MonthlyBillingBoard({
 }) {
   const [filter, setFilter] = useState<'all'|MonthlyRunStatus>('all');
   const [invoiceFilter, setInvoiceFilter] = useState<'all'|MonthlyInvoiceStage>('all');
+  const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'rates'|'invoices'|'policy'>('all');
   const [search,setSearch] = useState('');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
@@ -45,6 +46,17 @@ export function MonthlyBillingBoard({
       (r.invoiceStage==='mixed' && r.invoices.some(i=>i.status==='approved' && !i.issued))).length,
     issued:rows.filter(r=>r.invoiceStage==='issued').length,
   };
+  const issueGroups = [
+    {value:'readings' as const,label:'Meter readings to review',count:rows.filter(r=>r.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))).length},
+    {value:'rates' as const,label:'Missing rate schedules',count:rows.filter(r=>r.warnings.some(w=>w.includes('rate schedule'))).length},
+    {value:'invoices' as const,label:'Existing invoice overlap',count:rows.filter(r=>r.warnings.includes('Existing invoices')).length},
+    {value:'policy' as const,label:'Billing policy checks',count:rows.filter(r=>r.warnings.includes('Property billing policy')).length},
+  ];
+  const matchesIssue = (row: MonthlyRunRow) => issueFilter === 'all' ||
+    (issueFilter === 'readings' && row.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))) ||
+    (issueFilter === 'rates' && row.warnings.some(w=>w.includes('rate schedule'))) ||
+    (issueFilter === 'invoices' && row.warnings.includes('Existing invoices')) ||
+    (issueFilter === 'policy' && row.warnings.includes('Property billing policy'));
   const names = new Map(snapshot.customers.filter(c => c.property_id === propertyId)
     .map(c => [c.id, customerName(c)]));
   function downloadChecklist() {
@@ -57,7 +69,7 @@ export function MonthlyBillingBoard({
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  const visible = rows.filter(row => (filter === 'all' || row.status === filter) &&
+  const visible = rows.filter(row => matchesIssue(row) && (filter === 'all' || row.status === filter) &&
     (invoiceFilter === 'all' ||
       (invoiceFilter === 'draft' && row.invoices.some(i=>i.status==='draft' && !i.issued)) ||
       (invoiceFilter === 'approved_unissued' && row.invoices.some(i=>i.status==='approved' && !i.issued)) ||
@@ -100,6 +112,21 @@ export function MonthlyBillingBoard({
           onClick={downloadChecklist}>Download filtered billing checklist (CSV)</button>
         <p className="muted small">Exports only the rows on screen, with their review warnings, existing invoice states and recorded totals. Keep this resident information private.</p>
       </div>
+      <section aria-label="Billing readiness attention" className="panel">
+        <h3>Billing readiness attention</h3>
+        <p className="muted small">Counts are advisory checks for this month, not invoices or automatic billing approvals. A stay can appear in more than one category.</p>
+        <div className="quick-actions" role="group" aria-label="Filter billing issues">
+          <button type="button" className={`button ${issueFilter === 'all' ? 'primary' : 'secondary'}`}
+            aria-pressed={issueFilter === 'all'} onClick={() => setIssueFilter('all')}>All sites ({rows.length})</button>
+          {issueGroups.map(group => <button key={group.value} type="button"
+            className={`button ${issueFilter === group.value ? 'primary' : 'secondary'}`}
+            aria-pressed={issueFilter === group.value} onClick={() => {
+              setFilter('all');
+              setInvoiceFilter('all');
+              setIssueFilter(group.value);
+            }}>{group.label} ({group.count})</button>)}
+        </div>
+      </section>
       <div className="monthly-billing-counts" role="group" aria-label="Monthly billing status counts">
         <span><strong>{totals.all}</strong> stays</span>
         <span><strong>{totals.ready}</strong> precheck clear</span>
