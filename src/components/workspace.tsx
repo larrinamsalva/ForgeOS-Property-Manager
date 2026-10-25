@@ -700,6 +700,17 @@ export function Workspace({
         </div>
         {editor.entity === 'site' && canEditProperty(snapshot, (record as Site).property_id, true) && (
           <section className="site-account-review" aria-label="Site profile shortcuts">
+            <h3>Smart site profile · at a glance</h3>
+            <div className="stat-grid" aria-label="Site profile overview">
+              <div className="stat-card"><span>Occupancy</span><strong>{stamp(record as Site)}</strong></div>
+              <div className="stat-card"><span>Monthly rent</span><strong>{money((record as Site).monthly_rate_cents)}</strong></div>
+              <div className="stat-card"><span>Recorded stays</span><strong>{history.length}</strong></div>
+              <div className="stat-card"><span>Resident overdue status</span><strong>{!currentSiteStay ? 'Vacant' :
+                financialVisibility === 'loading' ? 'Checking' :
+                financialVisibility === 'unavailable' ? 'Unavailable' :
+                overdueFlag ? 'Past due' : 'No confirmed overdue balance'}</strong></div>
+            </div>
+            <p className="muted small">The meter history and utility usage summaries appear further down in this site file. The financial indicator only applies to the current resident and is shown to authorized staff.</p>
             <h3>Site profile · quick access</h3>
             <p className="muted small">Space {(record as Site).label} · {(record as Site).section || 'No section assigned'} · {(record as Site).kind}</p>
             <p>Current resident: <strong>{currentSiteStay
