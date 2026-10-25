@@ -12,7 +12,7 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   const [loaded, setLoaded] = useState<{ key: string; data?: OperationsSnapshot; error?: string } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({ organization: organizationId, starts: '2000-01-01', ends: '2100-12-31' });
+    const params = new URLSearchParams({ organization: organizationId });
     fetch('/api/operations?' + params, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error('Maintenance details unavailable.');
