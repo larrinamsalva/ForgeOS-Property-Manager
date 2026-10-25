@@ -26,6 +26,11 @@ describe('inspection supervisor approval full database lifecycle',()=>{
   });
   const v=(await db.query<{version:number}>('select version from public.work_orders where id=$1',[work])).rows[0].version;
   await command('work_status',{work_order_id:work,version:v,status:'completed'});
+  await command('save_staff',{
+   id:null,version:null,user_id:identities.technician,employee_code:'T-01',
+   name:'Fictional Maintenance Tech',email:'',phone:'',employment_status:'active',
+   starts_on:today,supervisor_id:null,notes:'',
+  });
   const plan=await command('save_plan',{
    id:null,version:null,kind:'checklist',label:'Fictional fitting inspection',
    description:'Test only',category:'Safety',site_id:null,assigned_to:null,
