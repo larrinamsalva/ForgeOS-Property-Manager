@@ -5,7 +5,7 @@ import type { BillingSnapshot } from '../../src/lib/billing-domain';
 import type { MeterSnapshot } from '../../src/lib/meter-domain';
 
 const site={id:'site',property_id:'property',electric:true,water:false,gas:false} as Site;
-const stay={id:'stay',starts_on:'2026-04-05',ends_on:null} as Stay;
+const stay={id:'stay',customer_id:'customer-88',starts_on:'2026-04-05',ends_on:null} as Stay;
 const period=suggestBillingPeriod(stay,'2026-10-23');
 const billing={
  policies:[{property_id:'property'}], rates:[{property_id:'property',utility:'electric',
@@ -68,8 +68,18 @@ describe('site-focused monthly billing preparation',()=>{
     {starts_on:'2026-09-13',ends_on:'2026-10-01'},
   ],'2026-09-01','2026-10-01')).toBe(false);
  });
+ it('never leaks another customer or property invoice number in preflight checklist',()=>{
+  const crossed={...billing,invoices:[
+   {id:'private',property_id:'property',customer_id:'former-resident',stay_id:'stay',site_id:'site',status:'approved',number:'PRIVATE-777',starts_on:'2026-09-01',ends_on:'2026-10-01'},
+   {id:'other-property',property_id:'elsewhere',customer_id:'customer-88',stay_id:'stay',site_id:'site',status:'approved',number:'OTHER-888',starts_on:'2026-09-01',ends_on:'2026-10-01'},
+  ]} as unknown as BillingSnapshot;
+  const item=siteBillingChecklist(site,stay,period,crossed,meter).find(i=>i.label==='Existing invoices');
+  expect(item?.note).not.toContain('PRIVATE-777');
+  expect(item?.note).not.toContain('OTHER-888');
+  expect(item?.state).toBe('ok');
+ });
  it('warns of existing draft/issued overlap and missing policy',()=>{
-  const data={...billing,policies:[], invoices:[{id:'invoice',stay_id:'stay',site_id:'site',
+  const data={...billing,policies:[], invoices:[{id:'invoice',property_id:'property',customer_id:'customer-88',stay_id:'stay',site_id:'site',
    status:'approved',number:'INV-0001',starts_on:'2026-09-01',ends_on:'2026-10-01'}]} as unknown as BillingSnapshot;
   const result=siteBillingChecklist(site,stay,period,data,meter);
   expect(result.find(i=>i.label==='Property billing policy')?.state).toBe('check');
