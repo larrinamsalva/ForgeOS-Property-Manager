@@ -44,11 +44,15 @@ describe('site-focused monthly billing preparation',()=>{
  it('rejects previous occupant readings and unapproved close, without inventing billing totals',()=>{
   const wrong = {...meter,occupancy:meter.occupancy.map(o=>o.reading_id==='open'?
    {...o,stay_id:'former'}:o)};
-  expect(siteBillingChecklist(site,stay,period,billing,wrong)
-    .find(i=>i.label==='electric boundary readings')?.state).toBe('check');
+  const wrongItem=siteBillingChecklist(site,stay,period,billing,wrong)
+    .find(i=>i.label==='electric boundary readings');
+  expect(wrongItem?.state).toBe('check');
+  expect(wrongItem?.note).toContain('opening reading 2026-09-01: missing capture');
   const pending={...meter,reviews:meter.reviews.slice(0,1)};
-  expect(siteBillingChecklist(site,stay,period,billing,pending)
-    .find(i=>i.label==='electric boundary readings')?.state).toBe('check');
+  const pendingItem=siteBillingChecklist(site,stay,period,billing,pending)
+    .find(i=>i.label==='electric boundary readings');
+  expect(pendingItem?.state).toBe('check');
+  expect(pendingItem?.note).toContain('closing reading 2026-10-01: requires accepted review');
  });
  it('flags rate gaps, but accepts adjacent active versions covering the whole period',()=>{
   const withRates=(rates: object[])=>({...billing,rates} as unknown as BillingSnapshot);
