@@ -6,6 +6,7 @@ import { cents } from '@/lib/billing-domain';
 import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
+import { meterActionCsv } from '@/lib/meter-action-export';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -75,6 +76,16 @@ export function MonthlyBillingBoard({
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  function downloadMeterActions() {
+    const propertyName = snapshot.properties.find(p => p.id === propertyId)?.name ?? 'Property';
+    const contents = meterActionCsv(propertyName, month, visible);
+    const url = URL.createObjectURL(new Blob([contents], {type:'text/csv;charset=utf-8'}));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'forgeos-meter-actions-' + month + '.csv';
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   const visible = rows.filter(row => matchesIssue(row) && (filter === 'all' || row.status === filter) &&
     (invoiceFilter === 'all' ||
       (invoiceFilter === 'draft' && row.invoices.some(i=>i.status==='draft' && !i.issued)) ||
@@ -116,6 +127,8 @@ export function MonthlyBillingBoard({
       <div className="monthly-billing-export">
         <button type="button" className="button secondary" disabled={navigationPending || !visible.length || loadingEvidence || evidenceError}
           onClick={downloadChecklist}>Download filtered billing checklist (CSV)</button>
+        <button type="button" className="button secondary" disabled={navigationPending || !visible.some(row=>row.checklist.some(item=>item.state==='check' && (item.label.includes('boundary readings')||item.label.includes('meter readings')))) || loadingEvidence || evidenceError}
+          onClick={downloadMeterActions}>Download meter action list (CSV)</button>
         <p className="muted small">Exports only the rows on screen, with their review warnings, existing invoice states and recorded totals. Keep this resident information private.</p>
       </div>
       <section aria-label="Billing readiness attention" className="panel">
