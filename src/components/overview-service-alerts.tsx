@@ -46,18 +46,23 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
     return !!w.due_on && !!property && w.due_on < dateAtProperty(property.timezone);
   }).length;
   const unassigned = openWork.filter((w) => !w.assigned_to).length;
-  const pendingReviews = meters.data?.readings.filter((r) => authorizedIds.has(r.property_id) &&
-    !latestReview(r.id, meters.data!.reviews)).length ?? 0;
+  const scopedReadings = meters.data?.readings.filter(r => authorizedIds.has(r.property_id)) ?? [];
+  const pendingReviews = scopedReadings.filter(r => !latestReview(r.id, meters.data!.reviews)).length;
+  const reviewedReadings = scopedReadings.filter(r => !!latestReview(r.id, meters.data!.reviews)).length;
   const metric = (load: Load<unknown>, value: number) =>
     load.status === 'ready' ? String(value) : load.status === 'loading' ? 'Checking…' : 'Unavailable';
   return <section className="panel" aria-label="Maintenance and meter alerts">
     <h2>Maintenance &amp; meter alerts</h2>
     <p>Live staff queues from authorized property records. Missing data is never shown as zero.</p>
     <div className="stat-grid">
+      <div className="stat-card"><span>Open maintenance orders</span><strong>{metric(operations, openWork.length)}</strong>
+        <Link href={href('maintenance')}>Open maintenance board</Link></div>
       <div className="stat-card"><span>Overdue maintenance</span><strong>{metric(operations, overdue)}</strong>
         <Link href={href('maintenance')}>View work orders</Link></div>
       <div className="stat-card"><span>Unassigned work orders</span><strong>{metric(operations, unassigned)}</strong>
         <Link href={href('maintenance')}>Assign workers</Link></div>
+      <div className="stat-card"><span>Meter readings reviewed</span><strong>{metric(meters, reviewedReadings)}</strong>
+        <Link href={href('meters')}>View meter history</Link></div>
       <div className="stat-card"><span>Meter readings awaiting review</span><strong>{metric(meters, pendingReviews)}</strong>
         <Link href={href('meters')}>Review readings</Link></div>
     </div>
