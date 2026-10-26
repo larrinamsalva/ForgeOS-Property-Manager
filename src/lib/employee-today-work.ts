@@ -3,7 +3,7 @@ import type { WorkOrder } from './operations-domain';
 // Read-only worklist. Jobs already assigned to a worker remain visible even if overdue.
 // Future scheduled jobs do not crowd today's assignments.
 export function employeeTodayWork(
-  work: readonly Pick<WorkOrder, 'id'|'property_id'|'assigned_to'|'priority'|'status'|'scheduled_for'|'due_on'>[],
+  work: readonly Pick<WorkOrder, 'id'|'title'|'property_id'|'assigned_to'|'priority'|'status'|'scheduled_for'|'due_on'>[],
   propertyId: string, today: string, employeeId: string,
 ) {
   return work.filter(w => w.property_id===propertyId && w.assigned_to===employeeId &&
