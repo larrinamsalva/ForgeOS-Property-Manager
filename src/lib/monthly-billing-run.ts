@@ -71,7 +71,8 @@ export function monthlyBillingRun(
       if (!period) return [];
       const checklist = siteBillingChecklist(site, stay, period, billing, meters);
       const invoices = billing.invoices.filter(i => i.property_id === propertyId &&
-        i.site_id === site.id && i.stay_id === stay.id && i.status !== 'voided' &&
+        i.site_id === site.id && i.stay_id === stay.id &&
+        (!i.customer_id || i.customer_id === stay.customer_id) && i.status !== 'voided' &&
         i.starts_on < period.endsOn && i.ends_on > period.startsOn)
         .map(i => ({
           id:i.id, number:i.number, status:i.status,
@@ -83,6 +84,12 @@ export function monthlyBillingRun(
       // requires review; never treat them as independent charges to send blindly.
       if (invoices.length > 1)
         warnings.push('Multiple overlapping invoices: review potential duplicate billing');
+      // Defensive review if an invoice linked to this stay refers to another customer.
+      // Never display the other customer's invoice details in this billing preview.
+      if (billing.invoices.some(i => i.property_id === propertyId && i.site_id === site.id &&
+        i.stay_id === stay.id && i.status !== 'voided' && i.customer_id &&
+        i.customer_id !== stay.customer_id && i.starts_on < period.endsOn && i.ends_on > period.startsOn))
+        warnings.push('Invoice customer mismatch: review account ownership before billing');
       if (stay.billing_period !== 'monthly')
         warnings.push('Non-monthly agreement: verify rent cadence');
       if (site.archived_at) warnings.push('Archived site');
