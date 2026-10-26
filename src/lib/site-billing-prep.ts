@@ -111,18 +111,23 @@ export function siteBillingChecklist(
     const occupancy = new Map(meters.occupancy.map(o => [o.reading_id, o]));
     // Each utility may have more than one meter/replacement; the most recent
     // reading alone is NOT enough to support safe usage-based billing.
-    const hasEvidence = assignments.length > 0 && assignments.every(a => {
+    const gaps = assignments.flatMap(a => {
       const readings = meters.readings.filter(r => r.assignment_id === a.id && r.meter_id === a.meter_id &&
         occupancy.get(r.id)?.stay_id === stay.id && occupancy.get(r.id)?.site_id === site.id);
-      return [period.startsOn, period.endsOn].every(day => readings.some(r =>
-        occupancy.get(r.id)?.captured_on === day &&
-        latestReview(r.id, meters.reviews)?.decision === 'accepted'));
+      return [period.startsOn, period.endsOn].flatMap((day, index) => {
+        const onDay = readings.filter(r => occupancy.get(r.id)?.captured_on === day);
+        if (onDay.some(r => latestReview(r.id, meters.reviews)?.decision === 'accepted')) return [];
+        const boundary = index === 0 ? 'opening' : 'closing';
+        return [boundary + ' reading ' + day + ': ' +
+          (onDay.length ? 'requires accepted review' : 'missing capture')];
+      });
     });
+    const hasEvidence = assignments.length > 0 && gaps.length === 0;
     items.push({
       label: utility + ' boundary readings',
       state: hasEvidence ? 'ok' : 'check',
       note: hasEvidence ? 'Approved boundary captures found; billing checks exceptions and complete history'
-        : assignments.length ? 'Review opening/closing readings or meter replacements for each assignment'
+        : assignments.length ? gaps.slice(0,4).join('; ') + (gaps.length > 4 ? '; plus ' + (gaps.length - 4) + ' additional gaps' : '')
           : 'No matching meter assignment for this billing period',
     });
   }
