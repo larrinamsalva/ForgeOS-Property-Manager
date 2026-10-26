@@ -4,8 +4,8 @@ import type { Reservation, Stay } from './domain';
 // are tasks to review, not proof that a resident has already moved out.
 export function dailyMoveChecklist(
   propertyId:string,today:string,
-  reservations:Pick<Reservation,'property_id'|'status'|'starts_on'>[],
-  stays:Pick<Stay,'property_id'|'starts_on'|'ends_on'|'planned_ends_on'>[],
+  reservations:readonly Pick<Reservation,'property_id'|'status'|'starts_on'>[],
+  stays:readonly Pick<Stay,'property_id'|'starts_on'|'ends_on'|'planned_ends_on'>[],
 ) {
   return {
     confirmedArrivals:reservations.filter(r=>r.property_id===propertyId &&
