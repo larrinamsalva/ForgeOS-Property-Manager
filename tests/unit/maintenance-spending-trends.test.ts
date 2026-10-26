@@ -19,10 +19,11 @@ describe('maintenance expense trend isolation',()=>{
    monthly:[{key:'park|2026-10',amountCents:'13500'}],
    categories:[{key:'park|Plumbing',amountCents:'12000'},{key:'park|Cleaning',amountCents:'1500'}],
    sites:[{key:'park|88',amountCents:'12000'}],
+   properties:[{key:'park',amountCents:'13500'}],
   });
  });
  it('honors inclusive date boundaries and does not include out-of-period expense entries',()=>{
-  expect(maintenanceSpendingTrends(work,costs,['park'],'2026-11-01','2026-11-30')).toEqual({monthly:[],categories:[],sites:[]});
+  expect(maintenanceSpendingTrends(work,costs,['park'],'2026-11-01','2026-11-30')).toEqual({monthly:[],categories:[],sites:[],properties:[]});
   expect(maintenanceSpendingTrends(work,costs,['park'],'2026-10-02','2026-10-02')).toEqual({
    monthly:[{key:'park|2026-10',amountCents:'12000'}],
    categories:[{key:'park|Plumbing',amountCents:'12000'}],
