@@ -1,4 +1,5 @@
 'use client';
+import { preventiveReminders } from '@/lib/preventive-reminders';
 import { maintenanceCloseoutQueue } from '@/lib/maintenance-closeout-queue';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
@@ -1329,6 +1330,8 @@ export function PlansPanel({
   ends: string;
   setRange: (start: string, end: string) => void;
 }) {
+  const reminderThrough = new Date(Date.parse(ui.today+'T00:00:00Z')+7*86400000).toISOString().slice(0,10);
+  const reminders = preventiveReminders(ui.data.equipment,ui.data.plans,ui.propertyId,ui.today,reminderThrough);
   const [calendarView, setCalendarView] = useState<'day' | 'week' | 'month'>('week');
   const [anchorDay, setAnchorDay] = useState(ui.today);
   const [employee, setEmployee] = useState('all');
@@ -1356,6 +1359,23 @@ export function PlansPanel({
   ])].sort();
   return (
     <>
+      <section className="panel" aria-label="Preventive maintenance due reminders">
+        <h2>Preventive maintenance reminders</h2>
+        <p>Equipment service dates and the next planned recurring occurrence for the next seven days. Recurring dates are reminders, not evidence that a saved task was missed.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Equipment service overdue</span><strong>{reminders.filter(x=>x.kind==='equipment'&&x.state==='overdue').length}</strong></div>
+          <div className="stat-card"><span>Due within seven days</span><strong>{reminders.filter(x=>x.state==='upcoming').length}</strong></div>
+        </div>
+        {!reminders.length?<p>No dated preventive equipment or active plan reminders found in this window.</p>:
+          <div className="table-wrap" role="region" aria-label="Upcoming preventive work" tabIndex={0}>
+            <table><thead><tr><th>Work</th><th>Type</th><th>Due</th><th>Status</th><th>Details</th></tr></thead>
+            <tbody>{reminders.map(item=><tr key={item.kind+item.id}>
+              <th scope="row">{item.label}</th><td>{item.kind==='equipment'?'Equipment service':'Recurring plan'}</td>
+              <td>{item.date}</td><td>{item.state==='overdue'?'Overdue':'Upcoming'}</td>
+              <td><button type="button" className="button secondary" onClick={()=>ui.open(item.kind==='equipment'?'equipment_detail':'save_plan',item.id)}>Open record</button></td>
+            </tr>)}</tbody></table>
+          </div>}
+      </section>
       <section className="panel">
         <div className="panel-heading">
           <div>
