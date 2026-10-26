@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
 import { opsLabel } from '@/lib/operations-domain';
+import { cents } from '@/lib/billing-domain';
 
 export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   organizationId: string; propertyId: string; siteId: string;
@@ -30,6 +31,9 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   const urgent = open.filter(item => item.priority === 'urgent' || item.priority === 'high');
   const completed = work.filter(item => item.status === 'completed' || item.status === 'closed');
   const staff = current?.data?.context.work ?? [];
+  const costs = current?.data?.summary.work_costs ?? [];
+  const actualFor = (id: string) => costs.find(row => row.id === id)?.actual_cents;
+  const recordedCost = completed.reduce((sum,item) => sum + BigInt(actualFor(item.id) ?? '0'),0n);
   return <section className="site-account-review" aria-label="Site maintenance summary">
     <h3>Site maintenance · live records</h3>
     {!current && <p role="status">Loading site maintenance…</p>}
@@ -39,19 +43,22 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
         <div className="stat-card"><span>Open work orders</span><strong>{open.length}</strong></div>
         <div className="stat-card"><span>Urgent / high priority</span><strong>{urgent.length}</strong></div>
         <div className="stat-card"><span>Completed records</span><strong>{completed.length}</strong></div>
+        <div className="stat-card"><span>Recorded actual costs (completed work)</span><strong>{cents(recordedCost)}</strong></div>
       </div>
       {!work.length ? <p>No maintenance work orders are currently linked to this space.</p> :
         <div className="table-wrap" role="region" aria-label="Maintenance history for this site" tabIndex={0}>
-          <table><thead><tr><th>Work order</th><th>Priority</th><th>Status</th><th>Assigned</th></tr></thead>
+          <table><thead><tr><th>Work order</th><th>Priority</th><th>Status</th><th>Requested / completed</th><th>Actual cost</th><th>Assigned</th></tr></thead>
           <tbody>{[...work].sort((a,b) => b.requested_on.localeCompare(a.requested_on)).slice(0,12).map(item => <tr key={item.id}>
             <th scope="row">{item.number}<small>{item.title}</small></th>
             <td>{opsLabel(item.priority)}</td><td>{opsLabel(item.status)}</td>
+            <td>{item.requested_on} / {item.completed_on ?? 'Not completed'}</td>
+            <td>{actualFor(item.id) === undefined ? 'Unavailable' : cents(actualFor(item.id)!)}</td>
             <td>{staff.find(person => person.id === item.id)?.assigned_name || 'Not assigned'}</td>
           </tr>)}</tbody></table>
         </div>}
       {work.length > 12 && <p className="muted small">Showing 12 most recent linked work orders. Open Maintenance for the full history.</p>}
     </>}
     <Link className="button secondary" href={'/maintenance?' + new URLSearchParams({ organization: organizationId, property: propertyId })}>Open Maintenance</Link>
-    <p className="muted small">This view uses authorized property maintenance records. It does not change work orders or mark repairs complete.</p>
+    <p className="muted small">Cost totals include recorded actual work-order costs for completed or closed repairs only; they are not estimates or proof of payment. Missing costs in individual rows are shown as unavailable, while the total sums recorded figures only. This view uses authorized property maintenance records and does not change work orders.</p>
   </section>;
 }
