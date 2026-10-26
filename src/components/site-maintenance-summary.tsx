@@ -11,7 +11,11 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   organizationId: string; propertyId: string; siteId: string;
 }) {
   const key = organizationId + ':' + propertyId + ':' + siteId;
+  const [since, setSince] = useState('');
   const [loaded, setLoaded] = useState<{ key: string; data?: OperationsSnapshot; error?: string } | null>(null);
+  useEffect(() => {
+    setSince(new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10));
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ organization: organizationId });
@@ -31,8 +35,7 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   const open = work.filter(item => !['completed', 'closed', 'cancelled'].includes(item.status));
   const urgent = open.filter(item => item.priority === 'urgent' || item.priority === 'high');
   const completed = work.filter(item => item.status === 'completed' || item.status === 'closed');
-  const since = new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10);
-  const repeatAlerts = siteRepeatRepairAlerts(work,propertyId,siteId,since);
+  const repeatAlerts = since ? siteRepeatRepairAlerts(work,propertyId,siteId,since) : [];
   const staff = current?.data?.context.work ?? [];
   const costs = current?.data?.summary.work_costs ?? [];
   const actualFor = (id: string) => costs.find(row => row.id === id)?.actual_cents;
