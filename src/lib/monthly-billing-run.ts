@@ -79,6 +79,10 @@ export function monthlyBillingRun(
           issued:!!accountByInvoice.get(i.id)?.issued_on,
         }));
       const warnings = checklist.filter(c => c.state === 'check').map(c => c.label);
+      // More than one non-voided invoice overlapping a stay and billing window
+      // requires review; never treat them as independent charges to send blindly.
+      if (invoices.length > 1)
+        warnings.push('Multiple overlapping invoices: review potential duplicate billing');
       if (stay.billing_period !== 'monthly')
         warnings.push('Non-monthly agreement: verify rent cadence');
       if (site.archived_at) warnings.push('Archived site');
