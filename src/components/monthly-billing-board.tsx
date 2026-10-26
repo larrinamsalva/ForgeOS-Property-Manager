@@ -7,6 +7,7 @@ import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { meterActionCsv } from '@/lib/meter-action-export';
+import { meterActions } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -93,6 +94,7 @@ export function MonthlyBillingBoard({
       (invoiceFilter !== 'draft' && invoiceFilter !== 'approved_unissued' && row.invoiceStage === invoiceFilter)) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
+  const tasks=meterActions(visible);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -135,18 +137,23 @@ export function MonthlyBillingBoard({
         <h3>Meter tasks for selected sites</h3>
         <p className="muted small">Read-only guidance from the billing precheck. Missing captures must be recorded; captured readings need supervisor review before billing.</p>
         {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:
-          <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
-            <table>
-              <thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Needed action</th></tr></thead>
-              <tbody>{visible.flatMap(row=>row.checklist.filter(item=>item.state==='check'&&
-                (item.label.includes('boundary readings')||item.label.includes('meter readings'))).map((item,i)=>(
-                <tr key={row.stayId+'-'+item.label+'-'+i}><td>{row.siteLabel}</td><td>{item.label.split(' ')[0]}</td><td>{item.note}</td></tr>
-              )))}</tbody>
-            </table>
-            {!visible.some(row=>row.checklist.some(item=>item.state==='check'&&
-              (item.label.includes('boundary readings')||item.label.includes('meter readings'))))&&
-              <p>No outstanding meter evidence tasks for the currently filtered sites.</p>}
-          </div>}
+          <>
+            <div className="monthly-billing-counts" aria-label="Visible meter task counts">
+              <span><strong>{tasks.filter(t=>t.kind==='capture').length}</strong> readings to capture</span>
+              <span><strong>{tasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
+              <span><strong>{tasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
+            </div>
+            {!tasks.length?<p>No outstanding meter evidence tasks for the currently filtered sites.</p>:
+              <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
+                <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th></tr></thead>
+                  <tbody>{tasks.map(task=><tr key={task.key}>
+                    <th scope="row">{task.siteLabel}</th><td>{task.utility}</td>
+                    <td>{task.kind==='capture'?'Capture':task.kind==='review'?'Review approval':'Inspect evidence'}</td>
+                    <td>{task.detail}</td>
+                  </tr>)}</tbody>
+                </table>
+              </div>}
+          </>}
       </section>
       <section aria-label="Billing readiness attention" className="panel">
         <h3>Billing readiness attention</h3>
