@@ -59,7 +59,10 @@ export function CustomerBillingFile({
               <thead><tr><th>Bill / period</th><th>Total billed</th><th>Applied payments</th><th>Remaining</th><th>Due / state</th></tr></thead>
               <tbody>{summary.bills.slice(0, 12).map((b) => <tr key={b.id}>
                 <th scope="row"><Link href={'/invoices/' + b.id}>{b.number}</Link>
-                  <small>{b.startsOn} to {b.endsOn} (exclusive)</small></th>
+                  <small>{b.startsOn} to {b.endsOn} (exclusive)</small>
+                  {b.chargeLines.length > 0 && <details><summary>View bill charges</summary><ul>
+                    {b.chargeLines.map((line, i) => <li key={i}>{line.description || line.category}: {cents(line.amountCents)}</li>)}
+                  </ul></details>}</th>
                 <td>{cents(b.statementCents)}</td>
                 <td>{cents(b.appliedCents)}</td>
                 <td><strong>{cents(b.balanceCents)}</strong></td>

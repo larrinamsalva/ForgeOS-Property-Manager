@@ -27,6 +27,33 @@ describe('customer monthly bill totals', () => {
   const voided = { ...data, invoices: [{...invoice, status:'voided' as const}] } as unknown as CollectionsSnapshot;
   expect(customerBillingSummary(voided, 'alice', 'park').bills).toHaveLength(0);
  });
+ it('shows rent, utility and fee details only from the issued invoice revision', () => {
+  const detailed = {
+    ...data,
+    revisions: [{
+      id: 'revision-1', total_cents: '100000',
+      calculation: { lines: [
+        {category:'rent', description:'Space 88 rent', total_cents:'65000'},
+        {category:'electric', description:'Approved electric', total_cents:'23500'},
+        {category:'water', description:'Approved water', total_cents:'7500'},
+        {category:'service', description:'Authorized service', total_cents:'4000'},
+      ] },
+    }],
+  } as unknown as CollectionsSnapshot;
+  const alice = customerBillingSummary(detailed, 'alice', 'park');
+  expect(alice.bills[0].chargeLines).toEqual([
+    {category:'rent',description:'Space 88 rent',amountCents:'65000'},
+    {category:'electric',description:'Approved electric',amountCents:'23500'},
+    {category:'water',description:'Approved water',amountCents:'7500'},
+    {category:'service',description:'Authorized service',amountCents:'4000'},
+  ]);
+  expect(alice.bills[0].statementCents).toBe('100000');
+  expect(alice.bills[0].appliedCents).toBe('25000');
+  expect(alice.bills[0].balanceCents).toBe('73000');
+  expect(customerBillingSummary(detailed,'bob','park').bills[0].id).toBe('two');
+  const unissued = { ...detailed, summary: {accounts:[{...account, issued_on:null}]} } as unknown as CollectionsSnapshot;
+  expect(customerBillingSummary(unissued,'alice','park').bills).toEqual([]);
+ });
  it('shows zero issued balance when no bill exists, never guesses rent', () => {
   expect(customerBillingSummary({ ...data, invoices: [] }, 'alice', 'park')).toMatchObject({
    bills: [], latestBillCents: null, totalOutstandingCents: '0'
