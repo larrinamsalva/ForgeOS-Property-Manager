@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
 import { opsLabel } from '@/lib/operations-domain';
 import { cents } from '@/lib/billing-domain';
+import { siteRepeatRepairAlerts } from '@/lib/site-repeat-repairs';
 
 export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   organizationId: string; propertyId: string; siteId: string;
@@ -30,6 +31,8 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
   const open = work.filter(item => !['completed', 'closed', 'cancelled'].includes(item.status));
   const urgent = open.filter(item => item.priority === 'urgent' || item.priority === 'high');
   const completed = work.filter(item => item.status === 'completed' || item.status === 'closed');
+  const since = new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10);
+  const repeatAlerts = siteRepeatRepairAlerts(work,propertyId,siteId,since);
   const staff = current?.data?.context.work ?? [];
   const costs = current?.data?.summary.work_costs ?? [];
   const actualFor = (id: string) => costs.find(row => row.id === id)?.actual_cents;
@@ -45,6 +48,14 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
         <div className="stat-card"><span>Completed records</span><strong>{completed.length}</strong></div>
         <div className="stat-card"><span>Recorded actual costs (completed work)</span><strong>{cents(recordedCost)}</strong></div>
       </div>
+      {repeatAlerts.length > 0 && <section className="ops-record" aria-label="Recurring repair category alerts">
+        <h4>Repeat repair patterns to investigate</h4>
+        <p>Three or more non-cancelled work orders in the same category during the past 365 days. These are review flags, not automatic diagnoses.</p>
+        <ul>{repeatAlerts.map(alert=><li key={alert.category}>
+          <strong>{opsLabel(alert.category)}</strong>: {alert.count} work orders · latest {alert.latest}
+        </li>)}</ul>
+        <Link href={'/maintenance?' + new URLSearchParams({organization:organizationId,property:propertyId})}>Review related repairs</Link>
+      </section>}
       {!work.length ? <p>No maintenance work orders are currently linked to this space.</p> :
         <div className="table-wrap" role="region" aria-label="Maintenance history for this site" tabIndex={0}>
           <table><thead><tr><th>Work order</th><th>Priority</th><th>Status</th><th>Requested / completed</th><th>Actual cost</th><th>Assigned</th></tr></thead>
