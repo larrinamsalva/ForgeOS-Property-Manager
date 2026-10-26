@@ -21,6 +21,14 @@ describe('maintenance expense trend isolation',()=>{
    sites:[{key:'park|88',amountCents:'12000'}],
   });
  });
+ it('honors inclusive date boundaries and does not include out-of-period expense entries',()=>{
+  expect(maintenanceSpendingTrends(work,costs,['park'],'2026-11-01','2026-11-30')).toEqual({monthly:[],categories:[],sites:[]});
+  expect(maintenanceSpendingTrends(work,costs,['park'],'2026-10-02','2026-10-02')).toEqual({
+   monthly:[{key:'park|2026-10',amountCents:'12000'}],
+   categories:[{key:'park|Plumbing',amountCents:'12000'}],
+   sites:[{key:'park|88',amountCents:'12000'}],
+  });
+ });
  it('hides unauthorized property records',()=>{
   expect(maintenanceSpendingTrends(work,costs,[],'2026-01-01')).toEqual({monthly:[],categories:[],sites:[]});
  });
