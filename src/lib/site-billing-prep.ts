@@ -33,6 +33,20 @@ export function suggestBillingPeriod(stay: Pick<Stay, 'starts_on' | 'ends_on'>, 
     isFutureClosing: endsOn > today,
   };
 }
+// Preview-only coverage check. Date ranges are [start, end); the database
+// remains authoritative for exact pricing, tiering and version eligibility.
+export function coversBillingPeriod(
+  plans: { starts_on: string; ends_on: string | null }[], startsOn: string, endsOn: string,
+): boolean {
+  let coveredUntil = startsOn;
+  for (const plan of [...plans].sort((a, b) => a.starts_on.localeCompare(b.starts_on))) {
+    if (plan.starts_on > coveredUntil) return false;
+    if (!plan.ends_on) return true;
+    if (plan.ends_on > coveredUntil) coveredUntil = plan.ends_on;
+    if (coveredUntil >= endsOn) return true;
+  }
+  return coveredUntil >= endsOn;
+}
 // An *advisory* checklist, never an alternative invoice calculator. The
 // PostgreSQL billing engine remains authoritative about boundaries, meter
 // replacements, taxes, rates, split intervals, credit and issuance.
@@ -73,12 +87,15 @@ export function siteBillingChecklist(
     const plans = billing.rates.filter(r => r.property_id === site.property_id &&
       r.utility === utility && r.status === 'active' &&
       r.starts_on < period.endsOn && (!r.ends_on || r.ends_on > period.startsOn));
+    const covered = coversBillingPeriod(plans, period.startsOn, period.endsOn);
     items.push({
       label: utility + ' rate schedule',
-      state: plans.length ? 'ok' : 'check',
-      note: plans.length
-        ? 'Rate version found; billing validates complete day-by-day coverage and conversions'
-        : 'Missing active rate schedule for this service period',
+      state: covered ? 'ok' : 'check',
+      note: covered
+        ? 'Active rate versions cover the period; billing validates prices and conversions'
+        : plans.length
+          ? 'Rate schedule has a gap in this billing period; review effective dates'
+          : 'Missing active rate schedule for this service period',
     });
     if (!meters) {
       items.push({label: utility + ' meter readings', state:'check', note:'Meter evidence unavailable; refresh before calculating'});
