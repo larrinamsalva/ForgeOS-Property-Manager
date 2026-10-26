@@ -28,9 +28,10 @@ describe('maintenance expense trend isolation',()=>{
    monthly:[{key:'park|2026-10',amountCents:'12000'}],
    categories:[{key:'park|Plumbing',amountCents:'12000'}],
    sites:[{key:'park|88',amountCents:'12000'}],
+   properties:[{key:'park',amountCents:'12000'}],
   });
  });
  it('hides unauthorized property records',()=>{
-  expect(maintenanceSpendingTrends(work,costs,[],'2026-01-01')).toEqual({monthly:[],categories:[],sites:[]});
+  expect(maintenanceSpendingTrends(work,costs,[],'2026-01-01')).toEqual({monthly:[],categories:[],sites:[],properties:[]});
  });
 });
