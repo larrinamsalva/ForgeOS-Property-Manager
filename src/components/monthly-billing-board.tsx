@@ -35,7 +35,7 @@ export function MonthlyBillingBoard({
 }) {
   const [filter, setFilter] = useState<'all'|MonthlyRunStatus>('all');
   const [invoiceFilter, setInvoiceFilter] = useState<'all'|MonthlyInvoiceStage>('all');
-  const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'rates'|'invoices'|'duplicates'|'policy'>('all');
+  const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'missing_capture'|'awaiting_review'|'rates'|'invoices'|'duplicates'|'policy'>('all');
   const [search,setSearch] = useState('');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
@@ -48,6 +48,8 @@ export function MonthlyBillingBoard({
   };
   const issueGroups = [
     {value:'readings' as const,label:'Meter readings to review',count:rows.filter(r=>r.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))).length},
+    {value:'missing_capture' as const,label:'Missing meter captures',count:rows.filter(r=>r.checklist.some(c=>c.label.includes('boundary readings')&&c.note.includes('missing capture'))).length},
+    {value:'awaiting_review' as const,label:'Meter approvals needed',count:rows.filter(r=>r.checklist.some(c=>c.label.includes('boundary readings')&&c.note.includes('requires accepted review'))).length},
     {value:'rates' as const,label:'Missing rate schedules',count:rows.filter(r=>r.warnings.some(w=>w.includes('rate schedule'))).length},
     {value:'invoices' as const,label:'Existing invoice overlap',count:rows.filter(r=>r.warnings.includes('Existing invoices')).length},
     {value:'duplicates' as const,label:'Possible duplicate invoices',count:rows.filter(r=>r.warnings.some(w=>w.includes('Multiple overlapping invoices'))).length},
@@ -55,6 +57,8 @@ export function MonthlyBillingBoard({
   ];
   const matchesIssue = (row: MonthlyRunRow) => issueFilter === 'all' ||
     (issueFilter === 'readings' && row.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))) ||
+    (issueFilter === 'missing_capture' && row.checklist.some(c=>c.label.includes('boundary readings')&&c.note.includes('missing capture'))) ||
+    (issueFilter === 'awaiting_review' && row.checklist.some(c=>c.label.includes('boundary readings')&&c.note.includes('requires accepted review'))) ||
     (issueFilter === 'rates' && row.warnings.some(w=>w.includes('rate schedule'))) ||
     (issueFilter === 'invoices' && row.warnings.includes('Existing invoices')) ||
     (issueFilter === 'duplicates' && row.warnings.some(w=>w.includes('Multiple overlapping invoices'))) ||
