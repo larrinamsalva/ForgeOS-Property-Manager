@@ -44,8 +44,8 @@ export function OverviewFinancialSnapshot({snapshot,propertyId,href}:{
      <div className="stat-card"><span>Remaining issued balances</span><strong>{cents(row.outstandingCents)}</strong></div>
      <div className="stat-card"><span>Past-due invoice accounts</span><strong>{row.overdueAccounts}</strong></div>
     </div>
-    <Link href={href('collections',row.propertyId)}>Review this property's collections</Link>
+    <Link href={href('collections',row.propertyId)}>Review this property&apos;s collections</Link>
    </article>)}
-  <p className="muted small">Issued totals and gross recorded payments are different measures. Payments may include unapplied funds; reversals, credits, adjustments and refunds affect the ledger balance. These are all-time snapshots, not this month's revenue. No deposits are counted as rent payments.</p>
+  <p className="muted small">Issued totals and gross recorded payments are different measures. Payments may include unapplied funds; reversals, credits, adjustments and refunds affect the ledger balance. These are all-time snapshots, not this month&apos;s revenue. No deposits are counted as rent payments.</p>
  </section>;
 }
