@@ -52,7 +52,7 @@ export function coversBillingPeriod(
 // replacements, taxes, rates, split intervals, credit and issuance.
 export function siteBillingChecklist(
   site: Pick<Site, 'id' | 'property_id' | 'electric' | 'water' | 'gas'>,
-  stay: Pick<Stay, 'id'>,
+  stay: Pick<Stay, 'id' | 'customer_id'>,
   period: BillingPeriodSuggestion,
   billing: Pick<BillingSnapshot, 'policies' | 'rates' | 'invoices'>,
   meters: Pick<MeterSnapshot, 'meters' | 'assignments' | 'readings' | 'reviews' | 'occupancy'> | null,
@@ -72,7 +72,8 @@ export function siteBillingChecklist(
       : period.startsOn + ' → ' + period.endsOn + ' (exclusive)',
   });
   const overlapping = billing.invoices.filter(i => i.stay_id === stay.id &&
-    i.site_id === site.id && i.status !== 'voided' &&
+    i.site_id === site.id && i.property_id === site.property_id &&
+    i.customer_id === stay.customer_id && i.status !== 'voided' &&
     i.starts_on < period.endsOn && i.ends_on > period.startsOn);
   items.push({
     label: 'Existing invoices',
@@ -80,7 +81,7 @@ export function siteBillingChecklist(
     note: overlapping.length
       ? overlapping.map(i => i.number + ' (' + i.status + ')').join(', ') +
         ' already covers some of this stay and period; review before creating another draft'
-      : 'No overlapping, non-voided invoice found for this stay',
+      : 'No matching customer invoice found for this stay; review the account before drafting',
   });
   for (const utility of ['electric', 'water', 'gas'] as const) {
     if (!site[utility]) continue;
