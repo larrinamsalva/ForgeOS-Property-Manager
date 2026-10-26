@@ -60,6 +60,7 @@ import { SitePhotoSummary } from './site-photo-summary';
 import { SiteAttentionCenter } from './site-attention-center';
 import { OverviewServiceAlerts } from './overview-service-alerts';
 import { OverviewBudgetAlerts } from './overview-budget-alerts';
+import { OverviewFinancialSnapshot } from './overview-financial-snapshot';
 import { EndOfDayReport } from './end-of-day-report';
 import { CustomerBillingFile } from './customer-billing-file';
 const BillingWorkspace = dynamic(() =>
@@ -1201,6 +1202,7 @@ export function Workspace({
               </section>
               <OverviewServiceAlerts snapshot={snapshot} propertyId={propertyId} href={href} />
               <OverviewBudgetAlerts snapshot={snapshot} propertyId={propertyId} href={href} />
+              <OverviewFinancialSnapshot snapshot={snapshot} propertyId={propertyId} href={href} />
               <EndOfDayReport snapshot={snapshot} propertyId={propertyId} href={href} />
               <OperationsMetrics snapshot={snapshot} propertyId={propertyId} />
               <Overview
