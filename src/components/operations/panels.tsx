@@ -1,3 +1,4 @@
+import { employeeTodayWork } from '@/lib/employee-today-work';
 'use client';
 import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
 import { MaintenanceMonthCalendar } from './maintenance-month-calendar';
@@ -926,6 +927,7 @@ export function EquipmentDetail({ ui, id }: { ui: OpsUI; id: string }) {
   );
 }
 export function DailyPanel({ ui }: { ui: OpsUI }) {
+  const assignedToday = employeeTodayWork(scoped(ui,ui.data.work),ui.propertyId,ui.today,ui.snapshot.userId);
   const [safetyFilter, setSafetyFilter] = useState<'all' | 'failed' | 'attention' | 'skipped'>('all');
   const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
   const openToday = todaysRuns.filter((run) => run.status === 'open');
@@ -978,6 +980,22 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
           </Action>
         )}
       </div>
+      <section className="ops-record" aria-label="My assigned work today">
+        <h3>My assigned work today · {ui.today}</h3>
+        <p>Open jobs assigned to your account, urgent and overdue first. Change job progress in Maintenance.</p>
+        {!assignedToday.length ? <p>No active work orders assigned to you for today.</p> :
+          <div className="table-wrap" role="region" aria-label="My daily assigned jobs" tabIndex={0}>
+            <table><thead><tr><th>Priority</th><th>Job</th><th>Due</th><th>Status</th><th>Details</th></tr></thead>
+              <tbody>{assignedToday.map(work=><tr key={work.id}>
+                <td>{opsLabel(work.priority)}</td>
+                <td>{work.title}</td>
+                <td>{work.due_on ?? 'Not set'}</td>
+                <td>{opsLabel(work.status)}</td>
+                <td><button type="button" className="button secondary" onClick={()=>ui.open('work_detail',work.id)}>View job</button></td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+      </section>
       <div className="ops-record" aria-label="Daily checklist progress">
         <h3>Today at a glance · {ui.today}</h3>
         <p>{todaysRuns.length} scheduled checklist runs · {openToday.length} open · {recordedToday}/{itemsToday} item results recorded</p>
