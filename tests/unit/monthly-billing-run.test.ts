@@ -65,6 +65,26 @@ describe('property monthly billing run does not post or invent invoice balances'
   // Other tenants sharing a site remain unaffected.
   expect(first.find(r=>r.stayId==='former')?.invoiceStage).toBe('none');
  });
+ it('flags overlapping customer invoices for review without affecting other stays',()=>{
+  const duplicated={...billing,invoices:[
+   {id:'inv-a',number:'A',property_id:'park',site_id:'s1',stay_id:'current',
+    status:'draft',starts_on:'2026-09-12',ends_on:'2026-10-01',current_revision_id:'rev-a'},
+   {id:'inv-b',number:'B',property_id:'park',site_id:'s1',stay_id:'current',
+    status:'approved',starts_on:'2026-09-15',ends_on:'2026-10-01',current_revision_id:'rev-b'},
+   {id:'inv-void',number:'VOID',property_id:'park',site_id:'s1',stay_id:'current',
+    status:'voided',starts_on:'2026-09-12',ends_on:'2026-10-01',current_revision_id:'rev-void'},
+   {id:'other-stay',number:'OLD',property_id:'park',site_id:'s1',stay_id:'former',
+    status:'approved',starts_on:'2026-09-01',ends_on:'2026-09-12',current_revision_id:'rev-old'},
+  ]} as unknown as BillingSnapshot;
+  const rows=monthlyBillingRun('park','2026-09','2026-10-23',sites,stays,duplicated,null);
+  const current=rows.find(r=>r.stayId==='current')!;
+  expect(current.status).toBe('existing');
+  expect(current.invoiceStage).toBe('mixed');
+  expect(current.invoices.map(i=>i.id)).toEqual(['inv-a','inv-b']);
+  expect(current.warnings).toContain('Multiple overlapping invoices: review potential duplicate billing');
+  expect(rows.find(r=>r.stayId==='former')?.warnings).not.toContain('Multiple overlapping invoices: review potential duplicate billing');
+  expect(rows.find(r=>r.stayId==='s2stay')?.status).toBe('ready');
+ });
  it('rejects unrelated and invalid month requests',()=>{
   expect(monthlyBillingRun('other','2026-08','2026-10-23',sites,stays,billing,null)).toEqual([]);
   expect(suggestedMonthPeriod(stays[1],'2026-13','2026-10-23',15)).toBeNull();
