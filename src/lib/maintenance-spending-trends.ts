@@ -11,17 +11,18 @@ export function maintenanceSpendingTrends(
 ) {
   const authorized=new Set(propertyIds);
   const orders=new Map(work.filter(w=>authorized.has(w.property_id)).map(w=>[w.id,w]));
-  const month=new Map<string,bigint>(), category=new Map<string,bigint>(), site=new Map<string,bigint>();
+  const month=new Map<string,bigint>(), category=new Map<string,bigint>(), site=new Map<string,bigint>(), property=new Map<string,bigint>();
   for(const cost of costs){
     const order=orders.get(cost.work_order_id);
     if(!order||cost.property_id!==order.property_id||cost.kind!=='expense'||(cost.created_at.slice(0,10)<startsOn || cost.created_at.slice(0,10)>endsOn))continue;
     const amount=BigInt(cost.amount_cents);
     const add=(map:Map<string,bigint>,key:string)=>map.set(key,(map.get(key)??0n)+amount);
+    add(property,order.property_id);
     add(month,order.property_id+'|'+cost.created_at.slice(0,7));
     add(category,order.property_id+'|'+(order.category.trim()||'Uncategorized'));
     if(order.site_id)add(site,order.property_id+'|'+order.site_id);
   }
   const rows=(map:Map<string,bigint>)=>[...map].map(([key,amount])=>({key,amountCents:amount.toString()}))
     .sort((a,b)=>BigInt(b.amountCents)>BigInt(a.amountCents)?1:BigInt(b.amountCents)<BigInt(a.amountCents)?-1:a.key.localeCompare(b.key));
-  return {monthly:rows(month),categories:rows(category),sites:rows(site)};
+  return {monthly:rows(month),categories:rows(category),sites:rows(site),properties:rows(property)};
 }
