@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import {paymentReceiptAudit} from '@/lib/payment-receipt-audit';
 import { useEffect, useState } from 'react';
 import { Receipt, RefreshCw, Plus, Download } from 'lucide-react';
 import {
@@ -151,6 +152,7 @@ export function CollectionsWorkspace({
   const policy = inProperty(data?.policies).sort(
     (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)
   )[0];
+  const auditIssues=data?paymentReceiptAudit(data,selectedProperty,customerId):[];
   const totals = agingTotals(accounts);
   const followups = openFollowups(notes, today);
   const issuedAccounts = accounts.filter(a => !!a.issued_on && a.state !== 'voided');
@@ -1007,6 +1009,11 @@ export function CollectionsWorkspace({
           )}
           {tab === 'payments' && (
             <section className="panel">
+              {auditIssues.length>0&&<div role="status" className="ops-overdue">
+                <strong>{auditIssues.length} payment/receipt record warning{auditIssues.length===1?'':'s'} to review</strong>
+                <ul>{auditIssues.slice(0,10).map(issue=><li key={issue.key}>{issue.message}</li>)}</ul>
+                {auditIssues.length>10&&<p>Additional records need review.</p>}
+              </div>}
               <div className="panel-heading">
                 <div>
                   <h2>Payments & unapplied funds</h2>
