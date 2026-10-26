@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import {accountBalanceReview} from '@/lib/account-balance-review';
 import {paymentReceiptAudit} from '@/lib/payment-receipt-audit';
 import { useEffect, useState } from 'react';
 import { Receipt, RefreshCw, Plus, Download } from 'lucide-react';
@@ -153,6 +154,7 @@ export function CollectionsWorkspace({
     (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)
   )[0];
   const auditIssues=data?paymentReceiptAudit(data,selectedProperty,customerId):[];
+  const balanceIssues=data?accountBalanceReview(data.summary.accounts,selectedProperty,customerId):[];
   const totals = agingTotals(accounts);
   const followups = openFollowups(notes, today);
   const issuedAccounts = accounts.filter(a => !!a.issued_on && a.state !== 'voided');
@@ -1009,6 +1011,11 @@ export function CollectionsWorkspace({
           )}
           {tab === 'payments' && (
             <section className="panel">
+              {balanceIssues.length>0&&<div role="status" className="ops-overdue">
+                <strong>{balanceIssues.length} invoice balance inconsistency warning{balanceIssues.length===1?'':'s'} to investigate</strong>
+                <ul>{balanceIssues.slice(0,10).map(issue=><li key={issue.key}>{issue.number}: {issue.message}</li>)}</ul>
+                {balanceIssues.length>10&&<p>Additional invoices require review.</p>}
+              </div>}
               {auditIssues.length>0&&<div role="status" className="ops-overdue">
                 <strong>{auditIssues.length} payment/receipt record warning{auditIssues.length===1?'':'s'} to review</strong>
                 <ul>{auditIssues.slice(0,10).map(issue=><li key={issue.key}>{issue.message}</li>)}</ul>
