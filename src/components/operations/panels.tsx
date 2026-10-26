@@ -1,4 +1,5 @@
 'use client';
+import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
 import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
@@ -932,6 +933,7 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
   const [safetyFilter, setSafetyFilter] = useState<'all' | 'failed' | 'attention' | 'skipped'>('all');
   const todaysRuns = scoped(ui, ui.data.runs).filter((run) => run.scheduled_for === ui.today);
   const openToday = todaysRuns.filter((run) => run.status === 'open');
+  const employeeProgress = employeeChecklistProgress(todaysRuns,ui.data.entries,ui.today);
   const itemsToday = todaysRuns.reduce((total, run) => total + run.items.length, 0);
   const recordedToday = todaysRuns.reduce((total, run) => total + run.items.filter((item) =>
     ['done', 'skipped'].includes(checklistState(ui.data.entries, run.id, item.key)?.status ?? '')
@@ -1007,6 +1009,19 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
         <p>{todaysRuns.length} scheduled checklist runs · {openToday.length} open · {recordedToday}/{itemsToday} item results recorded</p>
         <p>Recorded includes completed and explicitly skipped items; a skipped item is not the same as completed work.</p>
       </div>
+      {ui.manage && <section className="ops-record" aria-label="Employee checklist completion by assignee">
+        <h3>Supervisor checklist progress by employee</h3>
+        <p>Saved results for today. Skipped and reopened items are not counted as completed.</p>
+        {!employeeProgress.length ? <p>No active checklist runs scheduled today.</p> :
+        <div className="table-wrap" role="region" aria-label="Daily employee checklist progress" tabIndex={0}>
+          <table><thead><tr><th>Employee</th><th>Runs</th><th>Completed</th><th>Skipped / review</th><th>Remaining</th></tr></thead>
+          <tbody>{employeeProgress.map(row=><tr key={row.assigneeId}>
+            <th scope="row">{ui.data.staff.find(staff=>staff.user_id===row.assigneeId && staff.property_id===ui.propertyId)?.name ?? (row.assigneeId==='unassigned'?'Unassigned':'Assigned employee')}</th>
+            <td>{row.runs}</td><td>{row.done}</td><td>{row.skipped}</td><td><strong>{row.remaining}</strong></td>
+          </tr>)}</tbody></table>
+        </div>}
+        <p>Open the walkthrough below to review who recorded each item and when; employee totals are for the selected property only.</p>
+      </section>}
       <section className="ops-record" aria-label="Daily property walkthrough progress">
         <h3>Property walkthrough progress</h3>
         <p>Today&apos;s assigned checklist runs for RV sites, apartments and common areas. A skipped check is recorded but still needs review; these counts do not certify an inspection as passed.</p>
