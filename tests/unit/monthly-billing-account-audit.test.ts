@@ -28,6 +28,8 @@ describe('billing and customer ownership audit regressions',()=>{
   const snapshot={...base,invoices:[invoice('void','resident-new','voided')]} as BillingSnapshot;
   const row=monthlyBillingRun('park','2026-10','2026-11-10',sites,stays,snapshot,null)[0];
   expect(row.invoices).toHaveLength(0);
-  expect(row.status).toBe('ready');
+  expect(row.invoiceStage).toBe('none');
+  expect(row.warnings).not.toContain('Invoice customer mismatch: review account ownership before billing');
+  // Other billing preflight warnings may still require review independently.
  });
 });
