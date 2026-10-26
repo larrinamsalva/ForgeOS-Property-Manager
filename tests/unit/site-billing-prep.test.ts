@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggestBillingPeriod, siteBillingChecklist } from '../../src/lib/site-billing-prep';
+import { suggestBillingPeriod, siteBillingChecklist, coversBillingPeriod } from '../../src/lib/site-billing-prep';
 import type { Site, Stay } from '../../src/lib/domain';
 import type { BillingSnapshot } from '../../src/lib/billing-domain';
 import type { MeterSnapshot } from '../../src/lib/meter-domain';
@@ -49,6 +49,24 @@ describe('site-focused monthly billing preparation',()=>{
   const pending={...meter,reviews:meter.reviews.slice(0,1)};
   expect(siteBillingChecklist(site,stay,period,billing,pending)
     .find(i=>i.label==='electric boundary readings')?.state).toBe('check');
+ });
+ it('flags rate gaps, but accepts adjacent active versions covering the whole period',()=>{
+  const withRates=(rates: object[])=>({...billing,rates} as unknown as BillingSnapshot);
+  const september={...period,startsOn:'2026-09-01',endsOn:'2026-10-01'};
+  const partial=withRates([{property_id:'property',utility:'electric',status:'active',starts_on:'2026-09-10',ends_on:null}]);
+  const gap=siteBillingChecklist(site,stay,september,partial,meter).find(i=>i.label==='electric rate schedule');
+  expect(gap?.state).toBe('check');
+  expect(gap?.note).toContain('gap');
+  const continuous=withRates([
+    {property_id:'property',utility:'electric',status:'active',starts_on:'2026-09-15',ends_on:'2026-10-01'},
+    {property_id:'property',utility:'electric',status:'active',starts_on:'2026-09-01',ends_on:'2026-09-15'},
+  ]);
+  expect(siteBillingChecklist(site,stay,september,continuous,meter)
+    .find(i=>i.label==='electric rate schedule')?.state).toBe('ok');
+  expect(coversBillingPeriod([
+    {starts_on:'2026-09-01',ends_on:'2026-09-12'},
+    {starts_on:'2026-09-13',ends_on:'2026-10-01'},
+  ],'2026-09-01','2026-10-01')).toBe(false);
  });
  it('warns of existing draft/issued overlap and missing policy',()=>{
   const data={...billing,policies:[], invoices:[{id:'invoice',stay_id:'stay',site_id:'site',
