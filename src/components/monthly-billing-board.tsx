@@ -35,7 +35,7 @@ export function MonthlyBillingBoard({
 }) {
   const [filter, setFilter] = useState<'all'|MonthlyRunStatus>('all');
   const [invoiceFilter, setInvoiceFilter] = useState<'all'|MonthlyInvoiceStage>('all');
-  const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'rates'|'invoices'|'policy'>('all');
+  const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'rates'|'invoices'|'duplicates'|'policy'>('all');
   const [search,setSearch] = useState('');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
@@ -50,12 +50,14 @@ export function MonthlyBillingBoard({
     {value:'readings' as const,label:'Meter readings to review',count:rows.filter(r=>r.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))).length},
     {value:'rates' as const,label:'Missing rate schedules',count:rows.filter(r=>r.warnings.some(w=>w.includes('rate schedule'))).length},
     {value:'invoices' as const,label:'Existing invoice overlap',count:rows.filter(r=>r.warnings.includes('Existing invoices')).length},
+    {value:'duplicates' as const,label:'Possible duplicate invoices',count:rows.filter(r=>r.warnings.some(w=>w.includes('Multiple overlapping invoices'))).length},
     {value:'policy' as const,label:'Billing policy checks',count:rows.filter(r=>r.warnings.includes('Property billing policy')).length},
   ];
   const matchesIssue = (row: MonthlyRunRow) => issueFilter === 'all' ||
     (issueFilter === 'readings' && row.warnings.some(w=>w.includes('boundary readings') || w.includes('meter readings'))) ||
     (issueFilter === 'rates' && row.warnings.some(w=>w.includes('rate schedule'))) ||
     (issueFilter === 'invoices' && row.warnings.includes('Existing invoices')) ||
+    (issueFilter === 'duplicates' && row.warnings.some(w=>w.includes('Multiple overlapping invoices'))) ||
     (issueFilter === 'policy' && row.warnings.includes('Property billing policy'));
   const names = new Map(snapshot.customers.filter(c => c.property_id === propertyId)
     .map(c => [c.id, customerName(c)]));
@@ -127,6 +129,19 @@ export function MonthlyBillingBoard({
             }}>{group.label} ({group.count})</button>)}
         </div>
       </section>
+      <div className="monthly-billing-counts" role="group" aria-label="Filter monthly billing overview">
+        {([
+          {value:'all',label:'Stays this month',count:totals.all},
+          {value:'ready',label:'Precheck clear',count:totals.ready},
+          {value:'review',label:'Needs review',count:totals.review},
+          {value:'existing',label:'Have invoices',count:totals.existing},
+        ] as const).map(card=><button key={card.value} type="button"
+          className={`button ${filter===card.value && invoiceFilter==='all' && issueFilter==='all'?'primary':'secondary'}`}
+          aria-pressed={filter===card.value && invoiceFilter==='all' && issueFilter==='all'}
+          onClick={()=>{setFilter(card.value);setInvoiceFilter('all');setIssueFilter('all');}}>
+          <strong>{card.count}</strong> {card.label}
+        </button>)}
+      </div>
       <div className="monthly-billing-counts" role="group" aria-label="Monthly billing status counts">
         <span><strong>{totals.all}</strong> stays</span>
         <span><strong>{totals.ready}</strong> precheck clear</span>
@@ -157,6 +172,9 @@ export function MonthlyBillingBoard({
               <th scope="row">
                 <strong>{row.siteLabel}</strong>
                 <small>{names.get(row.customerId) ?? 'Customer unavailable'}</small>
+                <Link className="monthly-issue-link" href={'/customers?' + new URLSearchParams({
+                  organization:snapshot.organizationId,property:propertyId,
+                })}>Customer records</Link>
               </th>
               <td>{row.period.startsOn} → {row.period.endsOn}
                 <small>Due {row.period.dueOn}</small></td>
