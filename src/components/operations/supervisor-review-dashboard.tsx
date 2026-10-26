@@ -33,6 +33,8 @@ export function SupervisorReviewDashboard({ui}:{ui:OpsUI}){
   });
   return ()=>controller.abort();
  },[organization,property,runIds]);
+ const outstanding=result.rows.filter(row=>{ const w=ui.data.work.find(w=>w.id===row.workId); return !w || (w.property_id===property && !['completed','closed','cancelled'].includes(w.status)); });
+ const unassigned=outstanding.filter(row=>{ const w=ui.data.work.find(w=>w.id===row.workId); return w && !w.assigned_to; });
  const completed=result.rows.filter(row=>{
   const work=ui.data.work.find(w=>w.id===row.workId);
   return work&&work.property_id===property&&['completed','closed'].includes(work.status);
@@ -47,10 +49,28 @@ export function SupervisorReviewDashboard({ui}:{ui:OpsUI}){
   {result.state==='unavailable'&&<p role="alert">Supervisor review records are unavailable. No verification status can be assumed.</p>}
   {result.state==='ready'&&<>
    <div className="stat-grid">
+    <div className="stat-card"><span>Open or unavailable linked repairs</span><strong>{outstanding.length}</strong></div>
+    <div className="stat-card"><span>Unassigned linked repairs</span><strong>{unassigned.length}</strong></div>
     <div className="stat-card"><span>Completed repairs awaiting review</span><strong>{pending.length}</strong></div>
     <div className="stat-card"><span>Needs more work</span><strong>{needsWork.length}</strong></div>
     <div className="stat-card"><span>Latest review verified</span><strong>{verified.length}</strong></div>
    </div>
+   <details open={outstanding.length>0}>
+    <summary>Open linked repair follow-ups ({outstanding.length})</summary>
+    {!outstanding.length&&<p>No open linked repairs found in the checked inspection runs.</p>}
+    {outstanding.slice(0,30).map(row=>{
+     const work=ui.data.work.find(w=>w.id===row.workId && w.property_id===property);
+     const employee=ui.data.staff.find(staff=>staff.property_id===property && staff.user_id===work?.assigned_to);
+     return <article className="ops-history" key={row.id}>
+      <strong>{work?.number??'Unavailable repair'} · {work?.title??'Work order unavailable'}</strong>
+      <p>Status: {work?.status.replaceAll('_',' ')??'Unavailable'} · Priority: {work?.priority??'Unknown'} · Assigned to: {employee?.name??(work?.assigned_to?'Assigned employee':'Unassigned')}</p>
+      <p>Due: {work?.due_on??'Not set'}</p>
+      {work&&<button type="button" className="text-button" onClick={()=>ui.open('work_detail',work.id)}>Open repair work order</button>}
+      {' '}
+      <button type="button" className="text-button" onClick={()=>ui.open('run_detail',row.runId)}>Open linked inspection</button>
+     </article>;
+    })}
+   </details>
    <details>
     <summary>Review completed linked repairs ({completed.length})</summary>
     {!completed.length&&<p>No completed linked repairs found in the checked inspection runs.</p>}
