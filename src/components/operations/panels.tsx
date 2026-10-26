@@ -1,4 +1,5 @@
 'use client';
+import { maintenanceCloseoutQueue } from '@/lib/maintenance-closeout-queue';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -67,6 +68,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
     { value: 'completed', label: 'Awaiting closeout', count: completedCount },
     { value: 'closed', label: 'Closed', count: scoped(ui, ui.data.work).filter(w => w.status === 'closed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length },
   ];
+  const closeout = maintenanceCloseoutQueue(scoped(ui,ui.data.work),ui.data.photos,ui.data.events,ui.propertyId,ui.today);
   const todayDue = activeWork.filter(w => w.due_on === ui.today).length;
   const futureDue = activeWork.filter(w => !!w.due_on && w.due_on > ui.today).length;
   const noDueDate = activeWork.filter(w => !w.due_on).length;
@@ -113,6 +115,26 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
         <div className="stat-card"><span>Waiting for parts</span><strong>{awaitingParts}</strong></div>
         {!mineOnly && <div className="stat-card"><span>Unassigned jobs</span><strong>{unassignedCount}</strong></div>}
       </div>
+      {!mineOnly && ui.manage && <section className="ops-record" aria-label="Maintenance completion supervisor review">
+        <h3>Supervisor maintenance closeout</h3>
+        <p>Review completed repairs, saved work notes, and uploaded before-and-after photos before approving closure. Reopening and approval use existing work-order controls.</p>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Awaiting approval</span><strong>{closeout.filter(row=>row.awaitingApproval).length}</strong></div>
+          <div className="stat-card"><span>Closed repairs</span><strong>{closeout.filter(row=>!row.awaitingApproval).length}</strong></div>
+          <div className="stat-card"><span>Finished today</span><strong>{closeout.filter(row=>row.completedToday).length}</strong></div>
+        </div>
+        {!closeout.length?<p>No completed maintenance jobs in this property&apos;s loaded records.</p>:
+          <div className="table-wrap" role="region" aria-label="Maintenance approval and evidence" tabIndex={0}>
+            <table><thead><tr><th>Repair</th><th>Review</th><th>Before / after photos</th><th>Notes</th><th>Details</th></tr></thead>
+            <tbody>{closeout.slice(0,30).map(row=><tr key={row.work.id}>
+              <th scope="row">{row.work.number} · {row.work.title}</th>
+              <td>{row.awaitingApproval?'Awaiting supervisor approval':'Closed'}</td>
+              <td>{row.before} / {row.after}</td><td>{row.notes}</td>
+              <td><button type="button" className="button secondary" onClick={()=>ui.open('work_detail',row.work.id)}>Review repair</button></td>
+            </tr>)}</tbody></table>
+          </div>}
+        <p>Photo counts indicate uploaded records, not verified repair quality. Closing a work order is separate from inspection recheck sign-off.</p>
+      </section>}
       <p>Active jobs appear first: urgent, overdue, high priority, then others. Completed and closed jobs remain in history. Summary counts cover this property independently of search and status filters.</p>
       <div className="stat-grid" aria-label="Maintenance scheduling overview">
         <div className="stat-card"><span>Due today</span><strong>{todayDue}</strong></div>
