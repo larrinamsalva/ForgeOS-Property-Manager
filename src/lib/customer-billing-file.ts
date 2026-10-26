@@ -10,6 +10,7 @@ export interface CustomerBillRow {
   statementCents: string;
   appliedCents: string;
   balanceCents: string;
+  chargeLines: { category: string; description: string; amountCents: string }[];
 }
 export interface CustomerBillingSummary {
   bills: CustomerBillRow[];
@@ -39,6 +40,9 @@ export function customerBillingSummary(
       dueOn: a.due_on ?? invoice.due_on, status: a.state,
       statementCents: revision.total_cents, appliedCents: a.allocated_cents,
       balanceCents: a.outstanding_cents,
+      chargeLines: (revision.calculation?.lines ?? []).map(line => ({
+        category: line.category, description: line.description, amountCents: line.total_cents,
+      })),
     }];
   }).sort((a, b) => b.startsOn.localeCompare(a.startsOn) || b.number.localeCompare(a.number));
   const receipts = data.receipts.filter((r) => r.customer_id === customerId &&
