@@ -3,7 +3,7 @@ export interface MeterAction {key:string;siteLabel:string;utility:string;kind:'c
 export function meterActions(rows:readonly MonthlyRunRow[]):MeterAction[]{
  return rows.flatMap(row=>row.checklist.filter(item=>item.state==='check'&&
  (item.label.includes('boundary readings')||item.label.includes('meter readings'))).flatMap(item=>{
- const segments=item.note.split(';').map(part=>part.trim()).filter(Boolean);
+ const segments=item.note.includes('reading ') ? item.note.split(';').map(part=>part.trim()).filter(Boolean) : [item.note];
  return segments.map((detail,i)=>({
  key:row.stayId+':'+item.label+':'+i,siteLabel:row.siteLabel,utility:item.label.split(' ')[0],
  kind:detail.includes('missing capture')?'capture' as const:
