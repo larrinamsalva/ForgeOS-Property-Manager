@@ -25,7 +25,7 @@ export function OverviewMaintenanceSpending({snapshot,propertyId,href}:{
  },[key]);
  if(!properties.length)return null;
  const active=state.key===key?state:null;
- const start=(new Date().getUTCFullYear()-1)+'-01-01';
+ const start='2000-01-01';
  const totals=active?.data?maintenanceSpendingTrends(active.data.work,active.data.costs,properties.map(p=>p.id),start):null;
  const propertyName=(id:string)=>properties.find(p=>p.id===id)?.name??'Property';
  const show=(entries:{key:string;amountCents:string}[],type:'month'|'category'|'site')=>
