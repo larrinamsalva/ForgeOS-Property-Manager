@@ -131,6 +131,23 @@ export function MonthlyBillingBoard({
           onClick={downloadMeterActions}>Download meter action list (CSV)</button>
         <p className="muted small">Exports only the rows on screen, with their review warnings, existing invoice states and recorded totals. Keep this resident information private.</p>
       </div>
+      <section className="panel" aria-label="Meter action preview">
+        <h3>Meter tasks for selected sites</h3>
+        <p className="muted small">Read-only guidance from the billing precheck. Missing captures must be recorded; captured readings need supervisor review before billing.</p>
+        {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:
+          <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
+            <table>
+              <thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Needed action</th></tr></thead>
+              <tbody>{visible.flatMap(row=>row.checklist.filter(item=>item.state==='check'&&
+                (item.label.includes('boundary readings')||item.label.includes('meter readings'))).map((item,i)=>(
+                <tr key={row.stayId+'-'+item.label+'-'+i}><td>{row.siteLabel}</td><td>{item.label.split(' ')[0]}</td><td>{item.note}</td></tr>
+              )))}</tbody>
+            </table>
+            {!visible.some(row=>row.checklist.some(item=>item.state==='check'&&
+              (item.label.includes('boundary readings')||item.label.includes('meter readings'))))&&
+              <p>No outstanding meter evidence tasks for the currently filtered sites.</p>}
+          </div>}
+      </section>
       <section aria-label="Billing readiness attention" className="panel">
         <h3>Billing readiness attention</h3>
         <p className="muted small">Counts are advisory checks for this month, not invoices or automatic billing approvals. A stay can appear in more than one category.</p>
