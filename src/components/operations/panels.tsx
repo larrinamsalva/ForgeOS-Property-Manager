@@ -1,3 +1,4 @@
+import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 'use client';
 import { employeeTodayWork } from '@/lib/employee-today-work';
 import { SupervisorReviewDashboard } from './supervisor-review-dashboard';
@@ -980,6 +981,11 @@ export function DailyPanel({ ui }: { ui: OpsUI }) {
           </Action>
         )}
       </div>
+      {ui.manage && ui.active && <section className="ops-record" aria-label="Cleaning checklist templates">
+        <h3>Start from a cleaning or inspection template</h3>
+        <p>Choose a template, then review its items, site, schedule and employee assignment before saving. Nothing is assigned automatically.</p>
+        <div className="button-row">{propertyChecklistTemplates.map(template=><button className="button secondary" type="button" key={template.id} onClick={()=>ui.open('save_plan',undefined,undefined,'template:'+template.id)}>{template.label}</button>)}</div>
+      </section>}
       <section className="ops-record" aria-label="My assigned work today">
         <h3>My assigned work today · {ui.today}</h3>
         <p>Open jobs assigned to your account, urgent and overdue first. Change job progress in Maintenance.</p>
