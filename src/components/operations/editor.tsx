@@ -1,5 +1,6 @@
 'use client';
 import { Modal } from '../modal';
+import { propertyChecklistTemplate } from '@/lib/property-checklist-templates';
 import { RecordForm, type Field } from '../record-form';
 import { PurchaseForm } from './purchase-form';
 import { WorkPhotoForm } from './work-photos';
@@ -222,6 +223,7 @@ export function OperationsEditor({
       });
   }
   if (editor.type === 'save_plan') {
+    const template = !plan && editor.value?.startsWith('template:') ? propertyChecklistTemplate(editor.value.slice(9)) : undefined;
     title = plan ? 'Edit recurring plan' : 'Add recurring plan';
     description =
       'Create each due occurrence explicitly from the calendar. Intervals count calendar days (30 days is not a calendar month). Generated work and checklist snapshots are retained when a plan changes.';
@@ -231,12 +233,12 @@ export function OperationsEditor({
         label: 'Plan type',
         type: 'select',
         options: choices(['maintenance', 'checklist']),
-        default: plan?.kind ?? editor.value ?? 'maintenance',
+        default: plan?.kind ?? (template ? 'checklist' : editor.value) ?? 'maintenance',
         required: true,
       },
-      { name: 'label', label: 'Plan name', required: true, default: plan?.label ?? '' },
+      { name: 'label', label: 'Plan name', required: true, default: plan?.label ?? template?.label ?? '' },
       { name: 'description', label: 'Plan instructions', type: 'textarea', default: plan?.description ?? '' },
-      { name: 'category', label: 'Plan category', default: plan?.category ?? '' },
+      { name: 'category', label: 'Plan category', default: plan?.category ?? template?.category ?? '' },
       {
         name: 'site_id',
         label: 'Related site (optional)',
@@ -268,7 +270,7 @@ export function OperationsEditor({
         name: 'items_text',
         label: 'Checklist items (one per line)',
         type: 'textarea',
-        default: plan?.items.join('\n') ?? '',
+        default: plan?.items.join('\n') ?? template?.items.join('\n') ?? '',
         help: 'Required for checklist plans. Maximum 50 items; each up to 200 characters.',
       },
       { name: 'active', label: 'Plan active', type: 'checkbox', default: plan?.active ?? true },
