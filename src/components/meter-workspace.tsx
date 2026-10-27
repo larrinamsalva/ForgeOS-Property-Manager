@@ -7,6 +7,7 @@ import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/do
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { filterMeterReadingWorklist, filterMeterReadingsBySite, filterMeterReadingsByUtility, filterMeterReadingsByCaptureMonth, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
 import { sortMeterReadingWorklist, type MeterReadingOrder } from '@/lib/meter-reading-order';
+import { filteredMeterReadingCsv } from '@/lib/meter-reading-export';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
 import { Empty } from './workspace-parts';
@@ -125,6 +126,17 @@ export function MeterWorkspace({
     ? filterMeterReadingWorklist(monthReadings, reviews, historyMeterId, true, attentionReason)
     : meterScopedReadings;
   const orderedReadings = sortMeterReadingWorklist(visibleReadings, assignments, readingOrder);
+  function downloadReadingList() {
+    if(!data || !orderedReadings.length) return;
+    const propertyName=property?.name ?? 'Property';
+    const content=filteredMeterReadingCsv(propertyName,orderedReadings,data.meters,assignments,reviews);
+    const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download='forgeos-meter-readings-'+(captureMonth || 'all-months')+'.csv';
+    anchor.click();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   const attentionReasons: {value:MeterAttentionReason;label:string}[] = [
     {value:'all',label:'All attention reasons'},
     {value:'unreviewed',label:'Awaiting review'},
@@ -844,7 +856,13 @@ export function MeterWorkspace({
                   setReadingOrder('newest');
                   setCaptureMonth('');
                 }}>Clear review filters</button>
+                <button type="button" className="button secondary small"
+                  disabled={!orderedReadings.length || loading || navigationPending}
+                  onClick={downloadReadingList}>
+                  Download visible meter readings (CSV)
+                </button>
               </div>
+              <p className="muted small">Exports exactly the displayed readings in their current order, including site, meter, capture value, status and exceptions. This private operational report excludes resident identities, notes, photos and record IDs; do not share it publicly.</p>
               <p className="muted small" role="status">Showing {orderedReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter, capture month, attention and sort filters.</p>
               {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
