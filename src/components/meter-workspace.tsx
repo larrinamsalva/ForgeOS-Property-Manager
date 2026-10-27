@@ -5,7 +5,7 @@ import type { Snapshot } from '@/lib/domain';
 import type { MeterView, MeterUtility } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
-import { filterMeterReadingWorklist, filterMeterReadingsBySite, filterMeterReadingsByUtility, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
+import { filterMeterReadingWorklist, filterMeterReadingsBySite, filterMeterReadingsByUtility, filterMeterReadingsByCaptureMonth, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
 import { sortMeterReadingWorklist, type MeterReadingOrder } from '@/lib/meter-reading-order';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
@@ -40,6 +40,7 @@ export function MeterWorkspace({
   const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
   const [historyUtility, setHistoryUtility] = useState<'all'|MeterUtility>(initialUtility ?? 'all');
   const [readingOrder, setReadingOrder] = useState<MeterReadingOrder>('newest');
+  const [captureMonth, setCaptureMonth] = useState('');
   // When a billing approval task opens a site, start with readings needing follow-up.
   // Generic meter navigation and reading-history links still start with all readings.
   const [attentionOnly, setAttentionOnly] = useState(initialTab === 'review' && !!initialSiteId);
@@ -115,10 +116,13 @@ export function MeterWorkspace({
   const focusedSite = historySiteId ? snapshot.sites.find(s=>s.id===historySiteId && s.property_id===selectedProperty) : undefined;
   const siteReadings = filterMeterReadingsBySite(readings, assignments, historySiteId);
   const utilityReadings = filterMeterReadingsByUtility(siteReadings, data?.meters ?? [], historyUtility);
-  const meterScopedReadings = filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, false);
-  const meterAttentionReadings = filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, true);
+  const monthReadings = filterMeterReadingsByCaptureMonth(
+    utilityReadings,captureMonth,property?.timezone ?? 'America/Los_Angeles',
+  );
+  const meterScopedReadings = filterMeterReadingWorklist(monthReadings, reviews, historyMeterId, false);
+  const meterAttentionReadings = filterMeterReadingWorklist(monthReadings, reviews, historyMeterId, true);
   const visibleReadings = attentionOnly
-    ? filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, true, attentionReason)
+    ? filterMeterReadingWorklist(monthReadings, reviews, historyMeterId, true, attentionReason)
     : meterScopedReadings;
   const orderedReadings = sortMeterReadingWorklist(visibleReadings, assignments, readingOrder);
   const attentionReasons: {value:MeterAttentionReason;label:string}[] = [
@@ -409,6 +413,7 @@ export function MeterWorkspace({
             onChange={(e) => {
               setSelectedProperty(e.target.value);
               setEditor(null);
+              setCaptureMonth('');
               setHistoryMeterId('');
               setHistorySiteId('');
               setHistoryUtility('all');
@@ -454,6 +459,7 @@ export function MeterWorkspace({
             </div>
             <button type="button" className="button secondary" onClick={() => {
               setTab('review');
+              setCaptureMonth('');
               setHistoryMeterId('');
               setHistorySiteId('');
               setHistoryUtility('all');
@@ -481,6 +487,7 @@ export function MeterWorkspace({
             aria-pressed={tab === id}
             onClick={() => {
               setTab(id as MeterView);
+              setCaptureMonth('');
               setHistoryMeterId('');
               setHistorySiteId('');
               setHistoryUtility('all');
@@ -688,6 +695,7 @@ export function MeterWorkspace({
                                 {meter && <button type="button" className="button secondary small" onClick={() => {
                                   setHistorySiteId('');
                                   setHistoryUtility('all');
+                                  setCaptureMonth('');
                                   setHistoryMeterId(meter.id);
                                   setTab('history');
                                 }}>View meter history</button>}
@@ -770,7 +778,7 @@ export function MeterWorkspace({
                 <select aria-label="Meter attention reason filter" value={attentionReason}
                   onChange={(e)=>setAttentionReason(e.target.value as MeterAttentionReason)}>
                   {attentionReasons.map(reason=><option key={reason.value} value={reason.value}>
-                    {reason.label} ({filterMeterReadingWorklist(utilityReadings,reviews,historyMeterId,true,reason.value).length})
+                    {reason.label} ({filterMeterReadingWorklist(monthReadings,reviews,historyMeterId,true,reason.value).length})
                   </option>)}
                 </select>
               </label>}
@@ -811,6 +819,12 @@ export function MeterWorkspace({
                 </select>
               </label>
               {focusedSite && <p className="muted small">Site focus: {focusedSite.label}. This shows captured readings only; missing capture tasks must be completed in the tablet reader.</p>}
+              <label className="history-meter-filter">
+                Capture month (property local time)
+                <input aria-label="Meter capture month filter" type="month" value={captureMonth}
+                  min="2000-01" max="2100-12" onChange={(e)=>setCaptureMonth(e.target.value)} />
+              </label>
+              <p className="muted small">Capture month uses the property time zone, not your device clock. It filters collected readings only, not billing due dates or reading approvals. Leave blank for all months.</p>
               <div className="action-group">
                 <label className="history-meter-filter">
                   Reading order
@@ -828,12 +842,13 @@ export function MeterWorkspace({
                   setAttentionOnly(false);
                   setAttentionReason('all');
                   setReadingOrder('newest');
+                  setCaptureMonth('');
                 }}>Clear review filters</button>
               </div>
-              <p className="muted small" role="status">Showing {orderedReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter, attention and sort filters.</p>
+              <p className="muted small" role="status">Showing {orderedReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter, capture month, attention and sort filters.</p>
               {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
-                  {attentionOnly ? 'Choose another site, meter or attention reason, or select All readings.' : 'Select another site or meter, or collect readings using the tablet reader.'}
+                  {attentionOnly ? 'Try another month, site, meter or attention reason, or select All readings.' : 'Try another capture month, site or meter, or collect readings using the tablet reader.'}
                 </Empty>
               ) : (
                 <div className="table-wrap" role="region" aria-label="Meter reading history" tabIndex={0}>
