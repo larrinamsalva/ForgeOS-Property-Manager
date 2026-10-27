@@ -17,6 +17,11 @@ export function filterMeterActionsByUtility(actions:readonly MeterAction[],utili
 }
 
 export type MeterView = 'directory'|'routes'|'review'|'history';
+export type MeterUtility = 'electric'|'water'|'gas';
+
+export function meterUtilityFromQuery(value:string|undefined):MeterUtility|undefined{
+ return value==='electric'||value==='water'||value==='gas'?value:undefined;
+}
 
 // Allow only known tabs when navigating from another workspace.
 export function meterViewFromQuery(value:string|undefined):MeterView|undefined{
@@ -25,7 +30,7 @@ export function meterViewFromQuery(value:string|undefined):MeterView|undefined{
 
 // Link to an existing authorized workflow, not an automatic meter write or approval.
 export function meterTaskDestination(
- kind:MeterAction['kind'],organizationId:string,propertyId:string,siteId?:string,
+ kind:MeterAction['kind'],organizationId:string,propertyId:string,siteId?:string,utility?:string,
 ){
  if(kind==='capture'){
   return {href:'/tablet/index.html?'+new URLSearchParams({organization:organizationId}),
@@ -34,6 +39,8 @@ export function meterTaskDestination(
  const view=kind==='review'?'review':'history';
  const params=new URLSearchParams({organization:organizationId,property:propertyId,view});
  if(siteId) params.set('site',siteId);
+ const validUtility=meterUtilityFromQuery(utility);
+ if(validUtility) params.set('utility',validUtility);
  return {href:'/meters?'+params,
   label:kind==='review'?'Open supervisor review':'Open reading history'};
 }
