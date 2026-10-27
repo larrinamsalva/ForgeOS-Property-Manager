@@ -7,6 +7,7 @@ import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
 import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
 import { existingRestockRequests } from '@/lib/existing-restock-requests';
 import { incomingDeliveryLines, incomingDeliveriesLink, incomingDeliveryOrderLink } from '@/lib/incoming-deliveries';
+import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -73,6 +74,9 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
   const incomingByProperty=new Map(authorized.map(property=>[
     property.id,incoming.filter(row=>row.order.property_id===property.id).length,
   ]));
+  const supplyCoverage=incomingStockCoverage(lowStock,incoming);
+  const shortagesWithoutPlacedOrders=supplyCoverage.filter(row=>!row.placedOrderIds.length).length;
+  const shortagesWithLateOrders=supplyCoverage.filter(row=>row.overdueOrderCount>0).length;
   const oneProperty=authorized.length===1?authorized[0]:null;
   const attentionTarget=(triage:'overdue'|'unassigned')=>oneProperty
     ?propertyMaintenanceTriageLink(snapshot.organizationId,oneProperty.id,triage)
@@ -95,6 +99,18 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       <div className="stat-card"><span>Supplies at reorder threshold</span><strong>{metric(operations,lowStock.length)}</strong>
         <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
           {oneProperty?'Review low-stock items':'Choose property below'}
+        </Link>
+      </div>
+      <div className="stat-card"><span>Low-stock supplies with no placed order</span>
+        <strong>{metric(operations,shortagesWithoutPlacedOrders)}</strong>
+        <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
+          {oneProperty?'Review uncovered shortages':'See shortages by property'}
+        </Link>
+      </div>
+      <div className="stat-card"><span>Low-stock supplies with delayed orders</span>
+        <strong>{metric(operations,shortagesWithLateOrders)}</strong>
+        <Link href={oneProperty?incomingDeliveriesLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
+          {oneProperty?'Review delayed supply orders':'See shortages by property'}
         </Link>
       </div>
       <div className="stat-card"><span>Supplier lines awaiting receipt</span>
@@ -175,7 +191,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
     </div>
     <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
       <h3>Supplies needing restock</h3>
-      <p>Live stock balances at or below the saved reorder threshold, grouped by authorized property. Suggested quantities aim for each item&apos;s recorded restock target; they are not orders.</p>
+      <p>Live stock balances at or below the saved reorder threshold, grouped by authorized property. Placed-order quantities are listed separately from physical on-hand stock; the gap assumes all outstanding units eventually arrive, which is not guaranteed.</p>
       {operations.status==='ready' ? <>
         <div className="action-group">
           {authorized.map(property=><Link className="button secondary" key={property.id}
@@ -188,8 +204,8 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
             <p role="status">Showing {Math.min(lowStock.length,8)} of {lowStock.length} supplies to check, with out-of-stock items first.</p>
             <div className="table-wrap" role="region" aria-label="Current low-stock shopping priorities" tabIndex={0}>
               <table>
-                <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Existing requests</th><th>Action</th></tr></thead>
-                <tbody>{lowStock.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock})=>{
+                <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Existing requests</th><th>Placed orders / projected gap</th><th>Action</th></tr></thead>
+                <tbody>{supplyCoverage.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock,outstandingOnOrderMilli,gapIfReceivedMilli,placedOrderIds,overdueOrderCount,missingEtaOrderCount})=>{
                   const requests=existingRestockRequests(operations.data?.requests??[],item.property_id,item.id);
                   return <tr key={item.id}>
                     <th scope="row">{authorized.find(p=>p.id===item.property_id)?.name??'Property'}
@@ -198,7 +214,17 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
                     <td>{quantity(item.reorder_milli)} {item.unit}</td>
                     <td>{quantity(suggestedMilli)} {item.unit}</td>
                     <td>{requests.count ? `${requests.count} active request(s)` : 'None recorded'}</td>
-                    <td><Link href={lowStockInventoryLink(snapshot.organizationId,item.property_id)}>Review stock / request restock</Link></td>
+                    <td>{placedOrderIds.length ? <>
+                      <strong>{quantity(outstandingOnOrderMilli)} {item.unit} still on order</strong>
+                      <small>{placedOrderIds.length} placed order(s){overdueOrderCount? ` · ${overdueOrderCount} late`:''}{missingEtaOrderCount? ` · ${missingEtaOrderCount} no ETA`:''}</small>
+                    </> : 'No placed order recorded'}
+                      <small>{quantity(gapIfReceivedMilli)} {item.unit} target gap if delivered</small>
+                    </td>
+                    <td><Link href={lowStockInventoryLink(snapshot.organizationId,item.property_id)}>Review stock / request restock</Link>
+                      {placedOrderIds.length>0&&<Link href={placedOrderIds.length===1
+                        ?incomingDeliveryOrderLink(snapshot.organizationId,item.property_id,placedOrderIds[0])
+                        :incomingDeliveriesLink(snapshot.organizationId,item.property_id)}>Review placed order{placedOrderIds.length===1?'':'s'}</Link>}
+                    </td>
                   </tr>;
                 })}</tbody>
               </table>
@@ -206,7 +232,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
           </>
         }
       </>:<p role="status">{operations.status==='loading'?'Checking stock and reorder levels…':'Supply records unavailable; no quantities assumed.'}</p>}
-      <p className="muted small">Existing request counts include open, approved and marked-ordered records; they do not guarantee delivery. Stock comes from saved movements, not physical counts. Verify stock and supplier prices before submitting more requests. These shortcuts never create purchases.</p>
+      <p className="muted small">Placed order totals count only unreceived quantities from manually recorded orders. They do not increase available stock; the projected gap is conditional on full future delivery. Existing requests are a separate record and never treated as a supplier order. Verify physical stock and actual arrivals before making a purchase; these shortcuts perform no writes.</p>
     </div>
     <div id="incoming-deliveries-handoff" className="ops-record" aria-label="Incoming supply deliveries by property">
       <h3>Incoming supply deliveries</h3>
