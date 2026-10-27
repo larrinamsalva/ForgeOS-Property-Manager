@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Gauge, Tablet, Plus, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { Snapshot } from '@/lib/domain';
-import type { MeterView } from '@/lib/meter-actions';
+import { filterMeterHistoryReadings, type MeterView } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { Modal } from './modal';
@@ -16,11 +16,13 @@ export function MeterWorkspace({
   propertyId,
   navigationPending,
   initialTab,
+  initialSiteId,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
   initialTab?: MeterView;
+  initialSiteId?: string;
 }) {
   const [data, setData] = useState<MeterSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -31,6 +33,7 @@ export function MeterWorkspace({
   const [selectedProperty, setSelectedProperty] = useState(propertyId || snapshot.properties[0]?.id || '');
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
+  const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [editor, setEditor] = useState<{ type: string; id?: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
@@ -99,6 +102,11 @@ export function MeterWorkspace({
   const pending = readings.filter((r) => !latestReview(r.id, reviews));
   const exceptions = readings.filter((r) => r.exceptions.length > 0);
   const needsAttention = readings.filter((r) => !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none');
+  const siteMeterReadings = filterMeterHistoryReadings(readings, assignments, reviews, {
+    siteId: historySiteId, meterId: historyMeterId,
+  });
+  const attentionReadings = filterMeterHistoryReadings(siteMeterReadings, assignments, reviews, {attentionOnly:true});
+  const displayedReadings = attentionOnly ? attentionReadings : siteMeterReadings;
   const damagedMeters = readings.filter((r) => ['damaged', 'missing', 'problem', 'reset'].includes(r.flag));
   const today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
   function renderEditor() {
@@ -379,6 +387,8 @@ export function MeterWorkspace({
             value={selectedProperty}
             onChange={(e) => {
               setSelectedProperty(e.target.value);
+              setHistorySiteId('');
+              setHistoryMeterId('');
               setEditor(null);
             }}
           >
@@ -719,10 +729,23 @@ export function MeterWorkspace({
               )}
               <div className="quick-actions" role="group" aria-label="Reading attention filter">
                 <button type="button" className={`button ${attentionOnly ? 'secondary' : 'primary'}`}
-                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({readings.length})</button>
+                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({siteMeterReadings.length})</button>
                 <button type="button" className={`button ${attentionOnly ? 'primary' : 'secondary'}`}
-                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({needsAttention.length})</button>
+                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({attentionReadings.length})</button>
               </div>
+              <label className="history-meter-filter">
+                Meter history site
+                <select aria-label="Meter history site filter" value={historySiteId} onChange={(e) => {
+                  setHistorySiteId(e.target.value);
+                  setHistoryMeterId('');
+                }}>
+                  <option value="">All sites at this property</option>
+                  {snapshot.sites
+                    .filter(site => site.property_id === selectedProperty)
+                    .sort((a, b) => a.label.localeCompare(b.label, undefined, {numeric:true}))
+                    .map(site => <option key={site.id} value={site.id}>{site.label}</option>)}
+                </select>
+              </label>
               <label className="history-meter-filter">
                 Meter history filter
                 <select value={historyMeterId} onChange={(e) => setHistoryMeterId(e.target.value)}>
@@ -736,7 +759,7 @@ export function MeterWorkspace({
                     ))}
                 </select>
               </label>
-              {!readings.filter((r) => (!historyMeterId || r.meter_id === historyMeterId) && (!attentionOnly || !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none')).length ? (
+              {!displayedReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings needing attention' : 'No readings collected'}>
                   Use the tablet reader to collect an assigned route.
                 </Empty>
@@ -756,8 +779,7 @@ export function MeterWorkspace({
                       </tr>
                     </thead>
                     <tbody>
-                      {readings
-                        .filter((r) => !historyMeterId || r.meter_id === historyMeterId)
+                      {displayedReadings
                         .map((r) => {
                           const m = data.meters.find((m) => m.id === r.meter_id);
                           const a = assignments.find((a) => a.id === r.assignment_id);
