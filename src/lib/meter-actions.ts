@@ -49,3 +49,19 @@ export function sortMeterTasks(actions:readonly MeterAction[],sort:MeterTaskSort
   return primary||site(a,b)||boundary(a,b)||a.utility.localeCompare(b.utility)||a.kind.localeCompare(b.kind)||a.key.localeCompare(b.key);
  });
 }
+
+export type MeterTaskDateFilter = 'all'|'before'|'today'|'after'|'undated';
+
+// A reading boundary is not a payment deadline. Compare property-local calendar
+// dates only; do not imply a past boundary is a late payment or a billing charge.
+export function filterMeterTasksByDate(
+ actions:readonly MeterAction[],filter:MeterTaskDateFilter,today:string,
+):MeterAction[]{
+ if(filter==='all') return [...actions];
+ return actions.filter(task=>{
+  const date=meterTaskBoundaryDate(task);
+  if(filter==='undated') return !date;
+  if(!date) return false;
+  return filter==='before'?date<today:filter==='today'?date===today:date>today;
+ });
+}
