@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
-import { customerName, type Snapshot } from '@/lib/domain';
+import { customerName, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { filteredMeterActionCsv } from '@/lib/meter-action-export';
-import { meterActions, filterMeterActionsByUtility, meterTaskDestination, sortMeterTasks, type MeterTaskSort } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility, filterMeterTasksByDate, meterTaskDestination, sortMeterTasks, type MeterTaskSort, type MeterTaskDateFilter } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -42,6 +42,7 @@ export function MonthlyBillingBoard({
   const [meterUtility,setMeterUtility] = useState<'all'|'electric'|'water'|'gas'>('all');
   const [meterAction,setMeterAction] = useState<'all'|'capture'|'review'|'inspect'>('all');
   const [meterSort,setMeterSort] = useState<MeterTaskSort>('site');
+  const [meterDate,setMeterDate] = useState<MeterTaskDateFilter>('all');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
@@ -98,7 +99,9 @@ export function MonthlyBillingBoard({
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
   const utilityTasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
-  const tasks=sortMeterTasks(utilityTasks.filter(task=>meterAction==='all'||task.kind===meterAction),meterSort);
+  const propertyToday=dateAtProperty(snapshot.properties.find(p=>p.id===propertyId)?.timezone ?? 'America/Los_Angeles');
+  const dateTasks=filterMeterTasksByDate(utilityTasks,meterDate,propertyToday);
+  const tasks=sortMeterTasks(dateTasks.filter(task=>meterAction==='all'||task.kind===meterAction),meterSort);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -150,20 +153,36 @@ export function MonthlyBillingBoard({
             <option value="all">All actions</option><option value="capture">Capture readings</option><option value="review">Review approvals</option><option value="inspect">Other evidence checks</option>
           </select>
         </label>
+        <label>Reading boundary date
+          <select aria-label="Meter task boundary date filter" value={meterDate} onChange={e=>setMeterDate(e.target.value as MeterTaskDateFilter)}>
+            <option value="all">All boundary dates</option>
+            <option value="before">Before today</option>
+            <option value="today">Today</option>
+            <option value="after">After today</option>
+            <option value="undated">No boundary date recorded</option>
+          </select>
+        </label>
         <label>Sort meter tasks
           <select aria-label="Meter task sort order" value={meterSort} onChange={e=>setMeterSort(e.target.value as MeterTaskSort)}>
             <option value="site">Site number</option><option value="boundary">Boundary date (earliest first)</option>
             <option value="utility">Utility</option><option value="action">Action type</option>
           </select>
         </label>
+        <div className="action-group">
+          <button type="button" className="button secondary small" disabled={navigationPending} onClick={()=>{
+            setMeterUtility('all');setMeterAction('all');setMeterDate('all');setMeterSort('site');
+          }}>Reset meter task filters</button>
+        </div>
+        <p className="muted small">Date groups use the property local date ({propertyToday}); a past reading boundary is not a payment deadline.</p>
         {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:
           <>
             <div className="monthly-billing-counts" aria-label="Visible meter task counts">
-              <span><strong>{utilityTasks.filter(t=>t.kind==='capture').length}</strong> readings to capture</span>
-              <span><strong>{utilityTasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
-              <span><strong>{utilityTasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
+              <span><strong>{dateTasks.filter(t=>t.kind==='capture').length}</strong> readings to capture</span>
+              <span><strong>{dateTasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
+              <span><strong>{dateTasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
             </div>
-            {!tasks.length?<p>No outstanding meter evidence tasks for the currently filtered sites.</p>:
+            <p className="muted small">Showing {tasks.length} of {utilityTasks.length} meter tasks for the selected sites and utility. The meter CSV exports only these {tasks.length} displayed tasks.</p>
+            {!tasks.length?<p>No meter evidence tasks match these site, utility, action and date filters.</p>:
               <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
                 <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Next step</th></tr></thead>
                   <tbody>{tasks.map(task=>{
