@@ -10,7 +10,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string; create?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -69,6 +69,7 @@ export default async function Page({
       meterSiteId={meterSiteId}
       maintenanceSiteId={maintenanceSiteId}
       maintenanceWorkId={maintenanceWorkId}
+      maintenanceCreate={section === 'maintenance' && !!maintenanceSiteId && !maintenanceWorkId && query.create === 'repair'}
       meterUtility={meterUtility}
     />
   );
