@@ -38,3 +38,20 @@ export function focusedSiteWorkOrder<T extends Pick<WorkOrder,'id'|'property_id'
  if(!workId || workId.length>128 || !propertyId || !siteId)return undefined;
  return orders.find(order=>order.id===workId&&order.property_id===propertyId&&order.site_id===siteId);
 }
+
+/** Only allow a writable site at this property as a new work order default.
+ * A site ID is never inferred from its label or from the current occupant. */
+export function maintenanceFormSiteDefault<T extends {
+ id:string;property_id:string;archived_at?:string|null
+}>(sites:readonly T[],propertyId:string,requestedSiteId:string|undefined):string{
+ return requestedSiteId && sites.some(site=>
+  site.id===requestedSiteId&&site.property_id===propertyId&&!site.archived_at)
+  ? requestedSiteId : '';
+}
+
+/** Navigation only; creating a repair requires the existing authenticated form. */
+export function siteMaintenanceCreateLink(organizationId:string,propertyId:string,siteId:string):string{
+ return '/maintenance?'+new URLSearchParams({
+  organization:organizationId,property:propertyId,site:siteId,create:'repair',
+ });
+}
