@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '@/lib/domain';
 import { canEditProperty, dateAtProperty } from '@/lib/domain';
-import type { OperationsSnapshot } from '@/lib/operations-domain';
+import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
+import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -57,6 +58,12 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
     const site=siteId?siteFor(siteId,propertyId):undefined;
     return site?.label??'Property / common area';
   };
+  const lowStock=operations.data
+    ?lowStockInventory(operations.data.items,operations.data.summary.stock,[...authorizedIds])
+    :[];
+  const lowStockByProperty=new Map(authorized.map(property=>[
+    property.id,lowStock.filter(row=>row.item.property_id===property.id).length,
+  ]));
   const oneProperty=authorized.length===1?authorized[0]:null;
   const attentionTarget=(triage:'overdue'|'unassigned')=>oneProperty
     ?propertyMaintenanceTriageLink(snapshot.organizationId,oneProperty.id,triage)
@@ -76,6 +83,11 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         <Link href={attentionTarget('overdue')}>{oneProperty?'Review overdue queue':'Choose a property below'}</Link></div>
       <div className="stat-card"><span>Unassigned work orders</span><strong>{metric(operations, unassigned)}</strong>
         <Link href={attentionTarget('unassigned')}>{oneProperty?'Review unassigned queue':'Choose a property below'}</Link></div>
+      <div className="stat-card"><span>Supplies at reorder threshold</span><strong>{metric(operations,lowStock.length)}</strong>
+        <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
+          {oneProperty?'Review low-stock items':'Choose property below'}
+        </Link>
+      </div>
       <div className="stat-card"><span>Meter readings reviewed</span><strong>{metric(meters, reviewedReadings)}</strong>
         <Link href={href('meters')}>View meter history</Link></div>
       <div className="stat-card"><span>Meter readings awaiting review</span><strong>{metric(meters, pendingReviews)}</strong>
@@ -145,6 +157,38 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         </>
       ):<p role="status">{operations.status==='loading'?'Checking maintenance priorities…':'Maintenance details unavailable; no repair entries assumed.'}</p>}
       <p className="muted small">A space-linked repair opens its existing authorized details. Common-area or no-longer-listed site repairs open the property queue instead; no action is taken until staff review and save changes.</p>
+    </div>
+    <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
+      <h3>Supplies needing restock</h3>
+      <p>Live stock balances at or below the saved reorder threshold, grouped by authorized property. Suggested quantities aim for each item&apos;s recorded restock target; they are not orders.</p>
+      {operations.status==='ready' ? <>
+        <div className="action-group">
+          {authorized.map(property=><Link className="button secondary" key={property.id}
+            href={lowStockInventoryLink(snapshot.organizationId,property.id)}>
+            {property.name}: {lowStockByProperty.get(property.id)??0} low-stock items
+          </Link>)}
+        </div>
+        {!lowStock.length?<p>Nothing currently meets a reorder threshold in these properties.</p>:
+          <>
+            <p role="status">Showing {Math.min(lowStock.length,8)} of {lowStock.length} supplies to check, with out-of-stock items first.</p>
+            <div className="table-wrap" role="region" aria-label="Current low-stock shopping priorities" tabIndex={0}>
+              <table>
+                <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Action</th></tr></thead>
+                <tbody>{lowStock.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock})=>
+                  <tr key={item.id}>
+                    <th scope="row">{authorized.find(p=>p.id===item.property_id)?.name??'Property'}
+                      <small>{item.name} · {item.sku}{outOfStock?' · Out of stock':''}</small></th>
+                    <td>{quantity(availableMilli)} {item.unit}</td>
+                    <td>{quantity(item.reorder_milli)} {item.unit}</td>
+                    <td>{quantity(suggestedMilli)} {item.unit}</td>
+                    <td><Link href={lowStockInventoryLink(snapshot.organizationId,item.property_id)}>Review stock / request restock</Link></td>
+                  </tr>)}</tbody>
+              </table>
+            </div>
+          </>
+        }
+      </>:<p role="status">{operations.status==='loading'?'Checking stock and reorder levels…':'Supply records unavailable; no quantities assumed.'}</p>}
+      <p className="muted small">Stock comes from saved movements, not physical counts. Verify stock, supplier availability and prices before placing purchases. These shortcuts do not create purchase requests.</p>
     </div>
     <p>Readings due on a schedule will be added only when verified route requirements are available.</p>
   </section>;

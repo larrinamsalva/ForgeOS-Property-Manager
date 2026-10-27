@@ -139,6 +139,7 @@ export function Workspace({
   maintenanceWorkId,
   maintenanceCreate,
   maintenanceTriage,
+  inventoryLowStock,
 }: {
   snapshot: Snapshot;
   section: string;
@@ -152,6 +153,7 @@ export function Workspace({
   maintenanceWorkId?: string;
   maintenanceCreate?: boolean;
   maintenanceTriage?: MaintenanceTriage;
+  inventoryLowStock?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1250,6 +1252,7 @@ export function Workspace({
               initialWorkId={section === 'maintenance' ? maintenanceWorkId : undefined}
               initialCreate={section === 'maintenance' && maintenanceCreate}
               initialTriage={section === 'maintenance' ? maintenanceTriage : undefined}
+              initialLowStock={section === 'inventory' && inventoryLowStock}
             />
           ) : section === 'collections' ? (
             <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending}
