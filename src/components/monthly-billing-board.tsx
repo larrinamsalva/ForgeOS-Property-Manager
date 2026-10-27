@@ -7,7 +7,7 @@ import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { meterActionCsv } from '@/lib/meter-action-export';
-import { meterActions } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -95,7 +95,7 @@ export function MonthlyBillingBoard({
       (invoiceFilter !== 'draft' && invoiceFilter !== 'approved_unissued' && row.invoiceStage === invoiceFilter)) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
-  const tasks=meterActions(visible).filter(task=>meterUtility==='all'||task.utility===meterUtility);
+  const tasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
