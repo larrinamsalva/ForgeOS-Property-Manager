@@ -65,3 +65,31 @@ export function filterMeterTasksByDate(
   return filter==='before'?date<today:filter==='today'?date===today:date>today;
  });
 }
+
+export interface MeterSiteTaskOption {siteId:string;label:string;count:number}
+
+// The billing board can contain multiple stays at the same physical site in
+// one month. Group by site ID, never by resident name or a potentially reused label.
+export function meterSiteTaskOptions(
+ actions:readonly MeterAction[],rows:readonly Pick<MonthlyRunRow,'stayId'|'siteId'|'siteLabel'>[],
+):MeterSiteTaskOption[]{
+ const stayToSite=new Map(rows.map(row=>[row.stayId,{siteId:row.siteId,label:row.siteLabel}]));
+ const counts=new Map<string,MeterSiteTaskOption>();
+ for(const task of actions){
+  const stay=stayToSite.get(task.key.split(':')[0]);
+  if(!stay) continue;
+  const existing=counts.get(stay.siteId);
+  if(existing) existing.count++;
+  else counts.set(stay.siteId,{siteId:stay.siteId,label:stay.label,count:1});
+ }
+ return [...counts.values()].sort((a,b)=>
+  a.label.localeCompare(b.label,undefined,{numeric:true})||a.siteId.localeCompare(b.siteId));
+}
+
+export function filterMeterTasksBySite(
+ actions:readonly MeterAction[],rows:readonly Pick<MonthlyRunRow,'stayId'|'siteId'>[],siteId:string,
+):MeterAction[]{
+ if(siteId==='all') return [...actions];
+ const stayIds=new Set(rows.filter(row=>row.siteId===siteId).map(row=>row.stayId));
+ return actions.filter(task=>stayIds.has(task.key.split(':')[0]));
+}

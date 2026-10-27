@@ -7,7 +7,7 @@ import { customerName, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { filteredMeterActionCsv } from '@/lib/meter-action-export';
-import { meterActions, filterMeterActionsByUtility, filterMeterTasksByDate, meterTaskDestination, sortMeterTasks, type MeterTaskSort, type MeterTaskDateFilter } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility, filterMeterTasksByDate, filterMeterTasksBySite, meterSiteTaskOptions, meterTaskDestination, sortMeterTasks, type MeterTaskSort, type MeterTaskDateFilter } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -43,6 +43,9 @@ export function MonthlyBillingBoard({
   const [meterAction,setMeterAction] = useState<'all'|'capture'|'review'|'inspect'>('all');
   const [meterSort,setMeterSort] = useState<MeterTaskSort>('site');
   const [meterDate,setMeterDate] = useState<MeterTaskDateFilter>('all');
+  // A site selection belongs to one property and billing month only.
+  const siteScope=propertyId+':'+month;
+  const [meterSite,setMeterSite] = useState({scope:siteScope,siteId:'all'});
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
@@ -101,7 +104,11 @@ export function MonthlyBillingBoard({
   const utilityTasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
   const propertyToday=dateAtProperty(snapshot.properties.find(p=>p.id===propertyId)?.timezone ?? 'America/Los_Angeles');
   const dateTasks=filterMeterTasksByDate(utilityTasks,meterDate,propertyToday);
-  const tasks=sortMeterTasks(dateTasks.filter(task=>meterAction==='all'||task.kind===meterAction),meterSort);
+  const actionTasks=dateTasks.filter(task=>meterAction==='all'||task.kind===meterAction);
+  const meterSites=meterSiteTaskOptions(actionTasks,visible);
+  const selectedMeterSite=meterSite.scope===siteScope && meterSites.some(site=>site.siteId===meterSite.siteId)
+    ? meterSite.siteId : 'all';
+  const tasks=sortMeterTasks(filterMeterTasksBySite(actionTasks,visible,selectedMeterSite),meterSort);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -144,22 +151,28 @@ export function MonthlyBillingBoard({
         <h3>Meter tasks for selected sites</h3>
         <p className="muted small">Read-only guidance from the billing precheck. Open the relevant meter workspace to capture, review, or inspect evidence. Choose the matching site and meter there; these links never record or approve a reading.</p>
         <label>Filter meter tasks by utility
-          <select aria-label="Meter task utility filter" value={meterUtility} onChange={e=>setMeterUtility(e.target.value as typeof meterUtility)}>
+          <select aria-label="Meter task utility filter" value={meterUtility} onChange={e=>{setMeterUtility(e.target.value as typeof meterUtility);setMeterSite({scope:siteScope,siteId:'all'});}}>
             <option value="all">All utilities</option><option value="electric">Electric</option><option value="water">Water</option><option value="gas">Gas</option>
           </select>
         </label>
         <label>Filter by task type
-          <select aria-label="Meter task type filter" value={meterAction} onChange={e=>setMeterAction(e.target.value as typeof meterAction)}>
+          <select aria-label="Meter task type filter" value={meterAction} onChange={e=>{setMeterAction(e.target.value as typeof meterAction);setMeterSite({scope:siteScope,siteId:'all'});}}>
             <option value="all">All actions</option><option value="capture">Capture readings</option><option value="review">Review approvals</option><option value="inspect">Other evidence checks</option>
           </select>
         </label>
         <label>Reading boundary date
-          <select aria-label="Meter task boundary date filter" value={meterDate} onChange={e=>setMeterDate(e.target.value as MeterTaskDateFilter)}>
+          <select aria-label="Meter task boundary date filter" value={meterDate} onChange={e=>{setMeterDate(e.target.value as MeterTaskDateFilter);setMeterSite({scope:siteScope,siteId:'all'});}}>
             <option value="all">All boundary dates</option>
             <option value="before">Before today</option>
             <option value="today">Today</option>
             <option value="after">After today</option>
             <option value="undated">No boundary date recorded</option>
+          </select>
+        </label>
+        <label>Focus on one site
+          <select aria-label="Meter task site filter" value={selectedMeterSite} onChange={e=>setMeterSite({scope:siteScope,siteId:e.target.value})}>
+            <option value="all">All sites ({meterSites.length})</option>
+            {meterSites.map(site=><option key={site.siteId} value={site.siteId}>{site.label} ({site.count} tasks)</option>)}
           </select>
         </label>
         <label>Sort meter tasks
@@ -170,7 +183,7 @@ export function MonthlyBillingBoard({
         </label>
         <div className="action-group">
           <button type="button" className="button secondary small" disabled={navigationPending} onClick={()=>{
-            setMeterUtility('all');setMeterAction('all');setMeterDate('all');setMeterSort('site');
+            setMeterUtility('all');setMeterAction('all');setMeterDate('all');setMeterSort('site');setMeterSite({scope:siteScope,siteId:'all'});
           }}>Reset meter task filters</button>
         </div>
         <p className="muted small">Date groups use the property local date ({propertyToday}); a past reading boundary is not a payment deadline.</p>
@@ -181,8 +194,8 @@ export function MonthlyBillingBoard({
               <span><strong>{dateTasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
               <span><strong>{dateTasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
             </div>
-            <p className="muted small">Showing {tasks.length} of {utilityTasks.length} meter tasks for the selected sites and utility. The meter CSV exports only these {tasks.length} displayed tasks.</p>
-            {!tasks.length?<p>No meter evidence tasks match these site, utility, action and date filters.</p>:
+            <p className="muted small">Showing {tasks.length} of {actionTasks.length} meter tasks across {meterSites.length} site(s) matching the current utility, action and date filters. The CSV includes only the {tasks.length} tasks shown below, in the same order.</p>
+            {!tasks.length?<p>No meter evidence tasks match the selected property, site, utility, action and date filters.</p>:
               <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
                 <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Next step</th></tr></thead>
                   <tbody>{tasks.map(task=>{
