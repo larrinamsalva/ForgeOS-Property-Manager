@@ -7,7 +7,7 @@ import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { filteredMeterActionCsv } from '@/lib/meter-action-export';
-import { meterActions, filterMeterActionsByUtility, meterTaskDestination } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility, meterTaskDestination, sortMeterTasks, type MeterTaskSort } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -41,6 +41,7 @@ export function MonthlyBillingBoard({
   const [search,setSearch] = useState('');
   const [meterUtility,setMeterUtility] = useState<'all'|'electric'|'water'|'gas'>('all');
   const [meterAction,setMeterAction] = useState<'all'|'capture'|'review'|'inspect'>('all');
+  const [meterSort,setMeterSort] = useState<MeterTaskSort>('site');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
@@ -97,7 +98,7 @@ export function MonthlyBillingBoard({
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
   const utilityTasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
-  const tasks=utilityTasks.filter(task=>meterAction==='all'||task.kind===meterAction);
+  const tasks=sortMeterTasks(utilityTasks.filter(task=>meterAction==='all'||task.kind===meterAction),meterSort);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -147,6 +148,12 @@ export function MonthlyBillingBoard({
         <label>Filter by task type
           <select aria-label="Meter task type filter" value={meterAction} onChange={e=>setMeterAction(e.target.value as typeof meterAction)}>
             <option value="all">All actions</option><option value="capture">Capture readings</option><option value="review">Review approvals</option><option value="inspect">Other evidence checks</option>
+          </select>
+        </label>
+        <label>Sort meter tasks
+          <select aria-label="Meter task sort order" value={meterSort} onChange={e=>setMeterSort(e.target.value as MeterTaskSort)}>
+            <option value="site">Site number</option><option value="boundary">Boundary date (earliest first)</option>
+            <option value="utility">Utility</option><option value="action">Action type</option>
           </select>
         </label>
         {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:

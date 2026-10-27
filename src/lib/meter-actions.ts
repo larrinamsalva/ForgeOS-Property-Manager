@@ -33,3 +33,19 @@ export function meterTaskDestination(kind:MeterAction['kind'],organizationId:str
  return {href:'/meters?'+new URLSearchParams({organization:organizationId,property:propertyId,view}),
   label:kind==='review'?'Open supervisor review':'Open reading history'};
 }
+
+export type MeterTaskSort = 'site'|'boundary'|'utility'|'action';
+export function meterTaskBoundaryDate(task:Pick<MeterAction,'detail'>):string|undefined{
+ return /\b\d{4}-\d{2}-\d{2}\b/.exec(task.detail)?.[0];
+}
+export function sortMeterTasks(actions:readonly MeterAction[],sort:MeterTaskSort):MeterAction[]{
+ const site=(a:MeterAction,b:MeterAction)=>a.siteLabel.localeCompare(b.siteLabel,undefined,{numeric:true});
+ const boundary=(a:MeterAction,b:MeterAction)=>
+  (meterTaskBoundaryDate(a)??'9999-12-31').localeCompare(meterTaskBoundaryDate(b)??'9999-12-31');
+ return [...actions].sort((a,b)=>{
+  const primary=sort==='boundary'?boundary(a,b):
+   sort==='utility'?a.utility.localeCompare(b.utility):
+   sort==='action'?a.kind.localeCompare(b.kind):site(a,b);
+  return primary||site(a,b)||boundary(a,b)||a.utility.localeCompare(b.utility)||a.kind.localeCompare(b.kind)||a.key.localeCompare(b.key);
+ });
+}
