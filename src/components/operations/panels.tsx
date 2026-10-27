@@ -6,6 +6,7 @@ import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { lowStockInventory } from '@/lib/low-stock-inventory';
 import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
 import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvRows, type IncomingDeliveryFilter } from '@/lib/incoming-deliveries';
+import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -486,6 +487,12 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange,
 }) {
   const ownItems=scoped(ui,ui.data.items);
   const reorder=lowStockInventory(ownItems,ui.data.summary.stock,[ui.propertyId]);
+  const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
+  const incoming=incomingDeliveryLines(
+    ui.data.orders,ui.data.lines,ui.data.summary.purchase_lines,
+    [{id:ui.propertyId,timezone:propertyTimezone}],
+  );
+  const coverage=incomingStockCoverage(reorder,incoming);
   const lowIds=new Set(reorder.map(row=>row.item.id));
   const rows=ownItems.filter(item=>
     (!lowStockOnly||lowIds.has(item.id)) &&
@@ -516,12 +523,12 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange,
       </p>}
       <details className="ops-record" open={lowStockOnly ? true : undefined}>
         <summary>Reorder shopping list — {reorder.length} low-stock items</summary>
-        <p>Based on recorded stock movements and reorder thresholds. Suggested quantities are not purchase orders.</p>
+        <p>Balances use recorded stock movements. Placed orders do not count as received stock; projected remaining needs depend on every outstanding order arriving.</p>
         {reorder.length === 0 ? <p>No active items are at or below their reorder thresholds.</p> : (
           <div className="table-wrap" role="region" aria-label="Supplies shopping list" tabIndex={0}>
             <table>
-              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested refill</th><th>Existing requests</th><th>Standard unit cost</th><th>Next step</th></tr></thead>
-              <tbody>{reorder.map(({item,availableMilli,suggestedMilli}) => {
+              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested refill</th><th>Existing requests</th><th>Placed orders / projected gap</th><th>Standard unit cost</th><th>Next step</th></tr></thead>
+              <tbody>{coverage.map(({item,availableMilli,suggestedMilli,outstandingOnOrderMilli,gapIfReceivedMilli,placedOrderIds,overdueOrderCount,missingEtaOrderCount}) => {
                 const existing=existingRestockRequests(ui.data.requests,ui.propertyId,item.id);
                 return <tr key={item.id}>
                   <th scope="row">{item.name}<small>{item.sku}</small></th>
@@ -535,6 +542,16 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange,
                     {onReviewPurchasing && <button className="text-button" type="button"
                       onClick={onReviewPurchasing}>Review purchasing</button>}
                   </> : 'None recorded'}</td>
+                  <td>{placedOrderIds.length ? <>
+                    <strong>{quantity(outstandingOnOrderMilli)} {item.unit} still on order</strong>
+                    <small>{placedOrderIds.length} placed order(s){overdueOrderCount? ` · ${overdueOrderCount} late`:''}{missingEtaOrderCount? ` · ${missingEtaOrderCount} no ETA`:''}</small>
+                    {placedOrderIds.length===1?
+                      <button className="text-button" type="button"
+                        onClick={()=>ui.open('purchase_detail',placedOrderIds[0])}>Review placed order</button>:
+                      onReviewPurchasing&&<button className="text-button" type="button" onClick={onReviewPurchasing}>Review orders</button>}
+                  </> : 'No placed order recorded'}
+                    <small>{quantity(gapIfReceivedMilli)} {item.unit} target gap if delivered</small>
+                  </td>
                   <td>{cents(item.unit_cost_cents)} / {item.unit}</td>
                   <td>{ui.active && BigInt(suggestedMilli)>0n
                     ?<Action click={() => ui.open('purchase_request',undefined,item.id)}>Request suggested refill</Action>
@@ -545,7 +562,7 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange,
             </table>
           </div>
         )}
-        <p>Check existing open, approved, or marked-ordered requests before submitting another refill. Quantities shown are recorded requests, not confirmed incoming deliveries, and are not deducted from available stock. Managers still approve purchasing.</p>
+        <p>Check existing requests and recorded placed orders before requesting another refill. Only manually recorded supplier orders with unreceived quantities appear on order, and they never increase physical stock. Projected gaps assume all those units arrive; they are not guaranteed deliveries. Managers still approve purchasing.</p>
       </details>
       {!rows.length ? (
         <Empty title="No matching stock items">
