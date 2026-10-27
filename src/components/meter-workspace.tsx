@@ -17,11 +17,13 @@ export function MeterWorkspace({
   propertyId,
   navigationPending,
   initialTab,
+  initialSiteId,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
   initialTab?: MeterView;
+  initialSiteId?: string;
 }) {
   const [data, setData] = useState<MeterSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -32,7 +34,7 @@ export function MeterWorkspace({
   const [selectedProperty, setSelectedProperty] = useState(propertyId || snapshot.properties[0]?.id || '');
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
-  const [historySiteId, setHistorySiteId] = useState('');
+  const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [attentionReason, setAttentionReason] = useState<MeterAttentionReason>('all');
   const [editor, setEditor] = useState<{ type: string; id?: string } | null>(null);
@@ -103,6 +105,7 @@ export function MeterWorkspace({
   const exceptions = readings.filter((r) => r.exceptions.length > 0);
   const needsAttention = filterMeterReadingWorklist(readings, reviews, '', true);
   const readingSites = meterReadingSiteOptions(readings, assignments);
+  const focusedSite = historySiteId ? snapshot.sites.find(s=>s.id===historySiteId && s.property_id===selectedProperty) : undefined;
   const siteReadings = filterMeterReadingsBySite(readings, assignments, historySiteId);
   const meterScopedReadings = filterMeterReadingWorklist(siteReadings, reviews, historyMeterId, false);
   const meterAttentionReadings = filterMeterReadingWorklist(siteReadings, reviews, historyMeterId, true);
@@ -764,6 +767,8 @@ export function MeterWorkspace({
                 <select aria-label="Meter review site filter" value={historySiteId}
                   onChange={(e)=>{setHistorySiteId(e.target.value);setHistoryMeterId('');}}>
                   <option value="">All sites with readings ({readingSites.length})</option>
+                  {focusedSite && !readingSites.some(site=>site.siteId===focusedSite.id) &&
+                    <option value={focusedSite.id}>{focusedSite.label} (no captured readings)</option>}
                   {readingSites.map(site=><option key={site.siteId} value={site.siteId}>
                     {site.label} ({site.count} readings)
                   </option>)}
@@ -782,6 +787,7 @@ export function MeterWorkspace({
                     ))}
                 </select>
               </label>
+              {focusedSite && <p className="muted small">Site focus: {focusedSite.label}. This shows captured readings only; missing capture tasks must be completed in the tablet reader.</p>}
               <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected site, meter and attention filters.</p>
               {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
