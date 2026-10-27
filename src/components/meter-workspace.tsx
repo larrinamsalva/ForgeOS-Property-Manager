@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Gauge, Tablet, Plus, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { Snapshot } from '@/lib/domain';
-import type { MeterView } from '@/lib/meter-actions';
+import type { MeterView, MeterUtility } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
-import { filterMeterReadingWorklist, filterMeterReadingsBySite, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
+import { filterMeterReadingWorklist, filterMeterReadingsBySite, filterMeterReadingsByUtility, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
 import { Empty } from './workspace-parts';
@@ -18,12 +18,14 @@ export function MeterWorkspace({
   navigationPending,
   initialTab,
   initialSiteId,
+  initialUtility,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
   initialTab?: MeterView;
   initialSiteId?: string;
+  initialUtility?: MeterUtility;
 }) {
   const [data, setData] = useState<MeterSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -35,6 +37,7 @@ export function MeterWorkspace({
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
   const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
+  const [historyUtility, setHistoryUtility] = useState<'all'|MeterUtility>(initialUtility ?? 'all');
   // When a billing approval task opens a site, start with readings needing follow-up.
   // Generic meter navigation and reading-history links still start with all readings.
   const [attentionOnly, setAttentionOnly] = useState(initialTab === 'review' && !!initialSiteId);
@@ -109,10 +112,11 @@ export function MeterWorkspace({
   const readingSites = meterReadingSiteOptions(readings, assignments);
   const focusedSite = historySiteId ? snapshot.sites.find(s=>s.id===historySiteId && s.property_id===selectedProperty) : undefined;
   const siteReadings = filterMeterReadingsBySite(readings, assignments, historySiteId);
-  const meterScopedReadings = filterMeterReadingWorklist(siteReadings, reviews, historyMeterId, false);
-  const meterAttentionReadings = filterMeterReadingWorklist(siteReadings, reviews, historyMeterId, true);
+  const utilityReadings = filterMeterReadingsByUtility(siteReadings, data?.meters ?? [], historyUtility);
+  const meterScopedReadings = filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, false);
+  const meterAttentionReadings = filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, true);
   const visibleReadings = attentionOnly
-    ? filterMeterReadingWorklist(siteReadings, reviews, historyMeterId, true, attentionReason)
+    ? filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, true, attentionReason)
     : meterScopedReadings;
   const attentionReasons: {value:MeterAttentionReason;label:string}[] = [
     {value:'all',label:'All attention reasons'},
@@ -404,6 +408,7 @@ export function MeterWorkspace({
               setEditor(null);
               setHistoryMeterId('');
               setHistorySiteId('');
+              setHistoryUtility('all');
               setAttentionOnly(false);
               setAttentionReason('all');
             }}
@@ -448,6 +453,7 @@ export function MeterWorkspace({
               setTab('review');
               setHistoryMeterId('');
               setHistorySiteId('');
+              setHistoryUtility('all');
               setAttentionOnly(true);
               setAttentionReason('all');
             }}>Open attention queue ({needsAttention.length})</button>
@@ -474,6 +480,7 @@ export function MeterWorkspace({
               setTab(id as MeterView);
               setHistoryMeterId('');
               setHistorySiteId('');
+              setHistoryUtility('all');
               setAttentionOnly(false);
               setAttentionReason('all');
             }}
@@ -677,6 +684,7 @@ export function MeterWorkspace({
                                 </p>
                                 {meter && <button type="button" className="button secondary small" onClick={() => {
                                   setHistorySiteId('');
+                                  setHistoryUtility('all');
                                   setHistoryMeterId(meter.id);
                                   setTab('history');
                                 }}>View meter history</button>}
@@ -759,7 +767,7 @@ export function MeterWorkspace({
                 <select aria-label="Meter attention reason filter" value={attentionReason}
                   onChange={(e)=>setAttentionReason(e.target.value as MeterAttentionReason)}>
                   {attentionReasons.map(reason=><option key={reason.value} value={reason.value}>
-                    {reason.label} ({filterMeterReadingWorklist(siteReadings,reviews,historyMeterId,true,reason.value).length})
+                    {reason.label} ({filterMeterReadingWorklist(utilityReadings,reviews,historyMeterId,true,reason.value).length})
                   </option>)}
                 </select>
               </label>}
@@ -777,8 +785,18 @@ export function MeterWorkspace({
                 </select>
               </label>
               <label className="history-meter-filter">
+                Filter readings by utility
+                <select aria-label="Meter review utility filter" value={historyUtility}
+                  onChange={(e)=>{setHistoryUtility(e.target.value as 'all'|MeterUtility);setHistoryMeterId('');}}>
+                  <option value="all">All utilities ({siteReadings.length})</option>
+                  {(['electric','water','gas'] as const).map(utility=><option key={utility} value={utility}>
+                    {utility[0].toUpperCase()+utility.slice(1)} ({filterMeterReadingsByUtility(siteReadings,data.meters,utility).length})
+                  </option>)}
+                </select>
+              </label>
+              <label className="history-meter-filter">
                 Meter history filter
-                <select value={historyMeterId} onChange={(e) => setHistoryMeterId(e.target.value)}>
+                <select value={historyMeterId} onChange={(e) => {setHistoryMeterId(e.target.value);setHistoryUtility('all');}}>
                   <option value="">All meters at this property</option>
                   {data.meters
                     .filter((m) => m.property_id === selectedProperty)
@@ -790,7 +808,7 @@ export function MeterWorkspace({
                 </select>
               </label>
               {focusedSite && <p className="muted small">Site focus: {focusedSite.label}. This shows captured readings only; missing capture tasks must be completed in the tablet reader.</p>}
-              <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected site, meter and attention filters.</p>
+              <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter and attention filters.</p>
               {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
                   {attentionOnly ? 'Choose another site, meter or attention reason, or select All readings.' : 'Select another site or meter, or collect readings using the tablet reader.'}
