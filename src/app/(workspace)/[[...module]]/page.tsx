@@ -53,7 +53,12 @@ export default async function Page({
   const meterSiteId = section === 'meters' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
   const maintenanceSiteId = section === 'maintenance' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
   const maintenanceWorkId = maintenanceSiteId && typeof query.work === 'string' && query.work.length <= 128 ? query.work : undefined;
-  const maintenanceTriage = section === 'maintenance' && maintenanceSiteId && !maintenanceWorkId && query.create !== 'repair'
+  // Accept a property-wide attention link as well as a site-specific link.
+  // The selected property must exist in the authorized snapshot, and requests
+  // with an invalid site parameter must not broaden into a property-wide queue.
+  const maintenanceScope = section === 'maintenance' && !!property &&
+    (!query.site || !!maintenanceSiteId);
+  const maintenanceTriage = maintenanceScope && !maintenanceWorkId && query.create !== 'repair'
     ? maintenanceTriageFromQuery(query.triage) : undefined;
   const meterUtility = section === 'meters' ? meterUtilityFromQuery(query.utility) : undefined;
   const billingFocus = section === 'billing' && property &&
