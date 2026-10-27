@@ -6,6 +6,7 @@ import type { OperationsSnapshot } from '@/lib/operations-domain';
 import { opsLabel } from '@/lib/operations-domain';
 import { cents } from '@/lib/billing-domain';
 import { siteRepeatRepairAlerts } from '@/lib/site-repeat-repairs';
+import { siteMaintenanceLink } from '@/lib/site-maintenance-focus';
 
 // Defined once outside React render to keep the component pure.
 const repeatRepairLookback = new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10);
@@ -56,7 +57,7 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
         <ul>{repeatAlerts.map(alert=><li key={alert.category}>
           <strong>{opsLabel(alert.category)}</strong>: {alert.count} work orders · latest {alert.latest}
         </li>)}</ul>
-        <Link href={'/maintenance?' + new URLSearchParams({organization:organizationId,property:propertyId})}>Review related repairs</Link>
+        <Link href={siteMaintenanceLink(organizationId,propertyId,siteId)}>Review related repairs at this site</Link>
       </section>}
       {!work.length ? <p>No maintenance work orders are currently linked to this space.</p> :
         <div className="table-wrap" role="region" aria-label="Maintenance history for this site" tabIndex={0}>
@@ -71,7 +72,7 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
         </div>}
       {work.length > 12 && <p className="muted small">Showing 12 most recent linked work orders. Open Maintenance for the full history.</p>}
     </>}
-    <Link className="button secondary" href={'/maintenance?' + new URLSearchParams({ organization: organizationId, property: propertyId })}>Open Maintenance</Link>
+    <Link className="button secondary" href={siteMaintenanceLink(organizationId,propertyId,siteId)}>Open this site&apos;s maintenance worklist</Link>
     <p className="muted small">Cost totals include recorded actual work-order costs for completed or closed repairs only; they are not estimates or proof of payment. Missing costs in individual rows are shown as unavailable, while the total sums recorded figures only. This view uses authorized property maintenance records and does not change work orders.</p>
   </section>;
 }
