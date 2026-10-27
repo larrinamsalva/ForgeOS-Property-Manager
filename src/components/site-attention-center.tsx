@@ -5,11 +5,13 @@ import Link from 'next/link';
 import type {OperationsSnapshot} from '@/lib/operations-domain';
 import type {MeterSnapshot} from '@/lib/meter-domain';
 import {meterFileEntries} from '@/lib/meter-file';
+import {dateAtProperty} from '@/lib/domain';
+import {siteMaintenanceAttentionCounts} from '@/lib/site-maintenance-attention';
 import {siteMeterReviewLinks} from '@/lib/site-meter-links';
 import {siteMaintenanceLink,siteMaintenanceCreateLink,siteMaintenanceTriageLink} from '@/lib/site-maintenance-focus';
 
-export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
-  organizationId:string;propertyId:string;siteId:string;overdue:boolean;
+export function SiteAttentionCenter({organizationId,propertyId,siteId,propertyTimezone,overdue}:{
+  organizationId:string;propertyId:string;siteId:string;propertyTimezone:string;overdue:boolean;
 }) {
   const key=[organizationId,propertyId,siteId].join(':');
   const [result,setResult]=useState<{key:string; operations?:OperationsSnapshot; meters?:MeterSnapshot; workError?:boolean; meterError?:boolean}|null>(null);
@@ -34,9 +36,10 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     return ()=>controller.abort();
   },[key,organizationId]);
   const current=result?.key===key?result:null;
-  const work=current?.operations?.work.filter(item=>item.property_id===propertyId&&item.site_id===siteId)??[];
-  const open=work.filter(item=>!['completed','closed','cancelled'].includes(item.status));
-  const urgent=open.filter(item=>['urgent','high'].includes(item.priority));
+  // Match the Maintenance worklist's property-local due-day and status rules.
+  const propertyToday=dateAtProperty(propertyTimezone);
+  const attention=siteMaintenanceAttentionCounts(current?.operations?.work??[],propertyId,siteId,propertyToday);
+  const workValue=(count:number)=>!current?'Checking':current.workError?'Unavailable':count;
   const readings=current?.meters?meterFileEntries(current.meters,{siteId},50):[];
   const pending=readings.filter(item=>item.reviewStatus==='pending').length;
   const flagged=readings.filter(item=>item.exceptions.length>0).length;
@@ -47,8 +50,24 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     <p className="muted small">Quick review of existing records linked to this space. These alerts do not change maintenance, meter approvals, billing or notices.</p>
     <div className="stat-grid">
       <div className="stat-card"><span>Current resident balance</span><strong>{overdue?'Past-due alert':'No past-due flag'}</strong></div>
-      <div className="stat-card"><span>Urgent / high repairs</span><strong>{!current?'Checking':current.workError?'Unavailable':urgent.length}</strong></div>
-      <div className="stat-card"><span>Open repairs</span><strong>{!current?'Checking':current.workError?'Unavailable':open.length}</strong></div>
+      <div className="stat-card"><span>Urgent / high repairs</span><strong>{workValue(attention.urgentHigh)}</strong>
+        <Link href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'urgent')}>Review urgent-only queue</Link>
+      </div>
+      <div className="stat-card"><span>Open repairs</span><strong>{workValue(attention.open)}</strong>
+        <Link href={siteMaintenanceLink(organizationId,propertyId,siteId)}>Review all site repairs</Link>
+      </div>
+      <div className="stat-card"><span>Overdue repairs</span><strong>{workValue(attention.overdue)}</strong>
+        <Link href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'overdue')}>Review overdue jobs</Link>
+      </div>
+      <div className="stat-card"><span>Due today</span><strong>{workValue(attention.dueToday)}</strong>
+        <Link href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'due_today')}>Review today&apos;s jobs</Link>
+      </div>
+      <div className="stat-card"><span>Waiting for parts</span><strong>{workValue(attention.waitingParts)}</strong>
+        <Link href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'waiting_parts')}>Review parts delays</Link>
+      </div>
+      <div className="stat-card"><span>Unassigned repairs</span><strong>{workValue(attention.unassigned)}</strong>
+        <Link href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'unassigned')}>Review unassigned jobs</Link>
+      </div>
       <div className="stat-card"><span>Meter reviews pending</span><strong>{!current?'Checking':current.meterError?'Unavailable':pending}</strong></div>
       <div className="stat-card"><span>Flagged meter captures</span><strong>{!current?'Checking':current.meterError?'Unavailable':flagged}</strong></div>
     </div>
@@ -61,6 +80,6 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>
     </div>
-    <p className="muted small">Urgent-only filters include priority urgent, not high-priority jobs; the summary combines both. Overdue uses the property&apos;s local date and excludes finished work. Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
+    <p className="muted small">Repair counts cover this site&apos;s currently loaded operational records. Urgent-only includes priority urgent, not high-priority jobs; the summary combines both. Overdue and due today use the property&apos;s local date. Completed, closed and cancelled repairs are excluded from attention queues. Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
   </section>;
 }

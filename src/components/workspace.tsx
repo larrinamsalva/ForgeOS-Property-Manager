@@ -799,6 +799,7 @@ export function Workspace({
             organizationId={snapshot.organizationId}
             propertyId={(record as Site).property_id}
             siteId={record.id}
+            propertyTimezone={snapshot.properties.find(p => p.id === (record as Site).property_id)?.timezone ?? 'America/Los_Angeles'}
             overdue={!!overdueFlag} />
         )}
         {editor.entity === 'site' && canEditProperty(snapshot, (record as Site).property_id, true) && (
