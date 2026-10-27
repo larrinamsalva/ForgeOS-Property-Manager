@@ -10,7 +10,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string };
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
