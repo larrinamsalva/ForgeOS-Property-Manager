@@ -35,7 +35,9 @@ export function MeterWorkspace({
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
   const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
-  const [attentionOnly, setAttentionOnly] = useState(false);
+  // When a billing approval task opens a site, start with readings needing follow-up.
+  // Generic meter navigation and reading-history links still start with all readings.
+  const [attentionOnly, setAttentionOnly] = useState(initialTab === 'review' && !!initialSiteId);
   const [attentionReason, setAttentionReason] = useState<MeterAttentionReason>('all');
   const [editor, setEditor] = useState<{ type: string; id?: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
