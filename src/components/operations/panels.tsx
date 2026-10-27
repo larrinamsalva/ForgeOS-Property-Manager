@@ -5,7 +5,7 @@ import { filterMaintenanceWorklist, maintenanceMatchesTriage, type MaintenanceTr
 import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { lowStockInventory } from '@/lib/low-stock-inventory';
 import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
-import { incomingDeliveryLines } from '@/lib/incoming-deliveries';
+import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvRows, type IncomingDeliveryFilter } from '@/lib/incoming-deliveries';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -14,7 +14,7 @@ import { MaintenanceMonthCalendar } from './maintenance-month-calendar';
 import { InspectionLocation } from './inspection-location';
 import { useState } from 'react';
 import { cents } from '@/lib/billing-domain';
-import { customerName } from '@/lib/domain';
+import { customerName, csv } from '@/lib/domain';
 import { opsLabel, quantity, checklistState, purchaseState } from '@/lib/operations-domain';
 import { Empty } from '../workspace-parts';
 import type { OpsUI } from './types';
@@ -670,11 +670,29 @@ export function StockDetail({ ui, id }: { ui: OpsUI; id: string }) {
 }
 export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const { data, open } = ui;
+  const [deliveryFilter,setDeliveryFilter]=useState<IncomingDeliveryFilter>('all');
+  const [deliverySearch,setDeliverySearch]=useState('');
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
     [{id:ui.propertyId,timezone:propertyTimezone}],
   );
+  const visibleIncoming=filterIncomingDeliveries(incoming,deliveryFilter,deliverySearch);
+  const attentionChoices:[IncomingDeliveryFilter,string][]=[
+    ['all','All outstanding'],['overdue','Past expected date'],
+    ['due_today','Expected today'],['upcoming','Upcoming'],
+    ['not_scheduled','No ETA'],['part_received','Part received'],
+  ];
+  const exportIncoming=()=>{
+    if(!visibleIncoming.length)return;
+    const payload=csv(incomingDeliveriesCsvRows(visibleIncoming));
+    const url=URL.createObjectURL(new Blob([payload],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='forgeos-visible-incoming-supplies.csv';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
   return (
     <>
       <section className="panel" aria-label="Incoming supplies awaiting receipt">
@@ -685,11 +703,35 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <strong>{incoming.length} outstanding order line(s)</strong>
         </div>
-        {!incoming.length?<p>No placed order lines are awaiting receipt in this property&apos;s records.</p>:(
+        {incoming.length>0 && <>
+          <div className="action-group" role="group" aria-label="Incoming delivery attention filters">
+            {attentionChoices.map(([key,label])=>(
+              <button key={key} type="button"
+                className={`button ${deliveryFilter===key?'primary':'secondary'}`}
+                aria-pressed={deliveryFilter===key}
+                onClick={()=>setDeliveryFilter(key)}>
+                {label} ({filterIncomingDeliveries(incoming,key,'').length})
+              </button>
+            ))}
+          </div>
+          <div className="action-group">
+            <label>Search incoming supplies
+              <input type="search" value={deliverySearch}
+                placeholder="Order number, supplier, item or SKU"
+                onChange={event=>setDeliverySearch(event.target.value)}/>
+            </label>
+            <button type="button" className="button secondary" onClick={exportIncoming}
+              disabled={!visibleIncoming.length}>Export visible deliveries CSV ({visibleIncoming.length})</button>
+          </div>
+          <p className="muted small" role="status">Showing {visibleIncoming.length} of {incoming.length} recorded outstanding order lines.
+            Filter counts cover the whole current property before search. Export contains exactly the currently visible rows and their saved receipt balances.</p>
+        </>}
+        {!incoming.length?<p>No placed order lines are awaiting receipt in this property&apos;s records.</p>:
+         !visibleIncoming.length?<p role="status">No incoming order lines match this filter or search. Choose All outstanding or clear the search to see more.</p>:(
           <div className="table-wrap" role="region" aria-label="Outstanding supply deliveries" tabIndex={0}>
             <table>
               <thead><tr><th>Order / supply</th><th>Expected</th><th>Ordered</th><th>Net received</th><th>Still outstanding</th><th>Action</th></tr></thead>
-              <tbody>{incoming.map(row=>(
+              <tbody>{visibleIncoming.map(row=>(
                 <tr key={row.line.id}>
                   <th scope="row">
                     {row.order.number}
@@ -711,7 +753,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             </table>
           </div>
         )}
-        <p className="muted small">Only orders marked placed are included. Drafts, approvals and cancelled orders are excluded. Partial receipts reduce the outstanding recorded quantity, not the reorder threshold. Recording delivery requires an explicit action; this page does not adjust stock on its own.</p>
+        <p className="muted small">Only orders marked placed are included. Drafts, approvals and cancelled orders are excluded. Partial receipts reduce the outstanding recorded quantity, not the reorder threshold. CSV contains recorded milliunits (1000 = 1 unit). Recording delivery requires an explicit action; this page does not adjust stock on its own.</p>
       </section>
       <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} organizationId={ui.snapshot.organizationId} />
       <section className="panel">
