@@ -6,6 +6,7 @@ import type { MeterView, MeterUtility } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { filterMeterReadingWorklist, filterMeterReadingsBySite, filterMeterReadingsByUtility, meterReadingSiteOptions, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
+import { sortMeterReadingWorklist, type MeterReadingOrder } from '@/lib/meter-reading-order';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
 import { Empty } from './workspace-parts';
@@ -38,6 +39,7 @@ export function MeterWorkspace({
   const [historyMeterId, setHistoryMeterId] = useState('');
   const [historySiteId, setHistorySiteId] = useState(initialSiteId ?? '');
   const [historyUtility, setHistoryUtility] = useState<'all'|MeterUtility>(initialUtility ?? 'all');
+  const [readingOrder, setReadingOrder] = useState<MeterReadingOrder>('newest');
   // When a billing approval task opens a site, start with readings needing follow-up.
   // Generic meter navigation and reading-history links still start with all readings.
   const [attentionOnly, setAttentionOnly] = useState(initialTab === 'review' && !!initialSiteId);
@@ -118,6 +120,7 @@ export function MeterWorkspace({
   const visibleReadings = attentionOnly
     ? filterMeterReadingWorklist(utilityReadings, reviews, historyMeterId, true, attentionReason)
     : meterScopedReadings;
+  const orderedReadings = sortMeterReadingWorklist(visibleReadings, assignments, readingOrder);
   const attentionReasons: {value:MeterAttentionReason;label:string}[] = [
     {value:'all',label:'All attention reasons'},
     {value:'unreviewed',label:'Awaiting review'},
@@ -808,7 +811,26 @@ export function MeterWorkspace({
                 </select>
               </label>
               {focusedSite && <p className="muted small">Site focus: {focusedSite.label}. This shows captured readings only; missing capture tasks must be completed in the tablet reader.</p>}
-              <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter and attention filters.</p>
+              <div className="action-group">
+                <label className="history-meter-filter">
+                  Reading order
+                  <select aria-label="Meter reading sort order" value={readingOrder}
+                    onChange={(e)=>setReadingOrder(e.target.value as MeterReadingOrder)}>
+                    <option value="newest">Newest captured first</option>
+                    <option value="oldest">Oldest captured first</option>
+                    <option value="site">Site number (natural order)</option>
+                  </select>
+                </label>
+                <button type="button" className="button secondary small" onClick={()=>{
+                  setHistorySiteId('');
+                  setHistoryUtility('all');
+                  setHistoryMeterId('');
+                  setAttentionOnly(false);
+                  setAttentionReason('all');
+                  setReadingOrder('newest');
+                }}>Clear review filters</button>
+              </div>
+              <p className="muted small" role="status">Showing {orderedReadings.length} of {meterScopedReadings.length} readings for the selected site, utility, meter, attention and sort filters.</p>
               {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
                   {attentionOnly ? 'Choose another site, meter or attention reason, or select All readings.' : 'Select another site or meter, or collect readings using the tablet reader.'}
@@ -829,7 +851,7 @@ export function MeterWorkspace({
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleReadings.map((r) => {
+                      {orderedReadings.map((r) => {
                           const m = data.meters.find((m) => m.id === r.meter_id);
                           const a = assignments.find((a) => a.id === r.assignment_id);
                           const review = latestReview(r.id, reviews);
