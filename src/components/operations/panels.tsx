@@ -1,6 +1,7 @@
 'use client';
 import { preventiveReminders } from '@/lib/preventive-reminders';
 import { maintenanceCloseoutQueue } from '@/lib/maintenance-closeout-queue';
+import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -35,8 +36,9 @@ function Action({
     </button>
   );
 }
-export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean; onStatusChange?: (value: string) => void }) {
-  const work = scoped(ui, ui.data.work)
+export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange, siteId = '' }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean; onStatusChange?: (value: string) => void; siteId?: string }) {
+  const siteWork = filterWorkOrdersBySite(scoped(ui, ui.data.work),siteId);
+  const work = siteWork
     .filter(
       (w) =>
         (status === 'all' || w.status === status) &&
@@ -53,23 +55,23 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
         (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') ||
         b.created_at.localeCompare(a.created_at);
     });
-  const activeWork = scoped(ui, ui.data.work).filter((w) =>
+  const activeWork = siteWork.filter((w) =>
     !['completed', 'closed', 'cancelled'].includes(w.status) &&
     (!mineOnly || w.assigned_to === ui.snapshot.userId));
   const urgentCount = activeWork.filter((w) => w.priority === 'urgent').length;
   const overdueCount = activeWork.filter((w) => w.due_on && w.due_on < ui.today).length;
   const awaitingParts = activeWork.filter((w) => w.status === 'waiting_parts').length;
   const unassignedCount = activeWork.filter((w) => !w.assigned_to).length;
-  const completedCount = scoped(ui, ui.data.work).filter(w => w.status === 'completed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length;
+  const completedCount = siteWork.filter(w => w.status === 'completed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length;
   const boardGroups = [
-    { value: 'all', label: 'All jobs', count: scoped(ui, ui.data.work).filter(w => !mineOnly || w.assigned_to === ui.snapshot.userId).length },
+    { value: 'all', label: 'All jobs', count: siteWork.filter(w => !mineOnly || w.assigned_to === ui.snapshot.userId).length },
     { value: 'new', label: 'New', count: activeWork.filter(w => w.status === 'new').length },
     { value: 'in_progress', label: 'In progress', count: activeWork.filter(w => w.status === 'in_progress').length },
     { value: 'waiting_parts', label: 'Waiting for parts', count: awaitingParts },
     { value: 'completed', label: 'Awaiting closeout', count: completedCount },
-    { value: 'closed', label: 'Closed', count: scoped(ui, ui.data.work).filter(w => w.status === 'closed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length },
+    { value: 'closed', label: 'Closed', count: siteWork.filter(w => w.status === 'closed' && (!mineOnly || w.assigned_to === ui.snapshot.userId)).length },
   ];
-  const closeout = maintenanceCloseoutQueue(scoped(ui,ui.data.work),ui.data.photos,ui.data.events,ui.propertyId,ui.today);
+  const closeout = maintenanceCloseoutQueue(siteWork,ui.data.photos,ui.data.events,ui.propertyId,ui.today);
   const todayDue = activeWork.filter(w => w.due_on === ui.today).length;
   const futureDue = activeWork.filter(w => !!w.due_on && w.due_on > ui.today).length;
   const noDueDate = activeWork.filter(w => !w.due_on).length;
@@ -136,7 +138,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           </div>}
         <p>Photo counts indicate uploaded records, not verified repair quality. Closing a work order is separate from inspection recheck sign-off.</p>
       </section>}
-      <p>Active jobs appear first: urgent, overdue, high priority, then others. Completed and closed jobs remain in history. Summary counts cover this property independently of search and status filters.</p>
+      <p>Active jobs appear first: urgent, overdue, high priority, then others. Completed and closed jobs remain in history. Summary counts cover the selected site when filtered, otherwise the property, independently of search and status filters.</p>
       <div className="stat-grid" aria-label="Maintenance scheduling overview">
         <div className="stat-card"><span>Due today</span><strong>{todayDue}</strong></div>
         <div className="stat-card"><span>Due later</span><strong>{futureDue}</strong></div>
@@ -145,7 +147,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
       {!mineOnly && (
         <section aria-label="Maintenance employee workload">
           <h3>Employee workload</h3>
-          <p>Open jobs by assigned employee, across all workflow filters for this property.</p>
+          <p>Open jobs by assigned employee, across all workflow filters for the selected site or property.</p>
           {workload.length === 0 ? <p>No open maintenance jobs.</p> : (
             <div className="table-wrap" role="region" aria-label="Maintenance workload by employee" tabIndex={0}>
               <table>
@@ -163,10 +165,10 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           )}
         </section>
       )}
-      {!mineOnly && <MaintenanceMonthCalendar ui={ui} />}
+      {!mineOnly && !siteId && <MaintenanceMonthCalendar ui={ui} />}
       {!work.length ? (
         <Empty title="No matching work orders">
-          Requests and assignments for this property will appear here.
+          Requests and assignments for this site or property will appear here.
         </Empty>
       ) : (
         <div className="table-wrap" role="region" aria-label="Maintenance work orders" tabIndex={0}>
