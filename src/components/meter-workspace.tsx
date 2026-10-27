@@ -5,6 +5,7 @@ import type { Snapshot } from '@/lib/domain';
 import type { MeterView } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
+import { filterMeterReadingWorklist } from '@/lib/meter-reading-worklist';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
 import { Empty } from './workspace-parts';
@@ -98,7 +99,10 @@ export function MeterWorkspace({
   const reviews = data?.reviews ?? [];
   const pending = readings.filter((r) => !latestReview(r.id, reviews));
   const exceptions = readings.filter((r) => r.exceptions.length > 0);
-  const needsAttention = readings.filter((r) => !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none');
+  const needsAttention = filterMeterReadingWorklist(readings, reviews, '', true);
+  const meterScopedReadings = filterMeterReadingWorklist(readings, reviews, historyMeterId, false);
+  const meterAttentionReadings = filterMeterReadingWorklist(readings, reviews, historyMeterId, true);
+  const visibleReadings = attentionOnly ? meterAttentionReadings : meterScopedReadings;
   const damagedMeters = readings.filter((r) => ['damaged', 'missing', 'problem', 'reset'].includes(r.flag));
   const today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
   function renderEditor() {
@@ -380,6 +384,8 @@ export function MeterWorkspace({
             onChange={(e) => {
               setSelectedProperty(e.target.value);
               setEditor(null);
+              setHistoryMeterId('');
+              setAttentionOnly(false);
             }}
           >
             {snapshot.properties.map((p) => (
@@ -719,9 +725,9 @@ export function MeterWorkspace({
               )}
               <div className="quick-actions" role="group" aria-label="Reading attention filter">
                 <button type="button" className={`button ${attentionOnly ? 'secondary' : 'primary'}`}
-                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({readings.length})</button>
+                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({meterScopedReadings.length})</button>
                 <button type="button" className={`button ${attentionOnly ? 'primary' : 'secondary'}`}
-                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({needsAttention.length})</button>
+                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({meterAttentionReadings.length})</button>
               </div>
               <label className="history-meter-filter">
                 Meter history filter
@@ -736,7 +742,8 @@ export function MeterWorkspace({
                     ))}
                 </select>
               </label>
-              {!readings.filter((r) => (!historyMeterId || r.meter_id === historyMeterId) && (!attentionOnly || !latestReview(r.id, reviews) || r.exceptions.length > 0 || r.flag !== 'none')).length ? (
+              <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected meter and attention filters.</p>
+              {!visibleReadings.length ? (
                 <Empty title={attentionOnly ? 'No readings needing attention' : 'No readings collected'}>
                   Use the tablet reader to collect an assigned route.
                 </Empty>
@@ -756,9 +763,7 @@ export function MeterWorkspace({
                       </tr>
                     </thead>
                     <tbody>
-                      {readings
-                        .filter((r) => !historyMeterId || r.meter_id === historyMeterId)
-                        .map((r) => {
+                      {visibleReadings.map((r) => {
                           const m = data.meters.find((m) => m.id === r.meter_id);
                           const a = assignments.find((a) => a.id === r.assignment_id);
                           const review = latestReview(r.id, reviews);
