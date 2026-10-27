@@ -24,14 +24,28 @@ export function meterViewFromQuery(value:string|undefined):MeterView|undefined{
 }
 
 // Link to an existing authorized workflow, not an automatic meter write or approval.
-export function meterTaskDestination(kind:MeterAction['kind'],organizationId:string,propertyId:string){
+export function meterTaskDestination(
+ kind:MeterAction['kind'],organizationId:string,propertyId:string,siteId?:string,
+){
  if(kind==='capture'){
   return {href:'/tablet/index.html?'+new URLSearchParams({organization:organizationId}),
    label:'Open tablet reader'};
  }
  const view=kind==='review'?'review':'history';
- return {href:'/meters?'+new URLSearchParams({organization:organizationId,property:propertyId,view}),
+ const params=new URLSearchParams({organization:organizationId,property:propertyId,view});
+ if(siteId) params.set('site',siteId);
+ return {href:'/meters?'+params,
   label:kind==='review'?'Open supervisor review':'Open reading history'};
+}
+
+// A URL alone cannot authorize access to a property or site. Limit the
+// optional focused site to a site already present in the authorized snapshot.
+export function meterSiteFromQuery(
+ siteId:string|undefined,propertyId:string,
+ sites:readonly {id:string;property_id:string}[],
+):string|undefined{
+ return propertyId && siteId && sites.some(site=>site.id===siteId && site.property_id===propertyId)
+  ? siteId : undefined;
 }
 
 export type MeterTaskSort = 'site'|'boundary'|'utility'|'action';
