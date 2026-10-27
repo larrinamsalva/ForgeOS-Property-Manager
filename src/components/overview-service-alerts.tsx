@@ -6,6 +6,7 @@ import { canEditProperty, dateAtProperty } from '@/lib/domain';
 import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
 import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
 import { existingRestockRequests } from '@/lib/existing-restock-requests';
+import { incomingDeliveryLines, incomingDeliveriesLink } from '@/lib/incoming-deliveries';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -65,6 +66,13 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
   const lowStockByProperty=new Map(authorized.map(property=>[
     property.id,lowStock.filter(row=>row.item.property_id===property.id).length,
   ]));
+  const incoming=operations.data
+    ?incomingDeliveryLines(operations.data.orders,operations.data.lines,
+      operations.data.summary.purchase_lines,authorized)
+    :[];
+  const incomingByProperty=new Map(authorized.map(property=>[
+    property.id,incoming.filter(row=>row.order.property_id===property.id).length,
+  ]));
   const oneProperty=authorized.length===1?authorized[0]:null;
   const attentionTarget=(triage:'overdue'|'unassigned')=>oneProperty
     ?propertyMaintenanceTriageLink(snapshot.organizationId,oneProperty.id,triage)
@@ -87,6 +95,12 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       <div className="stat-card"><span>Supplies at reorder threshold</span><strong>{metric(operations,lowStock.length)}</strong>
         <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
           {oneProperty?'Review low-stock items':'Choose property below'}
+        </Link>
+      </div>
+      <div className="stat-card"><span>Supplier lines awaiting receipt</span>
+        <strong>{metric(operations,incoming.length)}</strong>
+        <Link href={oneProperty?incomingDeliveriesLink(snapshot.organizationId,oneProperty.id):'#incoming-deliveries-handoff'}>
+          {oneProperty?'Review incoming supplies':'Choose property below'}
         </Link>
       </div>
       <div className="stat-card"><span>Meter readings reviewed</span><strong>{metric(meters, reviewedReadings)}</strong>
@@ -193,6 +207,42 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         }
       </>:<p role="status">{operations.status==='loading'?'Checking stock and reorder levels…':'Supply records unavailable; no quantities assumed.'}</p>}
       <p className="muted small">Existing request counts include open, approved and marked-ordered records; they do not guarantee delivery. Stock comes from saved movements, not physical counts. Verify stock and supplier prices before submitting more requests. These shortcuts never create purchases.</p>
+    </div>
+    <div id="incoming-deliveries-handoff" className="ops-record" aria-label="Incoming supply deliveries by property">
+      <h3>Incoming supply deliveries</h3>
+      <p>Track purchase order lines marked ordered but not fully received, including expected-date delays. Counts are based on saved net receipts, not promises from a supplier.</p>
+      {operations.status==='ready'?<>
+        <div className="action-group">
+          {authorized.map(property=><Link className="button secondary" key={property.id}
+            href={incomingDeliveriesLink(snapshot.organizationId,property.id)}>
+            {property.name}: {incomingByProperty.get(property.id)??0} outstanding lines
+          </Link>)}
+        </div>
+        {!incoming.length?<p>No supplier purchase order lines are currently awaiting receipt in these records.</p>:
+          <>
+            <p role="status">Showing {Math.min(8,incoming.length)} of {incoming.length} outstanding supply lines. Late expected dates appear first.</p>
+            <div className="table-wrap" role="region" aria-label="Incoming deliveries shortlist" tabIndex={0}>
+              <table>
+                <thead><tr><th>Property / purchase order</th><th>Supply</th><th>Still outstanding</th><th>Expected</th><th>Action</th></tr></thead>
+                <tbody>{incoming.slice(0,8).map(row=>
+                  <tr key={row.line.id}>
+                    <th scope="row">{authorized.find(p=>p.id===row.order.property_id)?.name??'Property'}
+                      <small>{row.order.number}</small></th>
+                    <td>{row.line.item_snapshot.name}<small>{row.line.item_snapshot.sku}</small></td>
+                    <td>{quantity(row.outstandingMilli)} {row.line.item_snapshot.unit}</td>
+                    <td>{row.order.expected_on??'Not scheduled'}
+                      <small>{row.eta==='overdue'?'Past expected date':row.eta==='due_today'?'Expected today':row.eta==='upcoming'?'Upcoming':'No ETA'}</small>
+                    </td>
+                    <td><Link href={incomingDeliveriesLink(snapshot.organizationId,row.order.property_id)}>
+                      Review purchasing / delivery
+                    </Link></td>
+                  </tr>)}</tbody>
+              </table>
+            </div>
+          </>
+        }
+      </>:<p role="status">{operations.status==='loading'?'Checking supplier deliveries…':'Purchase-order records unavailable; no arrivals assumed.'}</p>}
+      <p className="muted small">A recorded order and an expected delivery date do not confirm shipment. Only an explicit recorded receipt updates actual stock. No orders, supplier messages or receipts are generated here.</p>
     </div>
     <p>Readings due on a schedule will be added only when verified route requirements are available.</p>
   </section>;

@@ -67,7 +67,7 @@ export default async function Page({
       ? { siteId: query.site!, stayId: query.stay!, month: /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month : undefined } : undefined;
   return (
     <Workspace
-      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '')+':'+(maintenanceTriage ?? '') : section === 'inventory' ? ':'+(property && query.stock === 'low' ? 'low' : '') : ''}`}
+      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '')+':'+(maintenanceTriage ?? '') : section === 'inventory' ? ':'+(property && query.stock === 'low' ? 'low' : '')+':'+(property && query.view === 'incoming' ? 'incoming' : '') : ''}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
@@ -80,6 +80,7 @@ export default async function Page({
       maintenanceCreate={section === 'maintenance' && !!maintenanceSiteId && !maintenanceWorkId && query.create === 'repair'}
       maintenanceTriage={maintenanceTriage}
       inventoryLowStock={section === 'inventory' && !!property && query.stock === 'low'}
+      inventoryIncoming={section === 'inventory' && !!property && query.view === 'incoming'}
       meterUtility={meterUtility}
     />
   );
