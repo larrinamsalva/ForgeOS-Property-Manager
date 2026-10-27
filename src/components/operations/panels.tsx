@@ -517,7 +517,7 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
         {reorder.length === 0 ? <p>No active items are at or below their reorder thresholds.</p> : (
           <div className="table-wrap" role="region" aria-label="Supplies shopping list" tabIndex={0}>
             <table>
-              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested order</th><th>Standard unit cost</th></tr></thead>
+              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested refill</th><th>Standard unit cost</th><th>Next step</th></tr></thead>
               <tbody>{reorder.map(({item,availableMilli,suggestedMilli}) => (
                 <tr key={item.id}>
                   <th scope="row">{item.name}<small>{item.sku}</small></th>
@@ -525,12 +525,16 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
                   <td>{quantity(availableMilli)} {item.unit}</td>
                   <td>{quantity(suggestedMilli)} {item.unit}</td>
                   <td>{cents(item.unit_cost_cents)} / {item.unit}</td>
+                  <td>{ui.active && BigInt(suggestedMilli)>0n
+                    ?<Action click={() => ui.open('purchase_request',undefined,item.id)}>Request suggested refill</Action>
+                    :<span className="muted small">Review restock target</span>}
+                  </td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
         )}
-        <p>Review supplier prices and stock counts before placing an order. Open Purchasing to request or approve supplies.</p>
+        <p>Review supplier prices and physical stock counts before requesting. Suggested quantities are editable drafts based on the saved restock target; a manager must still approve purchasing.</p>
       </details>
       {!rows.length ? (
         <Empty title="No matching stock items">
@@ -584,7 +588,7 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
                           <>
                             <Action click={() => ui.open('receive_stock', i.id)}>Receive stock</Action>
                             <Action click={() => ui.open('purchase_request', undefined, i.id)}>
-                              Request restock
+                              Request restock{lowIds.has(i.id) ? ' (suggested quantity)' : ''}
                             </Action>
                             {ui.manage && (
                               <>

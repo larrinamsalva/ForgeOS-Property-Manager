@@ -10,6 +10,7 @@ import { collectionDollars } from '@/lib/collections-domain';
 import { quantity, quantityToMilli, opsLabel } from '@/lib/operations-domain';
 import { maintenanceCategories, maintenanceAreas, formatMaintenanceDescription, getSavedMaintenanceDescription } from '@/lib/maintenance-catalog';
 import { maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
+import { suggestedRestockRequest } from '@/lib/low-stock-inventory';
 import type { OpsUI, OpsEditor } from './types';
 const reason: Field = { name: 'reason', label: 'Reason / work note', type: 'textarea', required: true };
 const reference: Field = { name: 'reference', label: 'Supporting reference' };
@@ -571,19 +572,30 @@ export function OperationsEditor({
       });
   }
   if (editor.type === 'purchase_request') {
+    // The item ID is only a preselection, not authorization. Recalculate the
+    // proposed refill from this property's current, API-authorized stock.
+    const matchingPart = data.context.parts.find((part) =>
+      part.id === ref && part.property_id === propertyId
+    );
+    const restockDefault = matchingPart
+      ? suggestedRestockRequest(data.items,data.summary.stock,propertyId,matchingPart.id)
+      : undefined;
     title = 'Request parts / supplies';
+    if (restockDefault) {
+      description = 'Suggested quantity is prefilled from the current stock balance and restock target. Confirm the physical count, quantity and needed date before saving. This is a request, not an order.';
+    }
     fields = [
       {
         name: 'item_id',
         label: 'Requested item',
         type: 'select',
         required: true,
-        default: ref ?? '',
+        default: matchingPart?.id ?? '',
         options: data.context.parts
           .filter((i) => i.property_id === propertyId)
           .map((i) => ({ value: i.id, label: `${i.sku} · ${i.name}` })),
       },
-      qty,
+      { ...qty, default: restockDefault ? quantity(restockDefault.quantityMilli) : '' },
       { name: 'needed_on', label: 'Needed date', type: 'date', default: today, required: true },
       reason,
     ];
