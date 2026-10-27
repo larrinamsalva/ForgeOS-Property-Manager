@@ -75,6 +75,7 @@ const OperationsWorkspace = dynamic(() =>
 );
 const PaperlessWorkspace = dynamic(() => import('./paperless-workspace').then((module) => module.PaperlessWorkspace));
 import type { MeterView, MeterUtility } from '@/lib/meter-actions';
+import type { MaintenanceTriage } from '@/lib/maintenance-triage';
 import { pendingMeterCount } from '@/lib/offline-pending';
 import { siteOverdueFlags } from '@/lib/site-overdue';
 import { cents } from '@/lib/billing-domain';
@@ -137,6 +138,7 @@ export function Workspace({
   maintenanceSiteId,
   maintenanceWorkId,
   maintenanceCreate,
+  maintenanceTriage,
 }: {
   snapshot: Snapshot;
   section: string;
@@ -149,6 +151,7 @@ export function Workspace({
   maintenanceSiteId?: string;
   maintenanceWorkId?: string;
   maintenanceCreate?: boolean;
+  maintenanceTriage?: MaintenanceTriage;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1245,6 +1248,7 @@ export function Workspace({
               initialSiteId={section === 'maintenance' ? maintenanceSiteId : undefined}
               initialWorkId={section === 'maintenance' ? maintenanceWorkId : undefined}
               initialCreate={section === 'maintenance' && maintenanceCreate}
+              initialTriage={section === 'maintenance' ? maintenanceTriage : undefined}
             />
           ) : section === 'collections' ? (
             <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending}
