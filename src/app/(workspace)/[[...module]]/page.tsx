@@ -62,6 +62,8 @@ export default async function Page({
       billingFocus={billingFocus}
       collectionsFocus={section === 'collections' && query.focus === 'followups' ? 'followups' : undefined}
       meterView={section === 'meters' ? meterViewFromQuery(query.view) : undefined}
+      meterSiteId={section === 'meters' && property && snapshot.sites.some(site => site.id === query.site && site.property_id === property)
+        ? query.site : undefined}
     />
   );
 }
