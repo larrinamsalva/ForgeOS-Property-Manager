@@ -685,7 +685,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <strong>{incoming.length} outstanding order line(s)</strong>
         </div>
-        {!incoming.length?<p>No placed order lines are awaiting receipt in this property's records.</p>:(
+        {!incoming.length?<p>No placed order lines are awaiting receipt in this property&apos;s records.</p>:(
           <div className="table-wrap" role="region" aria-label="Outstanding supply deliveries" tabIndex={0}>
             <table>
               <thead><tr><th>Order / supply</th><th>Expected</th><th>Ordered</th><th>Net received</th><th>Still outstanding</th><th>Action</th></tr></thead>
