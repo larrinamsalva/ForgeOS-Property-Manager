@@ -1,4 +1,5 @@
 import type {WorkOrder} from './operations-domain';
+import { maintenanceTriageFromQuery, type MaintenanceTriage } from './maintenance-triage';
 
 /** Scope a maintenance worklist to one physical site, not the current resident
  * or a site label that could be reused. Property scoping is done by the caller
@@ -53,5 +54,18 @@ export function maintenanceFormSiteDefault<T extends {
 export function siteMaintenanceCreateLink(organizationId:string,propertyId:string,siteId:string):string{
  return '/maintenance?'+new URLSearchParams({
   organization:organizationId,property:propertyId,site:siteId,create:'repair',
+ });
+}
+
+/** Deep-link directly into an existing authorized site's read-only worklist.
+ * The route revalidates site ownership and the triage value. Never send
+ * resident, customer, contact, or payment information in this URL.
+ */
+export function siteMaintenanceTriageLink(
+ organizationId:string,propertyId:string,siteId:string,triage:MaintenanceTriage,
+):string{
+ const safe=maintenanceTriageFromQuery(triage) ?? 'all';
+ return '/maintenance?'+new URLSearchParams({
+  organization:organizationId,property:propertyId,site:siteId,triage:safe,
  });
 }
