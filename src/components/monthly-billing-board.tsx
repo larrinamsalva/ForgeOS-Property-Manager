@@ -7,7 +7,7 @@ import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { meterActionCsv } from '@/lib/meter-action-export';
-import { meterActions } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -39,6 +39,7 @@ export function MonthlyBillingBoard({
   const [invoiceFilter, setInvoiceFilter] = useState<'all'|MonthlyInvoiceStage>('all');
   const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'missing_capture'|'awaiting_review'|'rates'|'invoices'|'duplicates'|'policy'>('all');
   const [search,setSearch] = useState('');
+  const [meterUtility,setMeterUtility] = useState<'all'|'electric'|'water'|'gas'>('all');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
@@ -94,7 +95,7 @@ export function MonthlyBillingBoard({
       (invoiceFilter !== 'draft' && invoiceFilter !== 'approved_unissued' && row.invoiceStage === invoiceFilter)) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
-  const tasks=meterActions(visible);
+  const tasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -136,6 +137,11 @@ export function MonthlyBillingBoard({
       <section className="panel" aria-label="Meter action preview">
         <h3>Meter tasks for selected sites</h3>
         <p className="muted small">Read-only guidance from the billing precheck. Missing captures must be recorded; captured readings need supervisor review before billing.</p>
+        <label>Filter meter tasks by utility
+          <select aria-label="Meter task utility filter" value={meterUtility} onChange={e=>setMeterUtility(e.target.value as typeof meterUtility)}>
+            <option value="all">All utilities</option><option value="electric">Electric</option><option value="water">Water</option><option value="gas">Gas</option>
+          </select>
+        </label>
         {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:
           <>
             <div className="monthly-billing-counts" aria-label="Visible meter task counts">
