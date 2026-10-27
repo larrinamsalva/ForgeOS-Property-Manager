@@ -45,3 +45,20 @@ export function lowStockInventoryLink(organizationId:string,propertyId:string):s
   organization:organizationId,property:propertyId,stock:'low',
  });
 }
+
+/** Only prefill from live, authorized, non-archived low stock data.
+ * A restock target at or below the current stock does not create a usable
+ * suggested quantity; in that case the existing manual form remains available.
+ */
+export function suggestedRestockRequest(
+ items:readonly InventoryItem[],
+ stock:readonly StockRecord[],
+ propertyId:string,
+ itemId:string|undefined,
+):{itemId:string;quantityMilli:string}|undefined{
+ if(!propertyId||!itemId)return undefined;
+ const match=lowStockInventory(items,stock,[propertyId]).find(row=>
+  row.item.id===itemId && BigInt(row.suggestedMilli)>0n
+ );
+ return match?{itemId:match.item.id,quantityMilli:match.suggestedMilli}:undefined;
+}
