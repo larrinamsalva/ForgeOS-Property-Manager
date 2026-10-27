@@ -59,6 +59,30 @@ describe('supervisor meter worklist quick search',()=>{
   expect(searchMeterReadingWorklist(readings,assignments,meters,'Space 88 Electric').map(r=>r.id))
    .toEqual(['new-site']);
  });
+ it('does not confuse a typed space number with meter serial digits or longer site numbers',()=>{
+  const extraAssignments=[
+   ...assignments,
+   {id:'assignment-120',site_id:'site-120',site_label:'Space 120'},
+   {id:'assignment-12B',site_id:'site-12B',site_label:'Space 12B'},
+   {id:'assignment-12',site_id:'site-12B-duplicate',site_label:'Premium Space 12'},
+  ] as MeterAssignment[];
+  const extraReadings=[
+   ...readings,
+   reading('long-space','assignment-120','meter-moved'),
+   reading('letter-space','assignment-12B','meter-moved'),
+   reading('premium-space','assignment-12','meter-water'),
+  ];
+  expect(searchMeterReadingWorklist(extraReadings,extraAssignments,meters,'Space 12').map(r=>r.id))
+   .toEqual(['old-site','premium-space']);
+  expect(searchMeterReadingWorklist(extraReadings,extraAssignments,meters,'space 12 electric').map(r=>r.id))
+   .toEqual(['old-site']);
+  expect(searchMeterReadingWorklist(extraReadings,extraAssignments,meters,'SPACE 12 000123').map(r=>r.id))
+   .toEqual(['old-site']);
+  expect(searchMeterReadingWorklist(extraReadings,extraAssignments,meters,'Space 120').map(r=>r.id))
+   .toEqual(['long-space']);
+  expect(searchMeterReadingWorklist(extraReadings,extraAssignments,meters,'Space 12B').map(r=>r.id))
+   .toEqual(['letter-space']);
+ });
  it('does not search resident names, free-form notes, private staff or IDs',()=>{
   for(const sensitive of ['Resident Doe','SECRET','PRIVATE STAFF','org-secret','route-private','assignment-old','meter-moved']){
    expect(searchMeterReadingWorklist(readings,assignments,meters,sensitive)).toEqual([]);
