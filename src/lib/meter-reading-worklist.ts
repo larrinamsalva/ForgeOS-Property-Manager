@@ -1,4 +1,5 @@
 import type {Meter, MeterAssignment, MeterReading, MeterReview} from './meter-domain';
+import {dateAtProperty} from './domain';
 
 export type MeterAttentionReason = 'all' | 'unreviewed' | 'rejected' | 'exceptions' | 'flagged';
 
@@ -80,4 +81,21 @@ export function filterMeterReadingsByUtility(
  if(utility==='all') return [...readings];
  const meterIds=new Set(meters.filter(m=>m.utility===utility).map(m=>m.id));
  return readings.filter(reading=>meterIds.has(reading.meter_id));
+}
+
+/**
+ * Show captures belonging to a property-local calendar month, regardless of
+ * the supervisor device time zone. This is a captured-on filter, not a billing
+ * period or a statement about whether a reading was approved.
+ */
+export function filterMeterReadingsByCaptureMonth(
+ readings:readonly MeterReading[],
+ month:string,
+ timezone:string,
+):MeterReading[]{
+ if(!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return [...readings];
+ return readings.filter(reading=>{
+  const date=new Date(reading.captured_at);
+  return !Number.isNaN(date.getTime()) && dateAtProperty(timezone,date).startsWith(month+'-');
+ });
 }
