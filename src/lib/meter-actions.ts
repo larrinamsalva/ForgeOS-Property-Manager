@@ -11,3 +11,7 @@ export function meterActions(rows:readonly MonthlyRunRow[]):MeterAction[]{
  }));
  }));
 }
+
+export function filterMeterActionsByUtility(actions:readonly MeterAction[],utility:'all'|'electric'|'water'|'gas'):MeterAction[]{
+ return actions.filter(action=>utility==='all'||action.utility===utility);
+}
