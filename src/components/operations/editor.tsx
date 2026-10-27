@@ -377,7 +377,7 @@ export function OperationsEditor({
                 .filter((s) => s.property_id === propertyId && !s.archived_at)
                 .map((s) => ({ value: s.id, label: s.label })),
               default: defaultSiteId,
-            }
+            },
             ...(!selfTask ? [{
               name: 'customer_id',
               label: 'Customer (optional)',
