@@ -65,3 +65,41 @@ export function incomingDeliveriesLink(organizationId:string,propertyId:string):
   organization:organizationId,property:propertyId,view:'incoming',
  });
 }
+
+/** Filters operate on the already property-authorized, outstanding-only,
+ * sorted order lines. "Part received" reflects net recorded receipts only.
+ */
+export type IncomingDeliveryFilter='all'|'overdue'|'due_today'|'upcoming'|'not_scheduled'|'part_received';
+export function filterIncomingDeliveries(
+ rows:readonly IncomingDeliveryLine[],
+ filter:IncomingDeliveryFilter,
+ search:string,
+):IncomingDeliveryLine[]{
+ const term=search.trim().toLocaleLowerCase();
+ return rows.filter(row=>
+  (filter==='all'||
+   (filter==='part_received'?BigInt(row.netReceivedMilli)>0n:row.eta===filter)) &&
+  (!term||[
+    row.order.number,row.order.supplier_snapshot.name,
+    row.line.item_snapshot.name,row.line.item_snapshot.sku,
+  ].some(value=>value.toLocaleLowerCase().includes(term)))
+ );
+}
+
+/** Exactly the values displayed in an incoming-delivery review. Pass this
+ * to the existing CSV escaping/Excel-formula injection safe writer.
+ * Supplier contacts, customers, invoices and payment data are omitted.
+ */
+export function incomingDeliveriesCsvRows(rows:readonly IncomingDeliveryLine[]):string[][]{
+ return [
+  ['Purchase order','Supplier','Item / SKU','Supply','Expected date','ETA status',
+   'Ordered milliunits','Net received milliunits','Outstanding milliunits','Unit','Property local date'],
+  ...rows.map(row=>[
+   row.order.number,row.order.supplier_snapshot.name,
+   row.line.item_snapshot.sku,row.line.item_snapshot.name,
+   row.order.expected_on??'',row.eta,
+   row.line.quantity_milli,row.netReceivedMilli,row.outstandingMilli,
+   row.line.item_snapshot.unit,row.propertyToday,
+  ]),
+ ];
+}
