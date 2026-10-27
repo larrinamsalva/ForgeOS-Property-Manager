@@ -5,6 +5,7 @@ import { filterMaintenanceWorklist, maintenanceMatchesTriage, type MaintenanceTr
 import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { lowStockInventory } from '@/lib/low-stock-inventory';
 import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
+import { incomingDeliveryLines } from '@/lib/incoming-deliveries';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -669,8 +670,49 @@ export function StockDetail({ ui, id }: { ui: OpsUI; id: string }) {
 }
 export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const { data, open } = ui;
+  const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
+  const incoming=incomingDeliveryLines(
+    data.orders,data.lines,data.summary.purchase_lines,
+    [{id:ui.propertyId,timezone:propertyTimezone}],
+  );
   return (
     <>
+      <section className="panel" aria-label="Incoming supplies awaiting receipt">
+        <div className="panel-heading">
+          <div>
+            <h2>Incoming supply deliveries</h2>
+            <p>Recorded orders placed with quantities not yet received. Expected dates are estimates, not proof of shipment.</p>
+          </div>
+          <strong>{incoming.length} outstanding order line(s)</strong>
+        </div>
+        {!incoming.length?<p>No placed order lines are awaiting receipt in this property's records.</p>:(
+          <div className="table-wrap" role="region" aria-label="Outstanding supply deliveries" tabIndex={0}>
+            <table>
+              <thead><tr><th>Order / supply</th><th>Expected</th><th>Ordered</th><th>Net received</th><th>Still outstanding</th><th>Action</th></tr></thead>
+              <tbody>{incoming.map(row=>(
+                <tr key={row.line.id}>
+                  <th scope="row">
+                    {row.order.number}
+                    <small>{row.line.item_snapshot.name} · {row.line.item_snapshot.sku}</small>
+                    <small>{row.order.supplier_snapshot.name}</small>
+                  </th>
+                  <td>{row.order.expected_on??'No delivery date recorded'}
+                    <small>{row.eta==='overdue'?'Past expected date':row.eta==='due_today'?'Expected today':row.eta==='upcoming'?'Upcoming':'ETA needed'}</small>
+                  </td>
+                  <td>{quantity(row.line.quantity_milli)} {row.line.item_snapshot.unit}</td>
+                  <td>{quantity(row.netReceivedMilli)} {row.line.item_snapshot.unit}</td>
+                  <td><strong>{quantity(row.outstandingMilli)} {row.line.item_snapshot.unit}</strong></td>
+                  <td><div className="action-group">
+                    <Action click={()=>open('purchase_detail',row.order.id)}>Review order</Action>
+                    {ui.active && <Action click={()=>open('receive_purchase',row.line.id)}>Record delivery</Action>}
+                  </div></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+        <p className="muted small">Only orders marked placed are included. Drafts, approvals and cancelled orders are excluded. Partial receipts reduce the outstanding recorded quantity, not the reorder threshold. Recording delivery requires an explicit action; this page does not adjust stock on its own.</p>
+      </section>
       <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} organizationId={ui.snapshot.organizationId} />
       <section className="panel">
         <div className="panel-heading">
