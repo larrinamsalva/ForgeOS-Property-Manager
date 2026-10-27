@@ -103,3 +103,32 @@ export function incomingDeliveriesCsvRows(rows:readonly IncomingDeliveryLine[]):
   ]),
  ];
 }
+
+/** Navigation to one recorded incoming purchase order. The destination
+ * independently checks authorization, order/property IDs and open receipts.
+ * No supplier contact, customer, invoice or delivery note enters the URL. */
+export function incomingDeliveryOrderLink(
+ organizationId:string,propertyId:string,orderId:string,
+):string{
+ return '/inventory?'+new URLSearchParams({
+  organization:organizationId,property:propertyId,view:'incoming',order:orderId,
+ });
+}
+
+/** Returns a real order only when it has an outstanding placed-order line at
+ * this exact property. Consumes existing API-authorized incoming lines; raw
+ * URL order IDs are never treated as authorization or receipt evidence. */
+export function focusedIncomingDeliveryOrder(
+ incoming:readonly IncomingDeliveryLine[],
+ propertyId:string,
+ orderId:string|undefined,
+):PurchaseOrder|undefined{
+ if(!propertyId||!orderId||orderId.length>128)return undefined;
+ return incoming.find(row=>
+  row.order.id===orderId &&
+  row.order.property_id===propertyId &&
+  row.line.property_id===propertyId &&
+  row.order.status==='ordered' &&
+  BigInt(row.outstandingMilli)>0n
+ )?.order;
+}
