@@ -10,6 +10,7 @@ import { SiteUtilityVoice } from './site-utility-voice';
 import { customerName } from '@/lib/domain';
 import type { MeterSnapshot } from '@/lib/meter-domain';
 import { meterFileEntries } from '@/lib/meter-file';
+import { siteMeterReviewLinks } from '@/lib/site-meter-links';
 
 export function SiteMeterFile({
   organizationId, propertyId, siteId, customerId, customers, site, currentStayId,
@@ -79,6 +80,7 @@ export function SiteMeterFile({
     const flagged = history.filter(entry => entry.exceptions.length > 0).length;
     return { kind, count: history.length, approved, needsReview, flagged };
   }) : [];
+  const meterLinks = siteId ? siteMeterReviewLinks(organizationId,propertyId,siteId) : null;
   const utilityName = (kind: string) => kind === 'electric' ? 'Electricity'
     : kind === 'water' ? 'Water' : 'Gas';
   return (
@@ -88,9 +90,9 @@ export function SiteMeterFile({
           <h3>Meter readings &amp; history</h3>
           <p className="muted small">Original, supervisor-reviewed and dated readings from the tablet reader. Read-only customer/site history.</p>
         </div>
-        <Link className="text-button" href={'/meters?' + new URLSearchParams({
+        <Link className="text-button" href={meterLinks?.history ?? '/meters?'+new URLSearchParams({
           organization: organizationId, property: propertyId,
-        })}>Open meter reader <span aria-hidden="true">↗</span></Link>
+        })}>{siteId ? 'View site meter history' : 'Open meter reader'} <span aria-hidden="true">↗</span></Link>
       </div>
       {!current && <p role="status">Loading meter history…</p>}
       {current?.error && <p role="alert">Meter history is unavailable. Use Meters &amp; reader to check your connection or access.</p>}
@@ -138,11 +140,12 @@ export function SiteMeterFile({
               {row.latestApproved && <small>Recorded {row.latestApproved.recordedOn} · {row.latestApproved.meterLabel}</small>}
               <p>{row.pending} awaiting review · {row.flagged} flagged capture(s)</p>
               <p className="muted small">{row.total ? row.total + ' recent captures' : 'No recent recorded readings'}</p>
+              {meterLinks && <Link className="button secondary small" href={meterLinks.utilities[row.kind]}>
+                Review {utilityName(row.kind).toLowerCase()} readings for this site
+              </Link>}
             </article>)}
           </div>
-          <Link className="button secondary" href={'/meters?' + new URLSearchParams({
-            organization: organizationId, property: propertyId,
-          })}>Review meter exceptions</Link>
+          {meterLinks && <Link className="button secondary" href={meterLinks.review}>Review this site&apos;s meter alerts</Link>}
         </section>
       )}
       {site && current?.data && (

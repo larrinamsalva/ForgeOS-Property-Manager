@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type {OperationsSnapshot} from '@/lib/operations-domain';
 import type {MeterSnapshot} from '@/lib/meter-domain';
 import {meterFileEntries} from '@/lib/meter-file';
+import {siteMeterReviewLinks} from '@/lib/site-meter-links';
 
 export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
   organizationId:string;propertyId:string;siteId:string;overdue:boolean;
@@ -39,6 +40,7 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
   const pending=readings.filter(item=>item.reviewStatus==='pending').length;
   const flagged=readings.filter(item=>item.exceptions.length>0).length;
   const link=(section:string)=>'/'+section+'?'+new URLSearchParams({organization:organizationId,property:propertyId});
+  const siteMeterReview=siteMeterReviewLinks(organizationId,propertyId,siteId).review;
   return <section className="site-account-review" aria-label="Smart site attention center">
     <h3>Smart site attention center</h3>
     <p className="muted small">Quick review of existing records linked to this space. These alerts do not change maintenance, meter approvals, billing or notices.</p>
@@ -51,7 +53,7 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     </div>
     <div className="action-group">
       <Link className="button secondary" href={link('maintenance')}>Review repairs</Link>
-      <Link className="button secondary" href={link('meters')}>Review meter alerts</Link>
+      <Link className="button secondary" href={siteMeterReview}>Review this site&apos;s meter alerts</Link>
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>
     </div>
