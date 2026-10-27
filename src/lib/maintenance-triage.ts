@@ -1,6 +1,15 @@
 import type {WorkOrder} from './operations-domain';
 
 export type MaintenanceTriage = 'all'|'urgent'|'overdue'|'due_today'|'waiting_parts'|'unassigned';
+
+/** Parse untrusted navigation params using the exact supported triage modes. */
+export function maintenanceTriageFromQuery(value:string|undefined):MaintenanceTriage|undefined{
+ switch(value){
+  case 'all': case 'urgent': case 'overdue': case 'due_today':
+  case 'waiting_parts': case 'unassigned': return value;
+  default: return undefined;
+ }
+}
 export type MaintenanceWorkFilters = {
  propertyId:string;
  siteId?:string;

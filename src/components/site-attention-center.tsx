@@ -6,7 +6,7 @@ import type {OperationsSnapshot} from '@/lib/operations-domain';
 import type {MeterSnapshot} from '@/lib/meter-domain';
 import {meterFileEntries} from '@/lib/meter-file';
 import {siteMeterReviewLinks} from '@/lib/site-meter-links';
-import {siteMaintenanceLink,siteMaintenanceCreateLink} from '@/lib/site-maintenance-focus';
+import {siteMaintenanceLink,siteMaintenanceCreateLink,siteMaintenanceTriageLink} from '@/lib/site-maintenance-focus';
 
 export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
   organizationId:string;propertyId:string;siteId:string;overdue:boolean;
@@ -54,11 +54,13 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     </div>
     <div className="action-group">
       <Link className="button secondary" href={siteMaintenanceLink(organizationId,propertyId,siteId)}>Review this site&apos;s repairs</Link>
+      <Link className="button secondary" href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'urgent')}>Review urgent repairs only</Link>
+      <Link className="button secondary" href={siteMaintenanceTriageLink(organizationId,propertyId,siteId,'overdue')}>Review overdue repairs</Link>
       <Link className="button secondary" href={siteMaintenanceCreateLink(organizationId,propertyId,siteId)}>Create a site repair</Link>
       <Link className="button secondary" href={siteMeterReview}>Review this site&apos;s meter alerts</Link>
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>
     </div>
-    <p className="muted small">Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
+    <p className="muted small">Urgent-only filters include priority urgent, not high-priority jobs; the summary combines both. Overdue uses the property&apos;s local date and excludes finished work. Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
   </section>;
 }

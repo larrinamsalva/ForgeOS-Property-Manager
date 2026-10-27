@@ -48,6 +48,7 @@ export function OperationsWorkspace({
   initialSiteId,
   initialWorkId,
   initialCreate,
+  initialTriage,
 }: {
   snapshot: Snapshot;
   propertyId: string;
@@ -56,6 +57,7 @@ export function OperationsWorkspace({
   initialSiteId?: string;
   initialWorkId?: string;
   initialCreate?: boolean;
+  initialTriage?: MaintenanceTriage;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -77,7 +79,7 @@ export function OperationsWorkspace({
     [search, setSearch] = useState(''),
     [siteFilter, setSiteFilter] = useState(initialSiteId ?? ''),
     [status, setStatus] = useState('all'),
-    [triage, setTriage] = useState<MaintenanceTriage>('all'),
+    [triage, setTriage] = useState<MaintenanceTriage>(initialTriage ?? 'all'),
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
   const openedLinkedRepair = useRef(false);
