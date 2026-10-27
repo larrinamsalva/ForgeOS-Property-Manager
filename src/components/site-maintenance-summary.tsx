@@ -6,7 +6,7 @@ import type { OperationsSnapshot } from '@/lib/operations-domain';
 import { opsLabel } from '@/lib/operations-domain';
 import { cents } from '@/lib/billing-domain';
 import { siteRepeatRepairAlerts } from '@/lib/site-repeat-repairs';
-import { siteMaintenanceLink } from '@/lib/site-maintenance-focus';
+import { siteMaintenanceLink, siteMaintenanceWorkLink } from '@/lib/site-maintenance-focus';
 
 // Defined once outside React render to keep the component pure.
 const repeatRepairLookback = new Date(Date.now() - 365 * 86400000).toISOString().slice(0,10);
@@ -61,13 +61,14 @@ export function SiteMaintenanceSummary({ organizationId, propertyId, siteId }: {
       </section>}
       {!work.length ? <p>No maintenance work orders are currently linked to this space.</p> :
         <div className="table-wrap" role="region" aria-label="Maintenance history for this site" tabIndex={0}>
-          <table><thead><tr><th>Work order</th><th>Priority</th><th>Status</th><th>Requested / completed</th><th>Actual cost</th><th>Assigned</th></tr></thead>
+          <table><thead><tr><th>Work order</th><th>Priority</th><th>Status</th><th>Requested / completed</th><th>Actual cost</th><th>Assigned</th><th>Details</th></tr></thead>
           <tbody>{[...work].sort((a,b) => b.requested_on.localeCompare(a.requested_on)).slice(0,12).map(item => <tr key={item.id}>
             <th scope="row">{item.number}<small>{item.title}</small></th>
             <td>{opsLabel(item.priority)}</td><td>{opsLabel(item.status)}</td>
             <td>{item.requested_on} / {item.completed_on ?? 'Not completed'}</td>
             <td>{actualFor(item.id) === undefined ? 'Unavailable' : cents(actualFor(item.id)!)}</td>
             <td>{staff.find(person => person.id === item.id)?.assigned_name || 'Not assigned'}</td>
+            <td><Link className="button secondary small" href={siteMaintenanceWorkLink(organizationId,propertyId,siteId,item.id)} aria-label={'Open repair '+item.number}>Open repair</Link></td>
           </tr>)}</tbody></table>
         </div>}
       {work.length > 12 && <p className="muted small">Showing 12 most recent linked work orders. Open Maintenance for the full history.</p>}

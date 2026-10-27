@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Wrench, RefreshCw, Download } from 'lucide-react';
 import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
-import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
+import { filterWorkOrdersBySite, focusedSiteWorkOrder } from '@/lib/site-maintenance-focus';
 import { OperationsEditor } from './operations/editor';
 import {
   WorkPanel,
@@ -45,12 +45,14 @@ export function OperationsWorkspace({
   section,
   navigationPending,
   initialSiteId,
+  initialWorkId,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   section: string;
   navigationPending: boolean;
   initialSiteId?: string;
+  initialWorkId?: string;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -74,6 +76,7 @@ export function OperationsWorkspace({
     [status, setStatus] = useState('all'),
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
+  const openedLinkedRepair = useRef(false);
   const workSites = snapshot.sites.filter(site => site.property_id === selected);
   const focusedSite = section === 'maintenance' && workSites.some(site => site.id === siteFilter) ? siteFilter : '';
   const active = !!property && !property.archived_at && property.operating_status === 'active',
@@ -90,6 +93,23 @@ export function OperationsWorkspace({
         if (!r.ok) throw new Error(v.error);
         setData(v);
         setError('');
+        // Route work IDs never authorize access: open only a matching work
+        // record from the authorized operations response and validated site.
+        // Once handled, a refresh must not unexpectedly reopen a closed modal.
+        if (!openedLinkedRepair.current && initialWorkId && initialSiteId &&
+            section === 'maintenance' && selected === propertyId &&
+            siteFilter === initialSiteId && allowed(selected)) {
+          openedLinkedRepair.current = true;
+          const work = focusedSiteWorkOrder(
+            (v as OperationsSnapshot).work, initialWorkId, selected, initialSiteId,
+          );
+          if (work) {
+            setTab('work');
+            setEditor({ type:'work_detail', id:work.id, requestId:crypto.randomUUID() });
+          } else {
+            setNotice('This repair is not available at the selected site. Review the site worklist instead.');
+          }
+        }
       })
       .catch((e) => {
         if (e.name !== 'AbortError') {
