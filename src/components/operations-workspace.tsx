@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Wrench, RefreshCw, Download } from 'lucide-react';
 import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
-import { filterWorkOrdersBySite, focusedSiteWorkOrder } from '@/lib/site-maintenance-focus';
+import { filterWorkOrdersBySite, focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
 import { OperationsEditor } from './operations/editor';
 import {
   WorkPanel,
@@ -46,6 +46,7 @@ export function OperationsWorkspace({
   navigationPending,
   initialSiteId,
   initialWorkId,
+  initialCreate,
 }: {
   snapshot: Snapshot;
   propertyId: string;
@@ -53,6 +54,7 @@ export function OperationsWorkspace({
   navigationPending: boolean;
   initialSiteId?: string;
   initialWorkId?: string;
+  initialCreate?: boolean;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -96,6 +98,23 @@ export function OperationsWorkspace({
         // Route work IDs never authorize access: open only a matching work
         // record from the authorized operations response and validated site.
         // Once handled, a refresh must not unexpectedly reopen a closed modal.
+        if (!openedLinkedRepair.current && initialCreate && !initialWorkId && initialSiteId &&
+            section === 'maintenance' && selected === propertyId &&
+            siteFilter === initialSiteId && allowed(selected)) {
+          openedLinkedRepair.current = true;
+          const site = maintenanceFormSiteDefault(snapshot.sites, selected, initialSiteId);
+          const property = snapshot.properties.find(p=>p.id===selected);
+          if (site && property && !property.archived_at && property.operating_status==='active') {
+            setTab('work');
+            setEditor({
+              type:canEditProperty(snapshot,selected,true)?'new_work':'maintenance_self_task',
+              value:site,
+              requestId:crypto.randomUUID(),
+            });
+          } else {
+            setNotice('This site is unavailable for a new maintenance request. Choose an active site in the worklist.');
+          }
+        }
         if (!openedLinkedRepair.current && initialWorkId && initialSiteId &&
             section === 'maintenance' && selected === propertyId &&
             siteFilter === initialSiteId && allowed(selected)) {
