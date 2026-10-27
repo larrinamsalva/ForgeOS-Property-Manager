@@ -99,3 +99,33 @@ export function filterMeterReadingsByCaptureMonth(
   return !Number.isNaN(date.getTime()) && dateAtProperty(timezone,date).startsWith(month+'-');
  });
 }
+
+/**
+ * Search only operational meter/site attributes. In particular, never include
+ * customer or occupant names, capture notes, review reasons or staff identities.
+ * Historical assignment IDs keep the site accurate after a meter is moved.
+ *
+ * Every whitespace-separated term must match at least one public-on-worklist
+ * attribute (terms can span site, meter, utility and serial).
+ */
+export function searchMeterReadingWorklist(
+ readings:readonly MeterReading[],
+ assignments:readonly Pick<MeterAssignment,'id'|'site_label'>[],
+ meters:readonly Pick<Meter,'id'|'label'|'utility'|'serial_number'>[],
+ query:string,
+):MeterReading[]{
+ const terms=query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+ if(!terms.length) return [...readings];
+ const byAssignment=new Map(assignments.map(a=>[a.id,a.site_label]));
+ const byMeter=new Map(meters.map(m=>[m.id,m]));
+ return readings.filter(reading=>{
+  const meter=byMeter.get(reading.meter_id);
+  const searchable=[
+   byAssignment.get(reading.assignment_id)??'',
+   meter?.label??'',
+   meter?.serial_number??'',
+   meter?.utility??'',
+  ].join(' ').toLocaleLowerCase();
+  return terms.every(term=>searchable.includes(term));
+ });
+}
