@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Gauge, Tablet, Plus, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { Snapshot } from '@/lib/domain';
+import type { MeterView } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { Modal } from './modal';
@@ -14,17 +15,19 @@ export function MeterWorkspace({
   snapshot,
   propertyId,
   navigationPending,
+  initialTab,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   navigationPending: boolean;
+  initialTab?: MeterView;
 }) {
   const [data, setData] = useState<MeterSnapshot | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('directory');
+  const [tab, setTab] = useState<MeterView>(initialTab ?? 'directory');
   const [selectedProperty, setSelectedProperty] = useState(propertyId || snapshot.properties[0]?.id || '');
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
@@ -440,7 +443,7 @@ export function MeterWorkspace({
             className={`button ${tab === id ? 'primary' : 'secondary'}`}
             aria-pressed={tab === id}
             onClick={() => {
-              setTab(id);
+              setTab(id as MeterView);
               setHistoryMeterId('');
               setAttentionOnly(false);
             }}
