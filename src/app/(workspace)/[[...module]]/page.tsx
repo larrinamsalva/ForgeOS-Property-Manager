@@ -59,7 +59,7 @@ export default async function Page({
       ? { siteId: query.site!, stayId: query.stay!, month: /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month : undefined } : undefined;
   return (
     <Workspace
-      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '') : ''}`}
+      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '') : ''}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
