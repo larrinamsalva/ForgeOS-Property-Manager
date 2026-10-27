@@ -1,4 +1,4 @@
-import type {MeterReading, MeterReview} from './meter-domain';
+import type {MeterAssignment, MeterReading, MeterReview} from './meter-domain';
 
 export type MeterAttentionReason = 'all' | 'unreviewed' | 'rejected' | 'exceptions' | 'flagged';
 
@@ -37,4 +37,37 @@ export function filterMeterReadingWorklist(
   if(reason==='flagged') return flagged;
   return true;
  });
+}
+
+export interface MeterReadingSiteOption {siteId:string; label:string; count:number}
+
+// Scope by the historical assignment ID attached to each capture. Meter ID
+// alone is unsafe: a meter can move between sites without moving past readings.
+export function filterMeterReadingsBySite(
+ readings:readonly MeterReading[],
+ assignments:readonly Pick<MeterAssignment,'id'|'site_id'>[],
+ siteId:string,
+):MeterReading[]{
+ if(!siteId) return [...readings];
+ const assignedIds=new Set(assignments.filter(a=>a.site_id===siteId).map(a=>a.id));
+ return readings.filter(r=>assignedIds.has(r.assignment_id));
+}
+
+// Only sites with captured readings appear. Multiple historical assignments
+// to the same site remain one option, and duplicate labels keep distinct IDs.
+export function meterReadingSiteOptions(
+ readings:readonly MeterReading[],
+ assignments:readonly Pick<MeterAssignment,'id'|'site_id'|'site_label'>[],
+):MeterReadingSiteOption[]{
+ const byAssignment=new Map(assignments.map(a=>[a.id,a]));
+ const bySite=new Map<string,MeterReadingSiteOption>();
+ for(const reading of readings){
+  const a=byAssignment.get(reading.assignment_id);
+  if(!a) continue;
+  const current=bySite.get(a.site_id);
+  if(current) current.count+=1;
+  else bySite.set(a.site_id,{siteId:a.site_id,label:a.site_label,count:1});
+ }
+ return [...bySite.values()].sort((a,b)=>
+  a.label.localeCompare(b.label,undefined,{numeric:true})||a.siteId.localeCompare(b.siteId));
 }
