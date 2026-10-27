@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Wrench, RefreshCw, Download } from 'lucide-react';
 import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
-import { filterWorkOrdersBySite, focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
+import { focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
 import { filterMaintenanceWorklist, type MaintenanceTriage } from '@/lib/maintenance-triage';
 import { OperationsEditor } from './operations/editor';
 import {
