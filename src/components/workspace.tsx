@@ -132,6 +132,7 @@ export function Workspace({
   billingFocus,
   collectionsFocus,
   meterView,
+  meterSiteId,
 }: {
   snapshot: Snapshot;
   section: string;
@@ -139,6 +140,7 @@ export function Workspace({
   billingFocus?: { siteId: string; stayId: string; month?: string };
   collectionsFocus?: 'followups';
   meterView?: MeterView;
+  meterSiteId?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1225,7 +1227,7 @@ export function Workspace({
           ) : section === 'paperless' ? (
             <PaperlessWorkspace snapshot={snapshot} propertyId={propertyId} />
           ) : section === 'meters' ? (
-            <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} initialTab={meterView} />
+            <MeterWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending} initialTab={meterView} initialSiteId={meterSiteId} />
           ) : ['maintenance', 'inventory', 'operations'].includes(section) ? (
             <OperationsWorkspace
               snapshot={snapshot}
