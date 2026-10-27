@@ -5,6 +5,7 @@ import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
 import { focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
 import { filterMaintenanceWorklist, type MaintenanceTriage } from '@/lib/maintenance-triage';
+import { incomingDeliveryLines, focusedIncomingDeliveryOrder } from '@/lib/incoming-deliveries';
 import { OperationsEditor } from './operations/editor';
 import {
   WorkPanel,
@@ -51,6 +52,7 @@ export function OperationsWorkspace({
   initialTriage,
   initialLowStock,
   initialIncoming,
+  initialOrderId,
 }: {
   snapshot: Snapshot;
   propertyId: string;
@@ -62,6 +64,7 @@ export function OperationsWorkspace({
   initialTriage?: MaintenanceTriage;
   initialLowStock?: boolean;
   initialIncoming?: boolean;
+  initialOrderId?: string;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -88,6 +91,7 @@ export function OperationsWorkspace({
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
   const openedLinkedRepair = useRef(false);
+  const openedLinkedPurchase = useRef(false);
   const workSites = snapshot.sites.filter(site => site.property_id === selected);
   const focusedSite = section === 'maintenance' && workSites.some(site => site.id === siteFilter) ? siteFilter : '';
   const active = !!property && !property.archived_at && property.operating_status === 'active',
@@ -136,6 +140,27 @@ export function OperationsWorkspace({
             setEditor({ type:'work_detail', id:work.id, requestId:crypto.randomUUID() });
           } else {
             setNotice('This repair is not available at the selected site. Review the site worklist instead.');
+          }
+        }
+        // An order ID in a URL is not authorization. Require a matching
+        // placed purchase order with an outstanding line in the API-authorized
+        // property before opening the existing read-only purchase details.
+        if (!openedLinkedPurchase.current && initialIncoming && initialOrderId &&
+            section === 'inventory' && propertyId && selected === propertyId &&
+            allowed(selected)) {
+          openedLinkedPurchase.current = true;
+          const data = v as OperationsSnapshot;
+          const property = snapshot.properties.find(p=>p.id===selected);
+          const outstanding = incomingDeliveryLines(
+            data.orders,data.lines,data.summary.purchase_lines,
+            [{id:selected,timezone:property?.timezone??'America/Los_Angeles'}],
+          );
+          const order = focusedIncomingDeliveryOrder(outstanding,selected,initialOrderId);
+          if (order) {
+            setTab('purchasing');
+            setEditor({type:'purchase_detail',id:order.id,requestId:crypto.randomUUID()});
+          } else {
+            setNotice('This purchase order is unavailable or has no outstanding delivery. Review the incoming supply list instead.');
           }
         }
       })
