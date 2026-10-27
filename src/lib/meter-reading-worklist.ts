@@ -1,4 +1,4 @@
-import type {MeterAssignment, MeterReading, MeterReview} from './meter-domain';
+import type {Meter, MeterAssignment, MeterReading, MeterReview} from './meter-domain';
 
 export type MeterAttentionReason = 'all' | 'unreviewed' | 'rejected' | 'exceptions' | 'flagged';
 
@@ -70,4 +70,14 @@ export function meterReadingSiteOptions(
  }
  return [...bySite.values()].sort((a,b)=>
   a.label.localeCompare(b.label,undefined,{numeric:true})||a.siteId.localeCompare(b.siteId));
+}
+
+export function filterMeterReadingsByUtility(
+ readings:readonly MeterReading[],
+ meters:readonly Pick<Meter,'id'|'utility'>[],
+ utility:'all'|Meter['utility'],
+):MeterReading[]{
+ if(utility==='all') return [...readings];
+ const meterIds=new Set(meters.filter(m=>m.utility===utility).map(m=>m.id));
+ return readings.filter(reading=>meterIds.has(reading.meter_id));
 }
