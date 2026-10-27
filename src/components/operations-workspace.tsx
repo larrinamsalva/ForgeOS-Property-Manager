@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Wrench, RefreshCw, Download } from 'lucide-react';
 import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
-import { filterWorkOrdersBySite, focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
+import { focusedSiteWorkOrder, maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
+import { filterMaintenanceWorklist, type MaintenanceTriage } from '@/lib/maintenance-triage';
 import { OperationsEditor } from './operations/editor';
 import {
   WorkPanel,
@@ -76,6 +77,7 @@ export function OperationsWorkspace({
     [search, setSearch] = useState(''),
     [siteFilter, setSiteFilter] = useState(initialSiteId ?? ''),
     [status, setStatus] = useState('all'),
+    [triage, setTriage] = useState<MaintenanceTriage>('all'),
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
   const openedLinkedRepair = useRef(false);
@@ -211,8 +213,16 @@ export function OperationsWorkspace({
           ]
         : [
             ['Work order', 'Title', 'Status', 'Assigned user', 'Requested', 'Due', 'Completed', 'Closed'],
-            ...filterWorkOrdersBySite(data.work.filter((w) => w.property_id === selected), focusedSite)
-              .map((w) => [
+            ...filterMaintenanceWorklist(data.work,{
+              propertyId:selected,
+              siteId:focusedSite,
+              search,
+              status:tab==='mine'?'all':status,
+              mineOnly:tab==='mine',
+              userId:snapshot.userId,
+              today,
+              triage,
+            }).map((w) => [
                 w.number,
                 w.title,
                 w.status,
@@ -266,6 +276,7 @@ export function OperationsWorkspace({
               setSearch('');
               setSiteFilter('');
               setStatus('all');
+              setTriage('all');
               close();
             }}
           >
@@ -291,7 +302,7 @@ export function OperationsWorkspace({
         {section === 'maintenance' && <label>
           Maintenance site
           <select aria-label="Maintenance site filter" value={focusedSite}
-            onChange={(e)=>{setSiteFilter(e.target.value);setStatus('all');}}>
+            onChange={(e)=>{setSiteFilter(e.target.value);setStatus('all');setTriage('all');}}>
             <option value="">All sites at this property</option>
             {workSites.map(site=><option key={site.id} value={site.id}>
               {site.label}{site.archived_at ? ' · archived' : ''}
@@ -299,7 +310,7 @@ export function OperationsWorkspace({
           </select>
         </label>}
         {section === 'maintenance' && focusedSite && <button type="button" className="button secondary"
-          onClick={()=>setSiteFilter('')}>Show all site repairs</button>}
+          onClick={()=>{setSiteFilter('');setTriage('all');}}>Show all site repairs</button>}
         {tab === 'work' && (
           <label>
             Work status
@@ -329,7 +340,7 @@ export function OperationsWorkspace({
         {office && (
           <button className="button secondary" disabled={loading || !data} onClick={exportHistory}>
             <Download size={16} />
-            Export {section === 'inventory' ? 'stock history' : focusedSite ? 'site work orders' : 'work orders'}
+            Export {section === 'inventory' ? 'stock history' : focusedSite ? 'visible site work orders' : 'visible work orders'}
           </button>
         )}
       </div>
@@ -399,8 +410,8 @@ export function OperationsWorkspace({
                 </button>
               ))}
           </div>
-          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} siteId={focusedSite} />}{' '}
-          {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly siteId={focusedSite} />}{' '}
+          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
+          {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
           {tab === 'stock' && <StockPanel ui={ui} search={search} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
           {tab === 'suppliers' && <SuppliersPanel ui={ui} />}{' '}
