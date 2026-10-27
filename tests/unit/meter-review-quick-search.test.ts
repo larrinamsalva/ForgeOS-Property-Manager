@@ -76,7 +76,7 @@ describe('supervisor meter worklist quick search',()=>{
   const sorted=sortMeterReadingWorklist(attention,assignments,'newest');
   const csv=filteredMeterReadingCsv('Test Park',sorted,meters,assignments,reviews);
   expect(sorted.map(r=>r.id)).toEqual(['water-88']);
-  expect(csv).toContain('W-0088'.slice(0,0)+'Water North');
+  expect(csv).toContain('Water North');
   expect(csv).not.toContain('Space 99');
   expect(csv).not.toContain('PRIVATE STAFF');
   expect(csv).not.toContain('Resident Doe');
