@@ -145,7 +145,7 @@ export function SiteMeterFile({
               </Link>}
             </article>)}
           </div>
-          {meterLinks && <Link className="button secondary" href={meterLinks.review}>Review this site's meter alerts</Link>}
+          {meterLinks && <Link className="button secondary" href={meterLinks.review}>Review this site&apos;s meter alerts</Link>}
         </section>
       )}
       {site && current?.data && (
