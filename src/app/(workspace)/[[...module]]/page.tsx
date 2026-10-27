@@ -11,7 +11,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string; create?: string; triage?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string; create?: string; triage?: string; stock?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -67,7 +67,7 @@ export default async function Page({
       ? { siteId: query.site!, stayId: query.stay!, month: /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month : undefined } : undefined;
   return (
     <Workspace
-      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '')+':'+(maintenanceTriage ?? '') : ''}`}
+      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '')+':'+(maintenanceTriage ?? '') : section === 'inventory' ? ':'+(property && query.stock === 'low' ? 'low' : '') : ''}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
@@ -79,6 +79,7 @@ export default async function Page({
       maintenanceWorkId={maintenanceWorkId}
       maintenanceCreate={section === 'maintenance' && !!maintenanceSiteId && !maintenanceWorkId && query.create === 'repair'}
       maintenanceTriage={maintenanceTriage}
+      inventoryLowStock={section === 'inventory' && !!property && query.stock === 'low'}
       meterUtility={meterUtility}
     />
   );
