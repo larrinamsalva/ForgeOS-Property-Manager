@@ -61,6 +61,6 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>
     </div>
-    <p className="muted small">Urgent-only filters include priority urgent, not high-priority jobs; the summary combines both. Overdue uses the property's local date and excludes finished work. Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
+    <p className="muted small">Urgent-only filters include priority urgent, not high-priority jobs; the summary combines both. Overdue uses the property&apos;s local date and excludes finished work. Meter counts cover up to 50 recent site captures. Inspection follow-ups remain in Operations; this panel does not claim an inspection is cleared or that a bill is ready.</p>
   </section>;
 }
