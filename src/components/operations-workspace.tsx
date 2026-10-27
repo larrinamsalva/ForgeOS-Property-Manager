@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Wrench, RefreshCw, Download } from 'lucide-react';
 import { addDays, canEditProperty, csv, dateAtProperty, type Snapshot } from '@/lib/domain';
 import { operationAlerts, opsLabel, type OperationsSnapshot } from '@/lib/operations-domain';
+import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { OperationsEditor } from './operations/editor';
 import {
   WorkPanel,
@@ -43,11 +44,13 @@ export function OperationsWorkspace({
   propertyId,
   section,
   navigationPending,
+  initialSiteId,
 }: {
   snapshot: Snapshot;
   propertyId: string;
   section: string;
   navigationPending: boolean;
+  initialSiteId?: string;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -67,9 +70,12 @@ export function OperationsWorkspace({
     [notice, setNotice] = useState(''),
     [editor, setEditor] = useState<OpsEditor | null>(null),
     [search, setSearch] = useState(''),
+    [siteFilter, setSiteFilter] = useState(initialSiteId ?? ''),
     [status, setStatus] = useState('all'),
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
+  const workSites = snapshot.sites.filter(site => site.property_id === selected);
+  const focusedSite = section === 'maintenance' && workSites.some(site => site.id === siteFilter) ? siteFilter : '';
   const active = !!property && !property.archived_at && property.operating_status === 'active',
     office = canEditProperty(snapshot, selected, true),
     manage = canEditProperty(snapshot, selected);
@@ -166,8 +172,7 @@ export function OperationsWorkspace({
           ]
         : [
             ['Work order', 'Title', 'Status', 'Assigned user', 'Requested', 'Due', 'Completed', 'Closed'],
-            ...data.work
-              .filter((w) => w.property_id === selected)
+            ...filterWorkOrdersBySite(data.work.filter((w) => w.property_id === selected), focusedSite)
               .map((w) => [
                 w.number,
                 w.title,
@@ -220,6 +225,8 @@ export function OperationsWorkspace({
             onChange={(e) => {
               setSelected(e.target.value);
               setSearch('');
+              setSiteFilter('');
+              setStatus('all');
               close();
             }}
           >
@@ -242,6 +249,18 @@ export function OperationsWorkspace({
             placeholder="Work, stock code, or equipment"
           />
         </label>
+        {section === 'maintenance' && <label>
+          Maintenance site
+          <select aria-label="Maintenance site filter" value={focusedSite}
+            onChange={(e)=>{setSiteFilter(e.target.value);setStatus('all');}}>
+            <option value="">All sites at this property</option>
+            {workSites.map(site=><option key={site.id} value={site.id}>
+              {site.label}{site.archived_at ? ' · archived' : ''}
+            </option>)}
+          </select>
+        </label>}
+        {section === 'maintenance' && focusedSite && <button type="button" className="button secondary"
+          onClick={()=>setSiteFilter('')}>Show all site repairs</button>}
         {tab === 'work' && (
           <label>
             Work status
@@ -271,7 +290,7 @@ export function OperationsWorkspace({
         {office && (
           <button className="button secondary" disabled={loading || !data} onClick={exportHistory}>
             <Download size={16} />
-            Export {section === 'inventory' ? 'stock history' : 'work orders'}
+            Export {section === 'inventory' ? 'stock history' : focusedSite ? 'site work orders' : 'work orders'}
           </button>
         )}
       </div>
@@ -296,6 +315,10 @@ export function OperationsWorkspace({
               This property is inactive or archived. Restore and activate it before recording changes.
             </p>
           )}
+          {section === 'maintenance' && focusedSite && <p className="muted small">
+            Showing maintenance work orders for {workSites.find(site=>site.id===focusedSite)?.label ?? 'this site'}.
+            Work-order counts and CSV export use this site; operational alerts above the worklist and other workspaces may cover the whole property.
+          </p>}
           <section className="panel ops-alerts">
             <div className="panel-heading">
               <div>
@@ -337,8 +360,8 @@ export function OperationsWorkspace({
                 </button>
               ))}
           </div>
-          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} />}{' '}
-          {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly />}{' '}
+          {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} siteId={focusedSite} />}{' '}
+          {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly siteId={focusedSite} />}{' '}
           {tab === 'stock' && <StockPanel ui={ui} search={search} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
           {tab === 'suppliers' && <SuppliersPanel ui={ui} />}{' '}
