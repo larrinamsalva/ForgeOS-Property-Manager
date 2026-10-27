@@ -4,13 +4,14 @@ import { serverClient } from '@/lib/supabase/server';
 import { loadSnapshot } from '@/lib/data';
 import { Workspace } from '@/components/workspace';
 import { meterViewFromQuery, meterSiteFromQuery, meterUtilityFromQuery } from '@/lib/meter-actions';
+import { maintenanceTriageFromQuery } from '@/lib/maintenance-triage';
 export const dynamic = 'force-dynamic';
 export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string; create?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string; utility?: string; work?: string; create?: string; triage?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -52,6 +53,8 @@ export default async function Page({
   const meterSiteId = section === 'meters' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
   const maintenanceSiteId = section === 'maintenance' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
   const maintenanceWorkId = maintenanceSiteId && typeof query.work === 'string' && query.work.length <= 128 ? query.work : undefined;
+  const maintenanceTriage = section === 'maintenance' && maintenanceSiteId && !maintenanceWorkId && query.create !== 'repair'
+    ? maintenanceTriageFromQuery(query.triage) : undefined;
   const meterUtility = section === 'meters' ? meterUtilityFromQuery(query.utility) : undefined;
   const billingFocus = section === 'billing' && property &&
     snapshot.sites.some((site) => site.id === query.site && site.property_id === property) &&
@@ -59,7 +62,7 @@ export default async function Page({
       ? { siteId: query.site!, stayId: query.stay!, month: /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month : undefined } : undefined;
   return (
     <Workspace
-      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '') : ''}`}
+      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '')+':'+(maintenanceWorkId ?? '')+':'+(query.create === 'repair' && maintenanceSiteId ? 'create' : '')+':'+(maintenanceTriage ?? '') : ''}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
@@ -70,6 +73,7 @@ export default async function Page({
       maintenanceSiteId={maintenanceSiteId}
       maintenanceWorkId={maintenanceWorkId}
       maintenanceCreate={section === 'maintenance' && !!maintenanceSiteId && !maintenanceWorkId && query.create === 'repair'}
+      maintenanceTriage={maintenanceTriage}
       meterUtility={meterUtility}
     />
   );
