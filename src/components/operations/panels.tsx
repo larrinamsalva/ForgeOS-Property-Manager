@@ -1,6 +1,7 @@
 'use client';
 import { preventiveReminders } from '@/lib/preventive-reminders';
 import { maintenanceCloseoutQueue } from '@/lib/maintenance-closeout-queue';
+import { filterMaintenanceWorklist, maintenanceMatchesTriage, type MaintenanceTriage } from '@/lib/maintenance-triage';
 import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
@@ -36,25 +37,16 @@ function Action({
     </button>
   );
 }
-export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange, siteId = '' }: { ui: OpsUI; search: string; status: string; mineOnly?: boolean; onStatusChange?: (value: string) => void; siteId?: string }) {
+export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange, siteId = '', triage = 'all', onTriageChange }: {
+  ui: OpsUI; search: string; status: string; mineOnly?: boolean;
+  onStatusChange?: (value: string) => void; siteId?: string;
+  triage?: MaintenanceTriage; onTriageChange?: (value: MaintenanceTriage) => void;
+}) {
   const siteWork = filterWorkOrdersBySite(scoped(ui, ui.data.work),siteId);
-  const work = siteWork
-    .filter(
-      (w) =>
-        (status === 'all' || w.status === status) &&
-        (!mineOnly || w.assigned_to === ui.snapshot.userId) &&
-        `${w.number} ${w.title} ${w.category} ${w.description}`.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => {
-      const open = (status: string) => !['completed', 'closed', 'cancelled'].includes(status);
-      const urgency = (item: typeof a) =>
-        !open(item.status) ? 5 : item.priority === 'urgent' ? 0 :
-        item.due_on && item.due_on < ui.today ? 1 :
-        item.priority === 'high' ? 2 : item.priority === 'normal' ? 3 : 4;
-      return urgency(a) - urgency(b) ||
-        (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') ||
-        b.created_at.localeCompare(a.created_at);
-    });
+  const work = filterMaintenanceWorklist(siteWork,{
+    propertyId:ui.propertyId,siteId,search,status,mineOnly,
+    userId:ui.snapshot.userId,today:ui.today,triage,
+  });
   const activeWork = siteWork.filter((w) =>
     !['completed', 'closed', 'cancelled'].includes(w.status) &&
     (!mineOnly || w.assigned_to === ui.snapshot.userId));
@@ -112,6 +104,27 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           ))}
         </div>
       )}
+      {onTriageChange && <div className="quick-actions" role="group" aria-label="Maintenance attention filters">
+        {([
+          ['all','All work'],
+          ['urgent','Urgent'],
+          ['overdue','Overdue'],
+          ['due_today','Due today'],
+          ['waiting_parts','Waiting for parts'],
+          ...(!mineOnly ? [['unassigned','Unassigned']] : []),
+        ] as [MaintenanceTriage,string][]).map(([key,label])=>{
+          const eligible = siteWork.filter(w=>!mineOnly||w.assigned_to===ui.snapshot.userId);
+          const count = eligible.filter(w=>maintenanceMatchesTriage(w,key,ui.today)).length;
+          return <button key={key} type="button" className={`button ${triage===key?'primary':'secondary'}`}
+            aria-pressed={triage===key} onClick={()=>onTriageChange(key)}>
+            {label} ({count})
+          </button>;
+        })}
+      </div>}
+      {triage!=='all' && <p className="muted small" role="status">
+        Showing {work.length} work orders matching the attention, work status and search filters.
+        Attention counts above cover the selected site or property before search and work-status filters.
+      </p>}
       <div className="stat-grid" aria-label="Open maintenance work summary">
         <div className="stat-card"><span>Urgent open jobs</span><strong>{urgentCount}</strong></div>
         <div className="stat-card"><span>Overdue open jobs</span><strong>{overdueCount}</strong></div>
@@ -168,7 +181,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
       {!mineOnly && !siteId && <MaintenanceMonthCalendar ui={ui} />}
       {!work.length ? (
         <Empty title="No matching work orders">
-          Requests and assignments for this site or property will appear here.
+          No repairs match these selections. Choose All work, change the work status or clear your search to see more results.
         </Empty>
       ) : (
         <div className="table-wrap" role="region" aria-label="Maintenance work orders" tabIndex={0}>
