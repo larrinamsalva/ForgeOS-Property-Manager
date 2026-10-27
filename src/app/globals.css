@@ -2618,6 +2618,28 @@ select option {
   gap: 6px;
   min-width: 220px;
 }
+
+/* Maintenance adds a site selector to the shared property controls.
+   Wrap controls before they can push the entire page beyond the viewport,
+   even on desktop with a sidebar and while a modal is open. */
+.ops-workspace .meter-controls {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.ops-workspace .meter-controls > label {
+  flex: 1 1 210px;
+  min-width: 0;
+}
+.ops-workspace .meter-controls > label > select,
+.ops-workspace .meter-controls > label > input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.ops-workspace .meter-controls > button {
+  max-width: 100%;
+  white-space: normal;
+}
 .meter-content {
   border: 0;
   padding: 0;

@@ -369,6 +369,9 @@ test('operations forms stay accessible in both themes on every viewport', async 
   await login(page);
   await profile(page);
   await section(page);
+  // The site selector must never make the desktop toolbar wider than the page.
+  await expect(page.getByRole('combobox', { name: 'Maintenance site filter' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.getByRole('button', { name: 'New maintenance request', exact: true }).click();
   for (const theme of ['light', 'dark']) {
     await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);

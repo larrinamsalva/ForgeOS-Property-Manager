@@ -50,6 +50,7 @@ export default async function Page({
   const snapshot = await loadSnapshot(client, user, query.organization);
   const property = snapshot.properties.some((p) => p.id === query.property) ? (query.property ?? '') : '';
   const meterSiteId = section === 'meters' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
+  const maintenanceSiteId = section === 'maintenance' ? meterSiteFromQuery(query.site,property,snapshot.sites) : undefined;
   const meterUtility = section === 'meters' ? meterUtilityFromQuery(query.utility) : undefined;
   const billingFocus = section === 'billing' && property &&
     snapshot.sites.some((site) => site.id === query.site && site.property_id === property) &&
@@ -57,7 +58,7 @@ export default async function Page({
       ? { siteId: query.site!, stayId: query.stay!, month: /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month : undefined } : undefined;
   return (
     <Workspace
-      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : ''}`}
+      key={`${snapshot.organizationId}:${section}:${property}${section === 'meters' ? ':'+(meterViewFromQuery(query.view) ?? '')+':'+(meterSiteId ?? '')+':'+(meterUtility ?? '') : section === 'maintenance' ? ':'+(maintenanceSiteId ?? '') : ''}`}
       snapshot={snapshot}
       section={section}
       propertyId={property}
@@ -65,6 +66,7 @@ export default async function Page({
       collectionsFocus={section === 'collections' && query.focus === 'followups' ? 'followups' : undefined}
       meterView={section === 'meters' ? meterViewFromQuery(query.view) : undefined}
       meterSiteId={meterSiteId}
+      maintenanceSiteId={maintenanceSiteId}
       meterUtility={meterUtility}
     />
   );
