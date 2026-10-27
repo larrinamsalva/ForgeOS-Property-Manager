@@ -16,3 +16,20 @@ export function meterActionCsv(property:string,month:string,rows:MonthlyRunRow[]
  }));
  return '\uFEFF'+csv([heading,...tasks])+'\r\n';
 }
+
+import type {MeterAction} from './meter-actions';
+
+// Export the exact on-screen meter tasks, after site/utility/action filtering.
+export function filteredMeterActionCsv(property:string,month:string,tasks:readonly MeterAction[],rows:readonly MonthlyRunRow[]):string{
+ const heading=['Property','Billing month','Site / unit','Utility','Action','Boundary date','Billing period start','Billing period end (exclusive)'];
+ const periods=new Map(rows.map(row=>[row.stayId,row.period]));
+ const values=tasks.map(task=>{
+  const stayId=task.key.split(':')[0];
+  const period=periods.get(stayId);
+  const date=/\b\d{4}-\d{2}-\d{2}\b/.exec(task.detail)?.[0]??'';
+  return [property,month,task.siteLabel,task.utility,task.kind==='capture'?'Capture reading':
+   task.kind==='review'?'Approve/review reading':'Inspect meter evidence',date,
+   period?.startsOn??'',period?.endsOn??''];
+ });
+ return '\uFEFF'+csv([heading,...values])+'\r\n';
+}
