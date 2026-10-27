@@ -6,7 +6,7 @@ import { cents } from '@/lib/billing-domain';
 import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
-import { meterActionCsv } from '@/lib/meter-action-export';
+import { filteredMeterActionCsv } from '@/lib/meter-action-export';
 import { meterActions, filterMeterActionsByUtility } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
@@ -81,7 +81,7 @@ export function MonthlyBillingBoard({
   }
   function downloadMeterActions() {
     const propertyName = snapshot.properties.find(p => p.id === propertyId)?.name ?? 'Property';
-    const contents = meterActionCsv(propertyName, month, visible);
+    const contents = filteredMeterActionCsv(propertyName, month, tasks, visible);
     const url = URL.createObjectURL(new Blob([contents], {type:'text/csv;charset=utf-8'}));
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -132,9 +132,9 @@ export function MonthlyBillingBoard({
       <div className="monthly-billing-export">
         <button type="button" className="button secondary" disabled={navigationPending || !visible.length || loadingEvidence || evidenceError}
           onClick={downloadChecklist}>Download filtered billing checklist (CSV)</button>
-        <button type="button" className="button secondary" disabled={navigationPending || !visible.some(row=>row.checklist.some(item=>item.state==='check' && (item.label.includes('boundary readings')||item.label.includes('meter readings')))) || loadingEvidence || evidenceError}
+        <button type="button" className="button secondary" disabled={navigationPending || !tasks.length || loadingEvidence || evidenceError}
           onClick={downloadMeterActions}>Download meter action list (CSV)</button>
-        <p className="muted small">Exports only the rows on screen, with their review warnings, existing invoice states and recorded totals. Keep this resident information private.</p>
+        <p className="muted small">Billing checklist exports visible billing rows and private resident information. The meter action export matches the selected meter filters and contains no resident or invoice details.</p>
       </div>
       <section className="panel" aria-label="Meter action preview">
         <h3>Meter tasks for selected sites</h3>
