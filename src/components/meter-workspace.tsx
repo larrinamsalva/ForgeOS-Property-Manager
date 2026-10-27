@@ -5,7 +5,7 @@ import type { Snapshot } from '@/lib/domain';
 import type { MeterView } from '@/lib/meter-actions';
 import { canEditProperty, dateAtProperty, addDays, customerName } from '@/lib/domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
-import { filterMeterReadingWorklist } from '@/lib/meter-reading-worklist';
+import { filterMeterReadingWorklist, type MeterAttentionReason } from '@/lib/meter-reading-worklist';
 import { Modal } from './modal';
 import { RecordForm, type Field } from './record-form';
 import { Empty } from './workspace-parts';
@@ -33,6 +33,7 @@ export function MeterWorkspace({
   const [search, setSearch] = useState('');
   const [historyMeterId, setHistoryMeterId] = useState('');
   const [attentionOnly, setAttentionOnly] = useState(false);
+  const [attentionReason, setAttentionReason] = useState<MeterAttentionReason>('all');
   const [editor, setEditor] = useState<{ type: string; id?: string } | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
   const property = snapshot.properties.find((p) => p.id === selectedProperty);
@@ -102,7 +103,16 @@ export function MeterWorkspace({
   const needsAttention = filterMeterReadingWorklist(readings, reviews, '', true);
   const meterScopedReadings = filterMeterReadingWorklist(readings, reviews, historyMeterId, false);
   const meterAttentionReadings = filterMeterReadingWorklist(readings, reviews, historyMeterId, true);
-  const visibleReadings = attentionOnly ? meterAttentionReadings : meterScopedReadings;
+  const visibleReadings = attentionOnly
+    ? filterMeterReadingWorklist(readings, reviews, historyMeterId, true, attentionReason)
+    : meterScopedReadings;
+  const attentionReasons: {value:MeterAttentionReason;label:string}[] = [
+    {value:'all',label:'All attention reasons'},
+    {value:'unreviewed',label:'Awaiting review'},
+    {value:'rejected',label:'Rejected readings'},
+    {value:'exceptions',label:'Automatic exceptions'},
+    {value:'flagged',label:'Meter flags'},
+  ];
   const damagedMeters = readings.filter((r) => ['damaged', 'missing', 'problem', 'reset'].includes(r.flag));
   const today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
   function renderEditor() {
@@ -386,6 +396,7 @@ export function MeterWorkspace({
               setEditor(null);
               setHistoryMeterId('');
               setAttentionOnly(false);
+              setAttentionReason('all');
             }}
           >
             {snapshot.properties.map((p) => (
@@ -428,6 +439,7 @@ export function MeterWorkspace({
               setTab('review');
               setHistoryMeterId('');
               setAttentionOnly(true);
+              setAttentionReason('all');
             }}>Open attention queue ({needsAttention.length})</button>
           </div>
           <div className="stat-grid">
@@ -452,6 +464,7 @@ export function MeterWorkspace({
               setTab(id as MeterView);
               setHistoryMeterId('');
               setAttentionOnly(false);
+              setAttentionReason('all');
             }}
           >
             {label}
@@ -725,10 +738,20 @@ export function MeterWorkspace({
               )}
               <div className="quick-actions" role="group" aria-label="Reading attention filter">
                 <button type="button" className={`button ${attentionOnly ? 'secondary' : 'primary'}`}
-                  aria-pressed={!attentionOnly} onClick={() => setAttentionOnly(false)}>All readings ({meterScopedReadings.length})</button>
+                  aria-pressed={!attentionOnly} onClick={() => {setAttentionOnly(false);setAttentionReason('all');}}>All readings ({meterScopedReadings.length})</button>
                 <button type="button" className={`button ${attentionOnly ? 'primary' : 'secondary'}`}
-                  aria-pressed={attentionOnly} onClick={() => setAttentionOnly(true)}>Needs attention ({meterAttentionReadings.length})</button>
+                  aria-pressed={attentionOnly} onClick={() => {setAttentionOnly(true);setAttentionReason('all');}}>Needs attention ({meterAttentionReadings.length})</button>
               </div>
+              {attentionOnly && <label className="history-meter-filter">
+                Filter by attention reason
+                <select aria-label="Meter attention reason filter" value={attentionReason}
+                  onChange={(e)=>setAttentionReason(e.target.value as MeterAttentionReason)}>
+                  {attentionReasons.map(reason=><option key={reason.value} value={reason.value}>
+                    {reason.label} ({filterMeterReadingWorklist(readings,reviews,historyMeterId,true,reason.value).length})
+                  </option>)}
+                </select>
+              </label>}
+              {attentionOnly && <p className="muted small">Attention categories may overlap. Exceptions and flags describe recorded captures; accepted reviews remain in the audit history.</p>}
               <label className="history-meter-filter">
                 Meter history filter
                 <select value={historyMeterId} onChange={(e) => setHistoryMeterId(e.target.value)}>
@@ -744,8 +767,8 @@ export function MeterWorkspace({
               </label>
               <p className="muted small" role="status">Showing {visibleReadings.length} of {meterScopedReadings.length} readings for the selected meter and attention filters.</p>
               {!visibleReadings.length ? (
-                <Empty title={attentionOnly ? 'No readings needing attention' : 'No readings collected'}>
-                  Use the tablet reader to collect an assigned route.
+                <Empty title={attentionOnly ? 'No readings matching this attention filter' : 'No readings collected'}>
+                  {attentionOnly ? 'Choose another attention reason or meter, or select All readings.' : 'Use the tablet reader to collect an assigned route.'}
                 </Empty>
               ) : (
                 <div className="table-wrap" role="region" aria-label="Meter reading history" tabIndex={0}>
