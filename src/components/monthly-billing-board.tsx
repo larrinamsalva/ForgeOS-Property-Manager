@@ -40,6 +40,7 @@ export function MonthlyBillingBoard({
   const [issueFilter, setIssueFilter] = useState<'all'|'readings'|'missing_capture'|'awaiting_review'|'rates'|'invoices'|'duplicates'|'policy'>('all');
   const [search,setSearch] = useState('');
   const [meterUtility,setMeterUtility] = useState<'all'|'electric'|'water'|'gas'>('all');
+  const [meterAction,setMeterAction] = useState<'all'|'capture'|'review'|'inspect'>('all');
   const totals = {
     all:rows.length,ready:rows.filter(r=>r.status==='ready').length,
     review:rows.filter(r=>r.status==='review').length,
@@ -95,7 +96,8 @@ export function MonthlyBillingBoard({
       (invoiceFilter !== 'draft' && invoiceFilter !== 'approved_unissued' && row.invoiceStage === invoiceFilter)) &&
     (row.siteLabel+' '+(names.get(row.customerId) ?? '')).toLowerCase()
       .includes(search.trim().toLowerCase()));
-  const tasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
+  const utilityTasks=filterMeterActionsByUtility(meterActions(visible),meterUtility);
+  const tasks=utilityTasks.filter(task=>meterAction==='all'||task.kind===meterAction);
   return (
     <section className="panel monthly-billing-board" aria-label="Property monthly billing board">
       <div className="panel-heading">
@@ -142,12 +144,17 @@ export function MonthlyBillingBoard({
             <option value="all">All utilities</option><option value="electric">Electric</option><option value="water">Water</option><option value="gas">Gas</option>
           </select>
         </label>
+        <label>Filter by task type
+          <select aria-label="Meter task type filter" value={meterAction} onChange={e=>setMeterAction(e.target.value as typeof meterAction)}>
+            <option value="all">All actions</option><option value="capture">Capture readings</option><option value="review">Review approvals</option><option value="inspect">Other evidence checks</option>
+          </select>
+        </label>
         {loadingEvidence || evidenceError ? <p role="status">{loadingEvidence?'Loading meter evidence…':'Meter evidence unavailable; action preview may be incomplete.'}</p>:
           <>
             <div className="monthly-billing-counts" aria-label="Visible meter task counts">
-              <span><strong>{tasks.filter(t=>t.kind==='capture').length}</strong> readings to capture</span>
-              <span><strong>{tasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
-              <span><strong>{tasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
+              <span><strong>{utilityTasks.filter(t=>t.kind==='capture').length}</strong> readings to capture</span>
+              <span><strong>{utilityTasks.filter(t=>t.kind==='review').length}</strong> readings to review</span>
+              <span><strong>{utilityTasks.filter(t=>t.kind==='inspect').length}</strong> other evidence checks</span>
             </div>
             {!tasks.length?<p>No outstanding meter evidence tasks for the currently filtered sites.</p>:
               <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
