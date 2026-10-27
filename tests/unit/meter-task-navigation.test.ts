@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { meterTaskDestination, meterViewFromQuery, meterSiteFromQuery } from '../../src/lib/meter-actions';
+import { meterTaskDestination, meterViewFromQuery, meterSiteFromQuery, meterUtilityFromQuery } from '../../src/lib/meter-actions';
 
 describe('monthly billing meter task handoff', () => {
   it('takes capture tasks to the existing tablet reader without exposing property billing or tenant details', () => {
@@ -65,6 +65,37 @@ describe('monthly billing meter task handoff', () => {
     expect(meterSiteFromQuery('unknown','park-1',sites)).toBeUndefined();
     expect(meterSiteFromQuery(undefined,'park-1',sites)).toBeUndefined();
     expect(meterSiteFromQuery('site-88','',sites)).toBeUndefined();
+  });
+
+
+  it('focuses review and history on a validated utility at the correct site', () => {
+    for(const kind of ['review','inspect'] as const){
+      const result=meterTaskDestination(kind,'org & 1','property','space 88','water');
+      const uri=new URL(result.href,'https://example.test');
+      expect(uri.pathname).toBe('/meters');
+      expect(uri.searchParams.get('site')).toBe('space 88');
+      expect(uri.searchParams.get('utility')).toBe('water');
+      expect(uri.searchParams.get('view')).toBe(kind==='review'?'review':'history');
+      expect(uri.searchParams.has('customer')).toBe(false);
+      expect(uri.searchParams.has('stay')).toBe(false);
+    }
+  });
+
+  it('never carries an unrecognized utility or site context into tablet captures', () => {
+    const unknown=new URL(meterTaskDestination('review','org','property','site-1','unknown').href,'https://example.test');
+    expect(unknown.searchParams.has('utility')).toBe(false);
+    const tablet=new URL(meterTaskDestination('capture','org','property','site-1','water').href,'https://example.test');
+    expect(tablet.searchParams.has('utility')).toBe(false);
+    expect(tablet.searchParams.has('site')).toBe(false);
+  });
+
+  it('accepts only electric, water or gas from the utility query', () => {
+    expect(meterUtilityFromQuery('electric')).toBe('electric');
+    expect(meterUtilityFromQuery('water')).toBe('water');
+    expect(meterUtilityFromQuery('gas')).toBe('gas');
+    for (const unexpected of [undefined,'','all','oil','WATER','water?site=other']){
+      expect(meterUtilityFromQuery(unexpected)).toBeUndefined();
+    }
   });
 
   it('accepts only known meter views from route query parameters', () => {
