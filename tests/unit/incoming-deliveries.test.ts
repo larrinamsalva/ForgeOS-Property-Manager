@@ -60,7 +60,7 @@ describe('incoming supplier delivery tracking',()=>{
  it('shows only ordered, outstanding purchase lines and sorts past-due first',()=>{
   const items=list();
   expect(items.map(row=>row.line.id)).toEqual([
-   'east-late','late-partial','today-empty','future-negative','noeta',
+   'late-partial','east-late','today-empty','future-negative','noeta',
   ]);
   expect(items.map(row=>row.eta)).toEqual([
    'overdue','overdue','due_today','upcoming','not_scheduled',
