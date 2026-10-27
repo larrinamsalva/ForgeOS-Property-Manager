@@ -11,6 +11,7 @@ import { quantity, quantityToMilli, opsLabel } from '@/lib/operations-domain';
 import { maintenanceCategories, maintenanceAreas, formatMaintenanceDescription, getSavedMaintenanceDescription } from '@/lib/maintenance-catalog';
 import { maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
 import { suggestedRestockRequest } from '@/lib/low-stock-inventory';
+import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
 import type { OpsUI, OpsEditor } from './types';
 const reason: Field = { name: 'reason', label: 'Reason / work note', type: 'textarea', required: true };
 const reference: Field = { name: 'reference', label: 'Supporting reference' };
@@ -580,10 +581,18 @@ export function OperationsEditor({
     const restockDefault = matchingPart
       ? suggestedRestockRequest(data.items,data.summary.stock,propertyId,matchingPart.id)
       : undefined;
+    const existing = matchingPart
+      ? existingRestockRequests(data.requests,propertyId,matchingPart.id)
+      : null;
     title = 'Request parts / supplies';
-    if (restockDefault) {
-      description = 'Suggested quantity is prefilled from the current stock balance and restock target. Confirm the physical count, quantity and needed date before saving. This is a request, not an order.';
-    }
+    description = [
+      restockDefault
+        ? 'Suggested quantity uses the recorded on-hand balance and restock target. Verify the physical count, date and quantity before saving.'
+        : 'Choose the right item, quantity and needed date before submitting. This is a request, not an order.',
+      existing?.count
+        ? `Existing requests for this item: ${existing.count} (${existingRestockStatusText(existing)}), totaling ${quantity(existing.requestedMilli)} recorded units. Review Purchasing before submitting another request. These records do not guarantee delivery or reduce the suggested quantity.`
+        : '',
+    ].filter(Boolean).join(' ');
     fields = [
       {
         name: 'item_id',
