@@ -3,13 +3,14 @@ import { configured } from '@/lib/supabase/config';
 import { serverClient } from '@/lib/supabase/server';
 import { loadSnapshot } from '@/lib/data';
 import { Workspace } from '@/components/workspace';
+import { meterViewFromQuery } from '@/lib/meter-actions';
 export const dynamic = 'force-dynamic';
 export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ module?: string[] }>;
-  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string }>;
+  searchParams: Promise<{ organization?: string; property?: string; site?: string; stay?: string; month?: string; focus?: string; view?: string }>;
 }) {
   if (!configured()) redirect('/setup');
   const { module = [] } = await params;
@@ -60,6 +61,7 @@ export default async function Page({
       propertyId={property}
       billingFocus={billingFocus}
       collectionsFocus={section === 'collections' && query.focus === 'followups' ? 'followups' : undefined}
+      meterView={section === 'meters' ? meterViewFromQuery(query.view) : undefined}
     />
   );
 }

@@ -7,7 +7,7 @@ import { customerName, type Snapshot } from '@/lib/domain';
 import { invoiceStageLabel, type MonthlyInvoiceStage, type MonthlyRunRow, type MonthlyRunStatus } from '@/lib/monthly-billing-run';
 import { monthlyBillingCsv } from '@/lib/monthly-billing-export';
 import { filteredMeterActionCsv } from '@/lib/meter-action-export';
-import { meterActions, filterMeterActionsByUtility } from '@/lib/meter-actions';
+import { meterActions, filterMeterActionsByUtility, meterTaskDestination } from '@/lib/meter-actions';
 
 const filters: {value:'all'|MonthlyRunStatus;label:string}[] = [
   {value:'all',label:'All intersecting stays'},
@@ -138,7 +138,7 @@ export function MonthlyBillingBoard({
       </div>
       <section className="panel" aria-label="Meter action preview">
         <h3>Meter tasks for selected sites</h3>
-        <p className="muted small">Read-only guidance from the billing precheck. Missing captures must be recorded; captured readings need supervisor review before billing.</p>
+        <p className="muted small">Read-only guidance from the billing precheck. Open the relevant meter workspace to capture, review, or inspect evidence. Choose the matching site and meter there; these links never record or approve a reading.</p>
         <label>Filter meter tasks by utility
           <select aria-label="Meter task utility filter" value={meterUtility} onChange={e=>setMeterUtility(e.target.value as typeof meterUtility)}>
             <option value="all">All utilities</option><option value="electric">Electric</option><option value="water">Water</option><option value="gas">Gas</option>
@@ -158,12 +158,16 @@ export function MonthlyBillingBoard({
             </div>
             {!tasks.length?<p>No outstanding meter evidence tasks for the currently filtered sites.</p>:
               <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
-                <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th></tr></thead>
-                  <tbody>{tasks.map(task=><tr key={task.key}>
+                <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Next step</th></tr></thead>
+                  <tbody>{tasks.map(task=>{
+                    const target=meterTaskDestination(task.kind,snapshot.organizationId,propertyId);
+                    return <tr key={task.key}>
                     <th scope="row">{task.siteLabel}</th><td>{task.utility}</td>
                     <td>{task.kind==='capture'?'Capture':task.kind==='review'?'Review approval':'Inspect evidence'}</td>
                     <td>{task.detail}</td>
-                  </tr>)}</tbody>
+                    <td><Link className="button secondary small" href={target.href}>{target.label}</Link></td>
+                  </tr>;
+                  })}</tbody>
                 </table>
               </div>}
           </>}
