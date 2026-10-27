@@ -50,6 +50,7 @@ export function OperationsWorkspace({
   initialCreate,
   initialTriage,
   initialLowStock,
+  initialIncoming,
 }: {
   snapshot: Snapshot;
   propertyId: string;
@@ -60,6 +61,7 @@ export function OperationsWorkspace({
   initialCreate?: boolean;
   initialTriage?: MaintenanceTriage;
   initialLowStock?: boolean;
+  initialIncoming?: boolean;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -71,7 +73,7 @@ export function OperationsWorkspace({
   );
   const property = snapshot.properties.find((p) => p.id === selected),
     today = dateAtProperty(property?.timezone ?? 'America/Los_Angeles');
-  const [tab, setTab] = useState(tabs[section][0][0]),
+  const [tab, setTab] = useState(section === 'inventory' && initialIncoming ? 'purchasing' : tabs[section][0][0]),
     [data, setData] = useState<OperationsSnapshot | null>(null),
     [loading, setLoading] = useState(true),
     [refresh, setRefresh] = useState(0),
