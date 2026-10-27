@@ -49,6 +49,7 @@ export function OperationsWorkspace({
   initialWorkId,
   initialCreate,
   initialTriage,
+  initialLowStock,
 }: {
   snapshot: Snapshot;
   propertyId: string;
@@ -58,6 +59,7 @@ export function OperationsWorkspace({
   initialWorkId?: string;
   initialCreate?: boolean;
   initialTriage?: MaintenanceTriage;
+  initialLowStock?: boolean;
 }) {
   const allowed = (id: string) =>
     canEditProperty(snapshot, id, true) ||
@@ -80,6 +82,7 @@ export function OperationsWorkspace({
     [siteFilter, setSiteFilter] = useState(initialSiteId ?? ''),
     [status, setStatus] = useState('all'),
     [triage, setTriage] = useState<MaintenanceTriage>(initialTriage ?? 'all'),
+    [lowStockOnly, setLowStockOnly] = useState(!!initialLowStock),
     [starts, setStarts] = useState(addDays(today, -7)),
     [ends, setEnds] = useState(addDays(today, 30));
   const openedLinkedRepair = useRef(false);
@@ -279,6 +282,7 @@ export function OperationsWorkspace({
               setSiteFilter('');
               setStatus('all');
               setTriage('all');
+              setLowStockOnly(false);
               close();
             }}
           >
@@ -414,7 +418,7 @@ export function OperationsWorkspace({
           </div>
           {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
           {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
-          {tab === 'stock' && <StockPanel ui={ui} search={search} />}{' '}
+          {tab === 'stock' && <StockPanel ui={ui} search={search} lowStockOnly={lowStockOnly} onLowStockChange={setLowStockOnly} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
           {tab === 'suppliers' && <SuppliersPanel ui={ui} />}{' '}
           {tab === 'equipment' && <EquipmentPanel ui={ui} search={search} />}{' '}
