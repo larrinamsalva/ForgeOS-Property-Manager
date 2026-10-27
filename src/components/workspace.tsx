@@ -136,6 +136,7 @@ export function Workspace({
   meterUtility,
   maintenanceSiteId,
   maintenanceWorkId,
+  maintenanceCreate,
 }: {
   snapshot: Snapshot;
   section: string;
@@ -147,6 +148,7 @@ export function Workspace({
   meterUtility?: MeterUtility;
   maintenanceSiteId?: string;
   maintenanceWorkId?: string;
+  maintenanceCreate?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1242,6 +1244,7 @@ export function Workspace({
               navigationPending={isPending}
               initialSiteId={section === 'maintenance' ? maintenanceSiteId : undefined}
               initialWorkId={section === 'maintenance' ? maintenanceWorkId : undefined}
+              initialCreate={section === 'maintenance' && maintenanceCreate}
             />
           ) : section === 'collections' ? (
             <CollectionsWorkspace snapshot={snapshot} propertyId={propertyId} navigationPending={isPending}

@@ -6,7 +6,7 @@ import type {OperationsSnapshot} from '@/lib/operations-domain';
 import type {MeterSnapshot} from '@/lib/meter-domain';
 import {meterFileEntries} from '@/lib/meter-file';
 import {siteMeterReviewLinks} from '@/lib/site-meter-links';
-import {siteMaintenanceLink} from '@/lib/site-maintenance-focus';
+import {siteMaintenanceLink,siteMaintenanceCreateLink} from '@/lib/site-maintenance-focus';
 
 export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
   organizationId:string;propertyId:string;siteId:string;overdue:boolean;
@@ -54,6 +54,7 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     </div>
     <div className="action-group">
       <Link className="button secondary" href={siteMaintenanceLink(organizationId,propertyId,siteId)}>Review this site&apos;s repairs</Link>
+      <Link className="button secondary" href={siteMaintenanceCreateLink(organizationId,propertyId,siteId)}>Create a site repair</Link>
       <Link className="button secondary" href={siteMeterReview}>Review this site&apos;s meter alerts</Link>
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>

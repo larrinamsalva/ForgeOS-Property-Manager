@@ -9,6 +9,7 @@ import { addDays, customerName } from '@/lib/domain';
 import { collectionDollars } from '@/lib/collections-domain';
 import { quantity, quantityToMilli, opsLabel } from '@/lib/operations-domain';
 import { maintenanceCategories, maintenanceAreas, formatMaintenanceDescription, getSavedMaintenanceDescription } from '@/lib/maintenance-catalog';
+import { maintenanceFormSiteDefault } from '@/lib/site-maintenance-focus';
 import type { OpsUI, OpsEditor } from './types';
 const reason: Field = { name: 'reason', label: 'Reason / work note', type: 'textarea', required: true };
 const reference: Field = { name: 'reference', label: 'Supporting reference' };
@@ -327,12 +328,14 @@ export function OperationsEditor({
   }
   if (editor.type === 'new_work' || editor.type === 'edit_work' || editor.type === 'maintenance_self_task') {
     const selfTask = editor.type === 'maintenance_self_task';
+    const defaultSiteId = !work ? maintenanceFormSiteDefault(snapshot.sites, propertyId, editor.value) : '';
     const savedArea = getSavedMaintenanceDescription(work?.description ?? '');
     const serviceAreas = maintenanceAreas.map((a) => ({ value: a.value, label: a.label }));
     title = selfTask ? 'Create my maintenance task' : work ? 'Edit work order' : 'New maintenance request';
     description = selfTask
       ? 'Create a task assigned to you. The property manager can review and close it. Customer billing and payment information is not available here.'
       : 'Choose the service type and exact work area. Tasks for bathrooms, laundry, dumpsters and grounds do not require a resident or site.';
+    if (defaultSiteId) description += ' Site preselected from the space profile or maintenance filter. You can change the site or clear it for a common-area repair.';
     fields = [
       { name: 'title', label: 'Work title', required: true, default: work?.title ?? '' },
       {
@@ -373,6 +376,7 @@ export function OperationsEditor({
               options: snapshot.sites
                 .filter((s) => s.property_id === propertyId && !s.archived_at)
                 .map((s) => ({ value: s.id, label: s.label })),
+              default: defaultSiteId,
             },
             ...(!selfTask ? [{
               name: 'customer_id',
