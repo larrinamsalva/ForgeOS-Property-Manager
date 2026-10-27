@@ -5,6 +5,7 @@ import type { Snapshot } from '@/lib/domain';
 import { canEditProperty, dateAtProperty } from '@/lib/domain';
 import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
 import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
+import { existingRestockRequests } from '@/lib/existing-restock-requests';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -173,22 +174,25 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
             <p role="status">Showing {Math.min(lowStock.length,8)} of {lowStock.length} supplies to check, with out-of-stock items first.</p>
             <div className="table-wrap" role="region" aria-label="Current low-stock shopping priorities" tabIndex={0}>
               <table>
-                <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Action</th></tr></thead>
-                <tbody>{lowStock.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock})=>
-                  <tr key={item.id}>
+                <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Existing requests</th><th>Action</th></tr></thead>
+                <tbody>{lowStock.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock})=>{
+                  const requests=existingRestockRequests(operations.data!.requests,item.property_id,item.id);
+                  return <tr key={item.id}>
                     <th scope="row">{authorized.find(p=>p.id===item.property_id)?.name??'Property'}
                       <small>{item.name} · {item.sku}{outOfStock?' · Out of stock':''}</small></th>
                     <td>{quantity(availableMilli)} {item.unit}</td>
                     <td>{quantity(item.reorder_milli)} {item.unit}</td>
                     <td>{quantity(suggestedMilli)} {item.unit}</td>
+                    <td>{requests.count ? `${requests.count} active request(s)` : 'None recorded'}</td>
                     <td><Link href={lowStockInventoryLink(snapshot.organizationId,item.property_id)}>Review stock / request restock</Link></td>
-                  </tr>)}</tbody>
+                  </tr>;
+                })}</tbody>
               </table>
             </div>
           </>
         }
       </>:<p role="status">{operations.status==='loading'?'Checking stock and reorder levels…':'Supply records unavailable; no quantities assumed.'}</p>}
-      <p className="muted small">Stock comes from saved movements, not physical counts. Verify stock, supplier availability and prices before placing purchases. These shortcuts do not create purchase requests.</p>
+      <p className="muted small">Existing request counts include open, approved and marked-ordered records; they do not guarantee delivery. Stock comes from saved movements, not physical counts. Verify stock and supplier prices before submitting more requests. These shortcuts never create purchases.</p>
     </div>
     <p>Readings due on a schedule will be added only when verified route requirements are available.</p>
   </section>;
