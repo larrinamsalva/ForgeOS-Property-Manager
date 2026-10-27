@@ -160,7 +160,7 @@ export function MonthlyBillingBoard({
               <div className="table-wrap" role="region" aria-label="Meter capture and approval action list" tabIndex={0}>
                 <table><thead><tr><th scope="col">Site</th><th scope="col">Utility</th><th scope="col">Action</th><th scope="col">Details</th><th scope="col">Next step</th></tr></thead>
                   <tbody>{tasks.map(task=>{
-                    const target=meterTaskDestination(task.kind,snapshot.organizationId,propertyId);
+                    const target=meterTaskDestination(task.kind,snapshot.organizationId,propertyId,task.siteId);
                     return <tr key={task.key}>
                     <th scope="row">{task.siteLabel}</th><td>{task.utility}</td>
                     <td>{task.kind==='capture'?'Capture':task.kind==='review'?'Review approval':'Inspect evidence'}</td>
