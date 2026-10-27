@@ -53,7 +53,7 @@ export function SiteAttentionCenter({organizationId,propertyId,siteId,overdue}:{
     </div>
     <div className="action-group">
       <Link className="button secondary" href={link('maintenance')}>Review repairs</Link>
-      <Link className="button secondary" href={siteMeterReview}>Review this site's meter alerts</Link>
+      <Link className="button secondary" href={siteMeterReview}>Review this site&apos;s meter alerts</Link>
       <Link className="button secondary" href={link('collections')}>Review resident billing</Link>
       <Link className="button secondary" href={link('operations')}>Review inspections</Link>
     </div>
