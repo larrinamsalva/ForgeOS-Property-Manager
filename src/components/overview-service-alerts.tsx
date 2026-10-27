@@ -176,7 +176,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
               <table>
                 <thead><tr><th>Property / supply</th><th>Available</th><th>Reorder point</th><th>Suggested restock</th><th>Existing requests</th><th>Action</th></tr></thead>
                 <tbody>{lowStock.slice(0,8).map(({item,availableMilli,suggestedMilli,outOfStock})=>{
-                  const requests=existingRestockRequests(operations.data!.requests,item.property_id,item.id);
+                  const requests=existingRestockRequests(operations.data?.requests??[],item.property_id,item.id);
                   return <tr key={item.id}>
                     <th scope="row">{authorized.find(p=>p.id===item.property_id)?.name??'Property'}
                       <small>{item.name} · {item.sku}{outOfStock?' · Out of stock':''}</small></th>
