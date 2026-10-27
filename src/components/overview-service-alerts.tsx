@@ -6,6 +6,8 @@ import { canEditProperty, dateAtProperty } from '@/lib/domain';
 import type { OperationsSnapshot } from '@/lib/operations-domain';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
+import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
+import { siteMaintenanceWorkLink } from '@/lib/site-maintenance-focus';
 
 type Load<T> = { status: 'loading' | 'ready' | 'unavailable'; data?: T };
 export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
@@ -48,6 +50,13 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
   }).length;
   const unassigned = openWork.filter((w) => !w.assigned_to).length;
   const priorities=operations.data?propertyMaintenancePriorities(operations.data.work,authorized):[];
+  const priorityQueue=operations.data?overviewMaintenancePriorityQueue(operations.data.work,authorized):null;
+  const siteFor=(siteId:string|null,propertyId:string)=>snapshot.sites.find(site=>
+    site.id===siteId&&site.property_id===propertyId);
+  const repairLocation=(siteId:string|null,propertyId:string)=>{
+    const site=siteId?siteFor(siteId,propertyId):undefined;
+    return site?.label??'Property / common area';
+  };
   const oneProperty=authorized.length===1?authorized[0]:null;
   const attentionTarget=(triage:'overdue'|'unassigned')=>oneProperty
     ?propertyMaintenanceTriageLink(snapshot.organizationId,oneProperty.id,triage)
@@ -98,6 +107,44 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         </div>
       ):<p role="status">{operations.status==='loading'?'Checking property maintenance priorities…':'Maintenance records unavailable; no priority counts assumed.'}</p>}
       <p className="muted small">Select a property row to open the matching authorized maintenance worklist. Opening a queue does not assign, approve or change a repair.</p>
+    </div>
+    <div className="ops-record" aria-label="Today's priority maintenance worklist">
+      <h3>Next maintenance repairs to review</h3>
+      <p>Urgent, overdue and due-today repairs from your authorized properties, ordered by urgency. A repair appears once even if it matches several alerts. The due dates are checked using each property&apos;s local calendar day.</p>
+      {operations.status==='ready' && priorityQueue ? (
+        priorityQueue.total===0 ? <p>No active urgent, overdue or due-today repairs in the loaded maintenance records.</p> :
+        <>
+          <p role="status">Showing {priorityQueue.rows.length} of {priorityQueue.total} attention-needed repairs.</p>
+          <div className="table-wrap" role="region" aria-label="Next maintenance repairs" tabIndex={0}>
+            <table>
+              <thead><tr><th>Repair</th><th>Property / space</th><th>Attention</th><th>Due</th><th>Action</th></tr></thead>
+              <tbody>{priorityQueue.rows.map(row=>{
+                const work=row.work;
+                const site=work.site_id?siteFor(work.site_id,work.property_id):undefined;
+                const propertyName=authorized.find(p=>p.id===work.property_id)?.name??'Property';
+                const queueFilter=row.reason.includes('Urgent')?'urgent':
+                  row.reason==='Overdue'?'overdue':'due_today';
+                return <tr key={work.id}>
+                  <th scope="row">{work.number}<small>{work.title}</small></th>
+                  <td>{propertyName}<small>{repairLocation(work.site_id,work.property_id)}</small></td>
+                  <td>{row.reason}<small>{work.status.replaceAll('_',' ')}</small></td>
+                  <td>{work.due_on??'Not scheduled'}
+                    {row.daysOverdue>0&&<small className="ops-overdue">{row.daysOverdue} {row.daysOverdue===1?'day':'days'} overdue</small>}
+                    <small>Local date: {row.propertyToday}</small>
+                  </td>
+                  <td>{site?
+                    <Link href={siteMaintenanceWorkLink(snapshot.organizationId,work.property_id,site.id,work.id)}>Open repair</Link>:
+                    <Link href={propertyMaintenanceTriageLink(snapshot.organizationId,work.property_id,queueFilter)}>Review property queue</Link>
+                  }</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          {priorityQueue.total>priorityQueue.rows.length&&
+            <p className="muted small">Additional priority repairs remain in the property maintenance queues above.</p>}
+        </>
+      ):<p role="status">{operations.status==='loading'?'Checking maintenance priorities…':'Maintenance details unavailable; no repair entries assumed.'}</p>}
+      <p className="muted small">A space-linked repair opens its existing authorized details. Common-area or no-longer-listed site repairs open the property queue instead; no action is taken until staff review and save changes.</p>
     </div>
     <p>Readings due on a schedule will be added only when verified route requirements are available.</p>
   </section>;
