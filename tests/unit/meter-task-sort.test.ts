@@ -10,7 +10,8 @@ const actions:MeterAction[]=[
 describe('meter task ordering',()=>{
  it('sorts naturally by site number without mutating source tasks',()=>{
   const ordered=sortMeterTasks(actions,'site');
-  expect(ordered.map(a=>a.key)).toEqual(['s2:gas:1','s10:electric:1','s10:water:1']);
+  // Within the same site, dated boundary tasks come before undated evidence issues.
+  expect(ordered.map(a=>a.key)).toEqual(['s2:gas:1','s10:water:1','s10:electric:1']);
   expect(actions[0].key).toBe('s10:water:1');
  });
  it('puts known boundary dates first and unknown evidence last',()=>{
