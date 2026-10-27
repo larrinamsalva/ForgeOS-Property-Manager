@@ -6,7 +6,7 @@ import { canEditProperty, dateAtProperty } from '@/lib/domain';
 import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
 import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
 import { existingRestockRequests } from '@/lib/existing-restock-requests';
-import { incomingDeliveryLines, incomingDeliveriesLink } from '@/lib/incoming-deliveries';
+import { incomingDeliveryLines, incomingDeliveriesLink, incomingDeliveryOrderLink } from '@/lib/incoming-deliveries';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -233,8 +233,8 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
                     <td>{row.order.expected_on??'Not scheduled'}
                       <small>{row.eta==='overdue'?'Past expected date':row.eta==='due_today'?'Expected today':row.eta==='upcoming'?'Upcoming':'No ETA'}</small>
                     </td>
-                    <td><Link href={incomingDeliveriesLink(snapshot.organizationId,row.order.property_id)}>
-                      Review purchasing / delivery
+                    <td><Link href={incomingDeliveryOrderLink(snapshot.organizationId,row.order.property_id,row.order.id)}>
+                      Open exact purchase order
                     </Link></td>
                   </tr>)}</tbody>
               </table>
