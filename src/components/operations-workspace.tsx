@@ -418,7 +418,7 @@ export function OperationsWorkspace({
           </div>
           {tab === 'work' && <WorkPanel ui={ui} search={search} status={status} onStatusChange={setStatus} siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
           {tab === 'mine' && <WorkPanel ui={ui} search={search} status="all" mineOnly siteId={focusedSite} triage={triage} onTriageChange={setTriage} />}{' '}
-          {tab === 'stock' && <StockPanel ui={ui} search={search} lowStockOnly={lowStockOnly} onLowStockChange={setLowStockOnly} />}{' '}
+          {tab === 'stock' && <StockPanel ui={ui} search={search} lowStockOnly={lowStockOnly} onLowStockChange={setLowStockOnly} onReviewPurchasing={()=>{setTab('purchasing');setSearch('');}} />}{' '}
           {tab === 'purchasing' && <PurchasingPanel ui={ui} />}{' '}
           {tab === 'suppliers' && <SuppliersPanel ui={ui} />}{' '}
           {tab === 'equipment' && <EquipmentPanel ui={ui} search={search} />}{' '}

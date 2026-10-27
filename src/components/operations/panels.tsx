@@ -4,6 +4,7 @@ import { maintenanceCloseoutQueue } from '@/lib/maintenance-closeout-queue';
 import { filterMaintenanceWorklist, maintenanceMatchesTriage, type MaintenanceTriage } from '@/lib/maintenance-triage';
 import { filterWorkOrdersBySite } from '@/lib/site-maintenance-focus';
 import { lowStockInventory } from '@/lib/low-stock-inventory';
+import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -477,9 +478,10 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
     </>
   );
 }
-export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange }: {
+export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange, onReviewPurchasing }: {
   ui: OpsUI; search: string; lowStockOnly?: boolean;
   onLowStockChange?: (active: boolean) => void;
+  onReviewPurchasing?: () => void;
 }) {
   const ownItems=scoped(ui,ui.data.items);
   const reorder=lowStockInventory(ownItems,ui.data.summary.stock,[ui.propertyId]);
@@ -517,24 +519,32 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
         {reorder.length === 0 ? <p>No active items are at or below their reorder thresholds.</p> : (
           <div className="table-wrap" role="region" aria-label="Supplies shopping list" tabIndex={0}>
             <table>
-              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested refill</th><th>Standard unit cost</th><th>Next step</th></tr></thead>
-              <tbody>{reorder.map(({item,availableMilli,suggestedMilli}) => (
-                <tr key={item.id}>
+              <thead><tr><th>Supply / SKU</th><th>Storage location</th><th>In stock</th><th>Suggested refill</th><th>Existing requests</th><th>Standard unit cost</th><th>Next step</th></tr></thead>
+              <tbody>{reorder.map(({item,availableMilli,suggestedMilli}) => {
+                const existing=existingRestockRequests(ui.data.requests,ui.propertyId,item.id);
+                return <tr key={item.id}>
                   <th scope="row">{item.name}<small>{item.sku}</small></th>
                   <td>{item.location || 'Not specified'}</td>
                   <td>{quantity(availableMilli)} {item.unit}</td>
                   <td>{quantity(suggestedMilli)} {item.unit}</td>
+                  <td>{existing.count ? <>
+                    <strong>{existing.count} active request(s)</strong>
+                    <small>{existingRestockStatusText(existing)}</small>
+                    <small>{quantity(existing.requestedMilli)} {item.unit} requested in records</small>
+                    {onReviewPurchasing && <button className="text-button" type="button"
+                      onClick={onReviewPurchasing}>Review purchasing</button>}
+                  </> : 'None recorded'}</td>
                   <td>{cents(item.unit_cost_cents)} / {item.unit}</td>
                   <td>{ui.active && BigInt(suggestedMilli)>0n
                     ?<Action click={() => ui.open('purchase_request',undefined,item.id)}>Request suggested refill</Action>
                     :<span className="muted small">Review restock target</span>}
                   </td>
-                </tr>
-              ))}</tbody>
+                </tr>;
+              })}</tbody>
             </table>
           </div>
         )}
-        <p>Review supplier prices and physical stock counts before requesting. Suggested quantities are editable drafts based on the saved restock target; a manager must still approve purchasing.</p>
+        <p>Check existing open, approved, or marked-ordered requests before submitting another refill. Quantities shown are recorded requests, not confirmed incoming deliveries, and are not deducted from available stock. Managers still approve purchasing.</p>
       </details>
       {!rows.length ? (
         <Empty title="No matching stock items">
@@ -555,6 +565,7 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
             <tbody>
               {rows.map((i) => {
                 const stock = ui.data.summary.stock.find((s) => s.id === i.id);
+                const existing = existingRestockRequests(ui.data.requests,ui.propertyId,i.id);
                 return (
                   <tr key={i.id}>
                     <th scope="row">
@@ -578,6 +589,12 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange 
                     <td>
                       {cents(i.unit_cost_cents)} / {i.unit}
                       <small>Last purchase {stock?.last_purchase_on ?? 'None'}</small>
+                      {existing.count>0 && <>
+                        <small className="ops-overdue">{existing.count} existing request(s)</small>
+                        <small>{existingRestockStatusText(existing)}</small>
+                        {onReviewPurchasing && <button type="button" className="text-button"
+                          onClick={onReviewPurchasing}>Review purchasing</button>}
+                      </>}
                     </td>
                     <td>
                       <div className="action-group">
