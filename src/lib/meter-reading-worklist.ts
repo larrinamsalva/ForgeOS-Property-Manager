@@ -99,3 +99,45 @@ export function filterMeterReadingsByCaptureMonth(
   return !Number.isNaN(date.getTime()) && dateAtProperty(timezone,date).startsWith(month+'-');
  });
 }
+
+/**
+ * Search only operational meter/site attributes. In particular, never include
+ * customer or occupant names, capture notes, review reasons or staff identities.
+ * Historical assignment IDs keep the site accurate after a meter is moved.
+ *
+ * Every whitespace-separated term must match at least one public-on-worklist
+ * attribute (terms can span site, meter, utility and serial).
+ */
+export function searchMeterReadingWorklist(
+ readings:readonly MeterReading[],
+ assignments:readonly Pick<MeterAssignment,'id'|'site_label'>[],
+ meters:readonly Pick<Meter,'id'|'label'|'utility'|'serial_number'>[],
+ query:string,
+):MeterReading[]{
+ const normalized=query.trim().toLocaleLowerCase().replace(/\s+/g,' ');
+ if(!normalized) return [...readings];
+
+ // "Space 12" is a site reference, not a pair of independent keywords
+ // that could match "Space 88" plus serial "000123" on a moved meter.
+ // Recognize an explicit site/space/unit number as an exact site-label token.
+ const siteMatch=/(?:^|\s)(space|site|unit)\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?=\s|$)/.exec(normalized);
+ const sitePattern=siteMatch
+  ? new RegExp('(?:^|\\s)'+siteMatch[1]+'\\s+'+siteMatch[2]+'(?=$|[^a-z0-9-])')
+  : undefined;
+ const remaining=siteMatch?normalized.replace(siteMatch[0],' ').trim():normalized;
+ const terms=remaining.split(/\s+/).filter(Boolean);
+ const byAssignment=new Map(assignments.map(a=>[a.id,a.site_label]));
+ const byMeter=new Map(meters.map(m=>[m.id,m]));
+ return readings.filter(reading=>{
+  const siteLabel=(byAssignment.get(reading.assignment_id)??'').toLocaleLowerCase();
+  if(sitePattern && !sitePattern.test(siteLabel)) return false;
+  const meter=byMeter.get(reading.meter_id);
+  const searchable=[
+   siteLabel,
+   meter?.label??'',
+   meter?.serial_number??'',
+   meter?.utility??'',
+  ].join(' ').toLocaleLowerCase();
+  return terms.every(term=>searchable.includes(term));
+ });
+}
