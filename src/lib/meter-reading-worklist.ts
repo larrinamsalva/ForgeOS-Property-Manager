@@ -114,14 +114,26 @@ export function searchMeterReadingWorklist(
  meters:readonly Pick<Meter,'id'|'label'|'utility'|'serial_number'>[],
  query:string,
 ):MeterReading[]{
- const terms=query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
- if(!terms.length) return [...readings];
+ const normalized=query.trim().toLocaleLowerCase().replace(/\s+/g,' ');
+ if(!normalized) return [...readings];
+
+ // "Space 12" is a site reference, not a pair of independent keywords
+ // that could match "Space 88" plus serial "000123" on a moved meter.
+ // Recognize an explicit site/space/unit number as an exact site-label token.
+ const siteMatch=/(?:^|\s)(space|site|unit)\s+([a-z0-9]+(?:-[a-z0-9]+)*)(?=\s|$)/.exec(normalized);
+ const sitePattern=siteMatch
+  ? new RegExp('(?:^|\\s)'+siteMatch[1]+'\\s+'+siteMatch[2]+'(?=$|[^a-z0-9-])')
+  : undefined;
+ const remaining=siteMatch?normalized.replace(siteMatch[0],' ').trim():normalized;
+ const terms=remaining.split(/\s+/).filter(Boolean);
  const byAssignment=new Map(assignments.map(a=>[a.id,a.site_label]));
  const byMeter=new Map(meters.map(m=>[m.id,m]));
  return readings.filter(reading=>{
+  const siteLabel=(byAssignment.get(reading.assignment_id)??'').toLocaleLowerCase();
+  if(sitePattern && !sitePattern.test(siteLabel)) return false;
   const meter=byMeter.get(reading.meter_id);
   const searchable=[
-   byAssignment.get(reading.assignment_id)??'',
+   siteLabel,
    meter?.label??'',
    meter?.serial_number??'',
    meter?.utility??'',
