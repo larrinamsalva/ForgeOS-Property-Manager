@@ -105,8 +105,8 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(review('approved-placed')).toMatchObject({placedUnreceivedMilli:'6000',preparingMilli:'0'});
   expect(review('approved-draft')).toMatchObject({placedUnreceivedMilli:'0',preparingMilli:'5000'});
   expect(review('approved-mixed')).toMatchObject({
-   stage:'receipt_recorded',orderedMilli:'6000',netReceivedMilli:'4000',
-   unreceivedMilli:'2000',
+   stage:'receipt_recorded_preparing',orderedMilli:'6000',netReceivedMilli:'4000',
+   placedUnreceivedMilli:'0',preparingMilli:'2000',unreceivedMilli:'2000',
   });
   const notReceived=linkedPurchaseReview(request('open-test'),[order('ordered-only','ordered')],
    [line('unreceived','open-test','ordered-only')],[],propertyId);
@@ -114,6 +114,7 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   const done=linkedPurchaseReview(request('done'),[order('done','ordered')],
    [line('line','done','done')],[{id:'line',received_milli:'5000'}],propertyId);
   expect(done.stage).toBe('receipt_recorded');
+  expect(linkedPurchaseStageLabels.receipt_recorded_preparing).toContain('still being prepared');
  });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
