@@ -1020,6 +1020,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               </div>}
               {r.status==='approved'&&!linked.activeOrders.length&&
                 <p className="ops-overdue"><strong>Approved request has no active linked purchase order.</strong>
+                  {linked.cancelledLinkedOrders>0&&<span> Prior linked purchase orders were cancelled. Review order history before preparing another order.</span>}
                   {ui.manage&&ui.active&&
                     <button type="button" className="text-button" onClick={()=>open('new_purchase')}>
                       Prepare order manually
