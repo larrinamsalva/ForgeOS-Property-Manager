@@ -287,7 +287,7 @@ test('purchase requests become reviewed orders with partial receipts and retaine
     await note(page);
     await submit(page);
   }
-  await expect(page.getByRole('region', { name: 'Purchase orders' })).toContainText('Received');
+  await expect(page.getByRole('region', { name: 'Purchase orders', exact: true })).toContainText('Received');
   await page.getByRole('button', { name: 'PO-000001', exact: true }).click();
   const returnedLine = page
     .getByRole('dialog')
@@ -299,7 +299,7 @@ test('purchase requests become reviewed orders with partial receipts and retaine
   await page.getByRole('textbox', { name: 'Quantity', exact: true }).fill('1');
   await note(page);
   await submit(page);
-  await expect(page.getByRole('region', { name: 'Purchase orders' })).toContainText('Part received');
+  await expect(page.getByRole('region', { name: 'Purchase orders', exact: true })).toContainText('Part received');
   const final = (await (
     await page.request.get(`/api/operations?organization=${seed.org}`)
   ).json()) as OperationsSnapshot;
