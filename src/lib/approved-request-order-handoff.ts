@@ -87,6 +87,14 @@ export function linkedPurchaseReview(
  };
 }
 
+/** Informational comparison only: linked ordered quantities may cover other needs,
+ * and this does not verify delivery, stock on hand, or whether a repair is complete. */
+export function linkedOrderQuantityGap(requestedMilli:string,orderedMilli:string):string{
+ const requested=safeMilli(requestedMilli);
+ const ordered=safeMilli(orderedMilli);
+ return (requested>ordered && requested>0n?requested-(ordered>0n?ordered:0n):0n).toString();
+}
+
 export const linkedPurchaseStageLabels:Record<LinkedPurchaseStage,string>={
  none:'No active linked purchase order',
  preparing:'Linked order still being prepared or approved',
