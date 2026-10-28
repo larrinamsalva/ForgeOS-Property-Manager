@@ -9,7 +9,7 @@ import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvR
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
 import {
- approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,
+ approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,linkedOrderQuantityGap,
 } from '@/lib/approved-request-order-handoff';
 import {
   purchaseRequestAttention,filterPurchaseRequestAttention,
@@ -1018,6 +1018,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 {' '}{quantity(linked.placedUnreceivedMilli)} outstanding on placed orders;
                 {' '}{quantity(linked.preparingMilli)} remaining on draft/approved orders.
                 {' '}Placed does not prove shipment; recorded receipts do not confirm repair completion.
+              </p>}
+              {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
+                <strong>Review quantity coverage:</strong> {quantity(linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} requested beyond recorded active linked order lines. Verify existing stock and purchasing records before ordering more.
               </p>}
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"
