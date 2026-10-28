@@ -309,7 +309,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
             </div>}
         </>
       ):<p role="status">{operations.status==='loading'?'Checking repair parts blockers…':'Maintenance purchasing records unavailable; no repair blockers assumed.'}</p>}
-      <p className="muted small">CSV includes only the currently displayed, authorized repair rows and excludes personal details and free-text notes. Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
+      <p className="muted small">CSV contains only the displayed authorized repairs and omits resident records, contact fields and free-text notes. Staff-entered repair titles can contain sensitive details; review the file before sharing. Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
     </div>
     <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
       <h3>Supplies needing restock</h3>
