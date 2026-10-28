@@ -147,8 +147,9 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
       {inWaitingReview && (
         <div className="ops-record" aria-label="Waiting repairs procurement blockers">
           <h3>Waiting-for-parts follow-up</h3>
-          <p>Filter by the verified reason a repair needs purchasing follow-up. Only this property&apos;s
-            waiting repairs and structured request-to-order links are included. On-hand stock is not reserved for jobs.</p>
+          <p>Filter by the verified reason a repair needs purchasing follow-up or the local needed-by
+            deadline on an active parts request. Only this property&apos;s waiting repairs and structured
+            request-to-order links are included. On-hand stock is not reserved for jobs.</p>
           <div className="quick-actions" role="group" aria-label="Waiting parts blocker filters">
             {waitingPartsFilterChoices.map(choice=>(
               <button key={choice.value} type="button"
@@ -267,6 +268,10 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
                         <small><strong>{waitingPartsReasonLabels[reasonByWork.get(w.id)!.reason]}</strong></small>
                         <small>{reasonByWork.get(w.id)!.linkedRequestCount} recorded request(s) ·
                           {reasonByWork.get(w.id)!.outstandingPlacedOrderCount} placed order(s) awaiting receipt</small>
+                        {reasonByWork.get(w.id)!.overdueRequestCount>0&&
+                          <small className="ops-overdue">{reasonByWork.get(w.id)!.overdueRequestCount} active parts request(s) past needed date</small>}
+                        {reasonByWork.get(w.id)!.dueTodayRequestCount>0&&
+                          <small>{reasonByWork.get(w.id)!.dueTodayRequestCount} parts request(s) needed today</small>}
                         {reasonByWork.get(w.id)!.lateOrderCount>0&&
                           <small className="ops-overdue">{reasonByWork.get(w.id)!.lateOrderCount} placed order(s) past expected date</small>}
                         {reasonByWork.get(w.id)!.noEtaOrderCount>0&&
@@ -534,6 +539,12 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
                 <th scope="row">{item?.name??'Unavailable inventory item'}
                   <small>{item?.sku??'Stock item reference unavailable'} · {opsLabel(request.status)}</small>
                   <small>Needed {request.needed_on}</small>
+                  {['open','approved','ordered'].includes(request.status)&&
+                    /^\d{4}-\d{2}-\d{2}$/.test(request.needed_on)&&
+                    request.needed_on<ui.today&&
+                    <small className="ops-overdue">Parts request needed date passed</small>}
+                  {['open','approved','ordered'].includes(request.status)&&request.needed_on===ui.today&&
+                    <small>Parts needed today</small>}
                 </th>
                 <td>{quantity(request.quantity_milli)} {item?.unit??'units'}</td>
                 <td>{onHandMilli===null?'Unavailable':`${quantity(onHandMilli)} ${item?.unit??'units'}`}
