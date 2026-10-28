@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '@/lib/domain';
-import { canEditProperty, dateAtProperty } from '@/lib/domain';
+import { canEditProperty, dateAtProperty, csv } from '@/lib/domain';
 import { quantity, type OperationsSnapshot } from '@/lib/operations-domain';
 import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-inventory';
 import { existingRestockRequests } from '@/lib/existing-restock-requests';
@@ -10,6 +10,10 @@ import { incomingDeliveryLines, incomingDeliveriesLink, incomingDeliveryOrderLin
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { waitingRepairsWithoutPartRequests } from '@/lib/work-parts-request-review';
 import { waitingPartsHandoff, waitingPartsReasonLabels } from '@/lib/waiting-parts-handoff';
+import {
+  filterWaitingPartsRows,waitingPartsCsvRows,waitingPartsFilterChoices,
+  type WaitingPartsViewFilter,
+} from '@/lib/waiting-parts-handoff-review';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -23,6 +27,10 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
 }) {
   const [operations, setOperations] = useState<Load<OperationsSnapshot>>({ status: 'loading' });
   const [meters, setMeters] = useState<Load<MeterSnapshot>>({ status: 'loading' });
+  const [waitingFilter,setWaitingFilter]=useState<WaitingPartsViewFilter>('all');
+  const [waitingProperty,setWaitingProperty]=useState('all');
+  const [waitingSearch,setWaitingSearch]=useState('');
+  const [waitingVisibleLimit,setWaitingVisibleLimit]=useState(10);
   const authorized = snapshot.properties.filter((p) =>
     !p.archived_at && (!propertyId || p.id === propertyId) &&
     (canEditProperty(snapshot, p.id, true) ||
@@ -81,7 +89,25 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       operations.data.work,operations.data.requests,operations.data.items,
       operations.data.summary.stock,operations.data.orders,operations.data.lines,
       operations.data.summary.purchase_lines,authorized,
+      new Date(),Number.MAX_SAFE_INTEGER,
     ) : null;
+  const waitingAll=waitingQueue?.rows??[];
+  const activeWaitingProperty=waitingProperty==='all'||authorizedIds.has(waitingProperty)
+    ?waitingProperty:'all';
+  const waitingFiltered=filterWaitingPartsRows(
+    waitingAll,waitingFilter,activeWaitingProperty==='all'?'':activeWaitingProperty,waitingSearch,
+  );
+  const waitingVisible=waitingFiltered.slice(0,waitingVisibleLimit);
+  const exportWaitingVisible=()=>{
+    if(!waitingVisible.length)return;
+    const text=csv(waitingPartsCsvRows(waitingVisible,authorized,snapshot.sites));
+    const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download='forgeos-visible-waiting-repairs.csv';
+    anchor.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
   const workPartsGaps=operations.data
     ?waitingRepairsWithoutPartRequests(operations.data.work,operations.data.requests,[...authorizedIds])
     :{waiting:0,withoutRequest:0};
@@ -210,11 +236,43 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       {operations.status==='ready' && waitingQueue ? (
         waitingQueue.total===0 ? <p>No repairs are currently marked Waiting for parts in these property records.</p>:
         <>
-          <p role="status">Showing {waitingQueue.rows.length} of {waitingQueue.total} repairs awaiting parts follow-up, ordered by recorded attention reason.</p>
+          <div className="action-group" role="group" aria-label="Waiting repair attention filters">
+            {waitingPartsFilterChoices.map(choice=>
+              <button key={choice.value} type="button"
+                className={`button ${waitingFilter===choice.value?'primary':'secondary'}`}
+                aria-pressed={waitingFilter===choice.value}
+                onClick={()=>{setWaitingFilter(choice.value);setWaitingVisibleLimit(10);}}>
+                {choice.label} ({filterWaitingPartsRows(
+                  waitingAll,choice.value,activeWaitingProperty==='all'?'':activeWaitingProperty,'',
+                ).length})
+              </button>)}
+          </div>
+          <div className="action-group">
+            {authorized.length>1&&<label>Property
+              <select value={activeWaitingProperty} onChange={event=>{
+                setWaitingProperty(event.target.value);setWaitingVisibleLimit(10);
+              }}>
+                <option value="all">All authorized properties</option>
+                {authorized.map(property=><option key={property.id} value={property.id}>{property.name}</option>)}
+              </select>
+            </label>}
+            <label>Search waiting repairs
+              <input type="search" value={waitingSearch} placeholder="Repair number, title or category"
+                onChange={event=>{setWaitingSearch(event.target.value);setWaitingVisibleLimit(10);}}/>
+            </label>
+            <button className="button secondary" type="button"
+              disabled={!waitingVisible.length} onClick={exportWaitingVisible}>
+              Export visible repairs CSV ({waitingVisible.length})
+            </button>
+          </div>
+          <p role="status">Showing {waitingVisible.length} of {waitingFiltered.length} matching repairs
+            ({waitingQueue.total} waiting overall). Rows remain ordered by recorded attention reason.
+            Filter counts include all repairs in the selected property before search.</p>
+          {waitingFiltered.length===0?<p>No waiting repairs match these filters. Choose All waiting repairs, another property or clear the search.</p>:
           <div className="table-wrap" role="region" aria-label="Waiting repairs to review" tabIndex={0}>
             <table>
               <thead><tr><th>Repair / location</th><th>Why review</th><th>Request / order records</th><th>Due date</th><th>Next step</th></tr></thead>
-              <tbody>{waitingQueue.rows.map(row=>{
+              <tbody>{waitingVisible.map(row=>{
                 const work=row.work;
                 const site=work.site_id?siteFor(work.site_id,work.property_id):undefined;
                 return <tr key={work.id}>
@@ -241,12 +299,17 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
                 </tr>;
               })}</tbody>
             </table>
-          </div>
-          {waitingQueue.total>waitingQueue.rows.length&&
-            <p className="muted small">More waiting repairs are listed in their property maintenance queues.</p>}
+          </div>}
+          {waitingFiltered.length>waitingVisible.length&&
+            <div className="action-group">
+              <button type="button" className="button secondary"
+                onClick={()=>setWaitingVisibleLimit(current=>current+10)}>
+                Show 10 more repairs ({waitingFiltered.length-waitingVisible.length} remaining)
+              </button>
+            </div>}
         </>
       ):<p role="status">{operations.status==='loading'?'Checking repair parts blockers…':'Maintenance purchasing records unavailable; no repair blockers assumed.'}</p>}
-      <p className="muted small">Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
+      <p className="muted small">CSV contains only the displayed authorized repairs and omits resident records, contact fields and free-text notes. Staff-entered repair titles can contain sensitive details; review the file before sharing. Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
     </div>
     <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
       <h3>Supplies needing restock</h3>
