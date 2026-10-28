@@ -1025,10 +1025,10 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 {' '}{quantity(linked.preparingMilli)} remaining on draft/approved orders.
                 {' '}Placed does not prove shipment; recorded receipts do not confirm repair completion.
               </p>}
-              {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
+              {r.status==='approved'&&!hasInvalidRequestedQuantity(r.quantity_milli)&&linked.activeOrders.length>0&&linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
                 <strong>Review quantity coverage:</strong> {quantity(linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} requested beyond recorded active linked order lines. Verify existing stock and purchasing records before ordering more.
               </p>}
-              {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
+              {r.status==='approved'&&!hasInvalidRequestedQuantity(r.quantity_milli)&&linked.activeOrders.length>0&&linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
                 <strong>Review possible excess purchasing:</strong> {quantity(linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} more on active linked orders than the approved request quantity. Verify linked lines, existing stock and supplier records; this does not prove a duplicate order.
               </p>}
               {linked.unplacedReceiptMilli!=='0'&&<p className="ops-overdue">
