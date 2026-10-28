@@ -9,7 +9,7 @@ import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvR
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
 import {
- approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,linkedOrderQuantityGap,
+ approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,
 } from '@/lib/approved-request-order-handoff';
 import {
   purchaseRequestAttention,filterPurchaseRequestAttention,
@@ -1021,6 +1021,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               </p>}
               {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
                 <strong>Review quantity coverage:</strong> {quantity(linkedOrderQuantityGap(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} requested beyond recorded active linked order lines. Verify existing stock and purchasing records before ordering more.
+              </p>}
+              {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
+                <strong>Review possible excess purchasing:</strong> {quantity(linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} more on active linked orders than the approved request quantity. Verify linked lines, existing stock and supplier records; this does not prove a duplicate order.
               </p>}
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"

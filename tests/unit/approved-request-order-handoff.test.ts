@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {
- linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,linkedOrderQuantityGap,
+ linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,
 } from '../../src/lib/approved-request-order-handoff';
 import {purchaseRequestAttention} from '../../src/lib/purchase-request-attention';
 import type {
@@ -146,6 +146,14 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(linkedOrderQuantityGap('broken','2000')).toBe('0');
   expect(linkedOrderQuantityGap('1000','broken')).toBe('1000');
   expect(linkedOrderQuantityGap('-100','100')).toBe('0');
+ });
+ it('reports excess linked quantities without assuming a duplicate purchase',()=>{
+  expect(linkedOrderQuantityExcess('5000','7000')).toBe('2000');
+  expect(linkedOrderQuantityExcess('5000','5000')).toBe('0');
+  expect(linkedOrderQuantityExcess('5000','3000')).toBe('0');
+  expect(linkedOrderQuantityExcess('9007199254740992000','9007199254740993000')).toBe('1000');
+  expect(linkedOrderQuantityExcess('invalid','5000')).toBe('0');
+  expect(linkedOrderQuantityExcess('5000','invalid')).toBe('0');
  });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
