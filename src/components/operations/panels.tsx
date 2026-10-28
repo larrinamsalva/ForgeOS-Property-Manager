@@ -9,7 +9,7 @@ import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvR
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
 import {
- approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,
+ approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,hasInvalidRequestedQuantity,
 } from '@/lib/approved-request-order-handoff';
 import {
   purchaseRequestAttention,filterPurchaseRequestAttention,
@@ -1012,6 +1012,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 {linked.activeOrders.length>0&&` · ${linked.activeOrders.length} active linked order(s)`}
                 {linked.cancelledLinkedOrders>0&&` · ${linked.cancelledLinkedOrders} cancelled linked order(s)`}
               </p>
+              {r.status==='approved'&&hasInvalidRequestedQuantity(r.quantity_milli)&&<p className="ops-overdue" role="status">
+                <strong>Review approved request quantity:</strong> The requested quantity is missing, zero, or invalid. Verify and correct the source request through authorized controls before preparing a purchase order.
+              </p>}
               {linked.activeOrders.length>0&&<p className="muted small">
                 Linked purchase lines: {quantity(linked.orderedMilli)} {item?.unit??'units'} total;
                 {' '}{quantity(linked.placedReceiptMilli)} recorded received on placed orders;

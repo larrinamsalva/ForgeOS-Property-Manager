@@ -101,6 +101,11 @@ export function linkedPurchaseReview(
 
 /** Informational comparison only: linked ordered quantities may cover other needs,
  * and this does not verify delivery, stock on hand, or whether a repair is complete. */
+/** Requested quantity must be a strictly positive whole milliunit value. */
+export function hasInvalidRequestedQuantity(value:string|null|undefined):boolean{
+ return typeof value!=='string'||!/^\d+$/.test(value)||safeMilli(value)<=0n;
+}
+
 export function linkedOrderQuantityGap(requestedMilli:string,orderedMilli:string):string{
  const requested=safeMilli(requestedMilli);
  const ordered=safeMilli(orderedMilli);

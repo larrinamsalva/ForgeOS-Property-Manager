@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {
- linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,
+ linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,linkedOrderQuantityGap,linkedOrderQuantityExcess,hasInvalidRequestedQuantity,
 } from '../../src/lib/approved-request-order-handoff';
 import {purchaseRequestAttention} from '../../src/lib/purchase-request-attention';
 import type {
@@ -165,6 +165,13 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(original[0].received_milli).toBe('1000');
   expect(o[0].status).toBe('draft');
   expect(review('approved-placed').unplacedReceiptMilli).toBe('0');
+ });
+ it('flags invalid approved request quantities without treating normal milliunits as invalid',()=>{
+  expect(hasInvalidRequestedQuantity('1000')).toBe(false);
+  expect(hasInvalidRequestedQuantity('9007199254740993000')).toBe(false);
+  for(const value of [null,undefined,'','0','-100','3.5','abc',' 1000']){
+   expect(hasInvalidRequestedQuantity(value)).toBe(true);
+  }
  });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
