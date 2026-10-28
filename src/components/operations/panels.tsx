@@ -1010,7 +1010,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               <p className="muted small">
                 {linkedPurchaseStageLabels[linked.stage]}
                 {linked.activeOrders.length>0&&` · ${linked.activeOrders.length} active linked order(s)`}
-                {linked.cancelledLinkedOrders>0&&` · ${linked.cancelledLinkedOrders} cancelled linked line(s)`}
+                {linked.cancelledLinkedOrders>0&&` · ${linked.cancelledLinkedOrders} cancelled linked order(s)`}
               </p>
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"
