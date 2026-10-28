@@ -64,7 +64,7 @@ const lines=[
  line('late-b','late','late',{quantity_milli:'1000'}),
  line('none','noeta','noeta'),
  line('future','future','future'),
- line('wrong-request','late','open'),
+ line('wrong-request','late','other-repair-request'),
  line('wrong-item','late','late',{item_id:'wrong'}),
  line('unplaced','unplaced','approved'),
  line('foreign','foreign','late',{property_id:'secret-park'}),
@@ -114,7 +114,7 @@ describe('property-wide waiting-for-parts manager handoff',()=>{
  it('never treats an approved draft, another repair\'s line or another property as deliveries',()=>{
   const open=handoff().rows.find(row=>row.work.id==='open-request')!;
   const approved=handoff().rows.find(row=>row.work.id==='approved-no-order')!;
-  expect(open.outstandingPlacedOrderCount).toBe(1); // same order, but explicitly linked to open request
+  expect(open.outstandingPlacedOrderCount).toBe(0); // no exact request ID link
   expect(approved.outstandingPlacedOrderCount).toBe(0);
   expect(approved.reason).toBe('purchasing_review');
   expect(handoff(30,[props[0]]).rows.every(row=>row.work.property_id==='park-west')).toBe(true);
