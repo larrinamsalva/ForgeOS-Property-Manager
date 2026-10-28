@@ -73,8 +73,10 @@ export function waitingPartsHandoff(
    const active=linked.filter(p=>['open','approved','ordered'].includes(p.request.status));
    const open=linked.filter(p=>p.request.status==='open').length;
    const allOrders=new Set(linked.flatMap(p=>p.placedOrderIds));
-   const late=linked.reduce((sum,p)=>sum+p.overdueOrderCount,0);
-   const noEta=linked.reduce((sum,p)=>sum+p.missingEtaOrderCount,0);
+   const late=new Set(incoming.filter(row=>
+    allOrders.has(row.order.id)&&row.eta==='overdue').map(row=>row.order.id)).size;
+   const noEta=new Set(incoming.filter(row=>
+    allOrders.has(row.order.id)&&row.eta==='not_scheduled').map(row=>row.order.id)).size;
    const hasRecordedOnHand=linked.some(p=>p.onHandMilli!==null&&BigInt(p.onHandMilli)>0n);
    const outstanding=linked.some(p=>BigInt(p.incomingMilli)>0n);
    let reason:WaitingPartsReason;
