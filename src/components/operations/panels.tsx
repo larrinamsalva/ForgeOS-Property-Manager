@@ -9,6 +9,9 @@ import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvR
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
 import {
+ approvedRequestsWithoutLinkedOrders,linkedPurchaseReview,linkedPurchaseStageLabels,
+} from '@/lib/approved-request-order-handoff';
+import {
   purchaseRequestAttention,filterPurchaseRequestAttention,
   purchaseRequestAttentionCsvRows,purchaseRequestAttentionChoices,
   type PurchaseRequestAttentionFilter,
@@ -814,6 +817,12 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const requestOverdue=purchaseRequests.filter(row=>row.deadline==='overdue').length;
   const requestDueToday=purchaseRequests.filter(row=>row.deadline==='due_today').length;
   const requestOpen=purchaseRequests.filter(row=>row.request.status==='open').length;
+  const approvedUnlinked=approvedRequestsWithoutLinkedOrders(
+    purchaseRequests,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId,
+  );
+  const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
+    linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
+      .activeOrders.length>0).length;
   const exportRequests=()=>{
     if(!visibleRequests.length)return;
     const payload=csv(purchaseRequestAttentionCsvRows(visibleRequests));
@@ -902,6 +911,50 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         <p className="muted small">Only orders marked placed are included. Drafts, approvals and cancelled orders are excluded. Partial receipts reduce the outstanding recorded quantity, not the reorder threshold. CSV contains recorded milliunits (1000 = 1 unit). Recording delivery requires an explicit action; this page does not adjust stock on its own.</p>
       </section>
       <PurchasingExpenseSnapshot data={data} propertyId={ui.propertyId} organizationId={ui.snapshot.organizationId} />
+      <section className="panel" aria-label="Approved supply requests without linked purchase orders">
+        <div className="panel-heading">
+          <div>
+            <h2>Approved requests awaiting a linked order</h2>
+            <p>These requests have no active purchase-order line explicitly linked in this
+              property&apos;s records. Check existing supplier orders before buying.</p>
+          </div>
+          <strong>{approvedUnlinked.length} to review</strong>
+        </div>
+        <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
+        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:(
+          <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
+            <table>
+              <thead><tr><th>Supply / repair</th><th>Quantity</th><th>Needed by</th><th>Next step</th></tr></thead>
+              <tbody>{approvedUnlinked.map(({request,item,work,deadline})=>(
+                <tr key={request.id}>
+                  <th scope="row">{item?.name??'Inventory item unavailable'}
+                    <small>{item?.sku??'SKU unavailable'}</small>
+                    {work&&<small>{work.number} · linked repair</small>}
+                  </th>
+                  <td>{quantity(request.quantity_milli)} {item?.unit??'units'}</td>
+                  <td>{request.needed_on||'Unavailable'}
+                    {deadline==='overdue'&&<small className="ops-overdue">Past needed date</small>}
+                    {deadline==='due_today'&&<small>Needed today</small>}
+                  </td>
+                  <td>
+                    {ui.manage&&ui.active?
+                      <Action click={()=>open('new_purchase')}>Prepare order manually</Action>:
+                      <span className="muted small">Manager follow-up required</span>}
+                    {work&&<button type="button" className="text-button"
+                      onClick={()=>open('work_detail',work.id)}>Review repair</button>}
+                    {linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
+                      .cancelledLinkedOrders>0&&<small>Previous linked order cancelled; review history</small>}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+        <p className="muted small">Prepare order opens the existing manual purchase-order form,
+          not a prelinked or submitted order. Select the correct approved request, item,
+          quantity and supplier in that form. A missing record link does not prove that
+          nothing was purchased outside ForgeOS.</p>
+      </section>
       <section className="panel">
         <div className="panel-heading">
           <div>
@@ -949,10 +1002,29 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         ) : !visibleRequests.length ? (
           <p role="status">No requests match these filters. Choose All requests or clear the search to review more.</p>
         ) : (
-          visibleRequests.map(({request:r,item,work,deadline}) => (
-            <article className="ops-record" key={r.id}>
+          visibleRequests.map(({request:r,item,work,deadline}) => {
+            const linked=linkedPurchaseReview(r,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
+            return <article className="ops-record" key={r.id}>
               <h3>{item?.name ?? 'Unavailable stock item'} · {quantity(r.quantity_milli)} {item?.unit??'units'}</h3>
               <p>Needed {r.needed_on||'Date unavailable'} · {opsLabel(r.status)}</p>
+              <p className="muted small">
+                {linkedPurchaseStageLabels[linked.stage]}
+                {linked.activeOrders.length>0&&` · ${linked.activeOrders.length} active linked order(s)`}
+                {linked.cancelledLinkedOrders>0&&` · ${linked.cancelledLinkedOrders} cancelled linked line(s)`}
+              </p>
+              {linked.activeOrders.length>0&&<div className="action-group">
+                {linked.activeOrders.map(order=><button type="button" className="text-button"
+                  key={order.id} onClick={()=>open('purchase_detail',order.id)}>
+                  Review {order.number} ({opsLabel(order.status)})
+                </button>)}
+              </div>}
+              {r.status==='approved'&&!linked.activeOrders.length&&
+                <p className="ops-overdue"><strong>Approved request has no active linked purchase order.</strong>
+                  {ui.manage&&ui.active&&
+                    <button type="button" className="text-button" onClick={()=>open('new_purchase')}>
+                      Prepare order manually
+                    </button>}
+                </p>}
               {deadline==='overdue'&&<p className="ops-overdue"><strong>Past parts needed date — review request</strong></p>}
               {deadline==='due_today'&&<p><strong>Parts needed today — review request</strong></p>}
               {deadline==='no_valid_date'&&<p className="muted small">Needed date unavailable or invalid; verify the record.</p>}
@@ -988,8 +1060,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                     </Action>
                   </div>
                 )}
-            </article>
-          ))
+            </article>;
+          })
         )}
         <p className="muted small">Needed-by alerts apply only to open, approved or marked-ordered requests.
           Resolved requests do not count as overdue, and recorded orders are not guaranteed deliveries.
