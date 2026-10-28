@@ -231,6 +231,17 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   });
   expect(linkedPurchaseReview(r,o,l,[{id:'valid-line',received_milli:'0'}],propertyId).invalidReceiptLines).toBe(0);
  });
+ it('reports both errors when the same linked line has invalid order and receipt quantities',()=>{
+  const r=request('double-invalid');
+  const o=[order('double-invalid-order','ordered')];
+  const l=[line('double-invalid-line','double-invalid','double-invalid-order',{quantity_milli:'broken'})];
+  const receipts=[{id:'double-invalid-line',received_milli:'also-broken'}];
+  expect(linkedPurchaseReview(r,o,l,receipts,propertyId)).toMatchObject({
+   invalidQuantityLines:1,invalidReceiptLines:1,
+   orderedMilli:'0',netReceivedMilli:'0',placedUnreceivedMilli:'0',
+  });
+  expect(receipts[0].received_milli).toBe('also-broken');
+ });
  it('never mutates original order, receipt or request history',()=>{
   const beforeR=requests.map(x=>({...x}));
   const beforeO=orders.map(x=>({...x}));
