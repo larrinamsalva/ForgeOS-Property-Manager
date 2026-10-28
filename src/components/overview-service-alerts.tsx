@@ -9,6 +9,7 @@ import { existingRestockRequests } from '@/lib/existing-restock-requests';
 import { incomingDeliveryLines, incomingDeliveriesLink, incomingDeliveryOrderLink } from '@/lib/incoming-deliveries';
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { waitingRepairsWithoutPartRequests } from '@/lib/work-parts-request-review';
+import { waitingPartsHandoff, waitingPartsReasonLabels } from '@/lib/waiting-parts-handoff';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -75,6 +76,12 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
   const incomingByProperty=new Map(authorized.map(property=>[
     property.id,incoming.filter(row=>row.order.property_id===property.id).length,
   ]));
+  const waitingQueue=operations.data
+    ?waitingPartsHandoff(
+      operations.data.work,operations.data.requests,operations.data.items,
+      operations.data.summary.stock,operations.data.orders,operations.data.lines,
+      operations.data.summary.purchase_lines,authorized,
+    ) : null;
   const workPartsGaps=operations.data
     ?waitingRepairsWithoutPartRequests(operations.data.work,operations.data.requests,[...authorizedIds])
     :{waiting:0,withoutRequest:0};
@@ -196,6 +203,50 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         </>
       ):<p role="status">{operations.status==='loading'?'Checking maintenance priorities…':'Maintenance details unavailable; no repair entries assumed.'}</p>}
       <p className="muted small">A space-linked repair opens its existing authorized details. Common-area or no-longer-listed site repairs open the property queue instead; no action is taken until staff review and save changes.</p>
+    </div>
+    <div id="waiting-parts-repair-handoff" className="ops-record" aria-label="Waiting for parts repair follow-up">
+      <h3>Repairs waiting for parts · manager handoff</h3>
+      <p>Review repairs with documented parts delays and missing requests. Only exact recorded repair-to-request and request-to-order links are used; supply names and free-text notes never establish delivery coverage.</p>
+      {operations.status==='ready' && waitingQueue ? (
+        waitingQueue.total===0 ? <p>No repairs are currently marked Waiting for parts in these property records.</p>:
+        <>
+          <p role="status">Showing {waitingQueue.rows.length} of {waitingQueue.total} repairs awaiting parts follow-up, ordered by recorded attention reason.</p>
+          <div className="table-wrap" role="region" aria-label="Waiting repairs to review" tabIndex={0}>
+            <table>
+              <thead><tr><th>Repair / location</th><th>Why review</th><th>Request / order records</th><th>Due date</th><th>Next step</th></tr></thead>
+              <tbody>{waitingQueue.rows.map(row=>{
+                const work=row.work;
+                const site=work.site_id?siteFor(work.site_id,work.property_id):undefined;
+                return <tr key={work.id}>
+                  <th scope="row">{work.number}<small>{work.title}</small>
+                    <small>{authorized.find(p=>p.id===work.property_id)?.name??'Property'} · {repairLocation(work.site_id,work.property_id)}</small>
+                  </th>
+                  <td><strong>{waitingPartsReasonLabels[row.reason]}</strong>
+                    <small>{work.priority==='urgent'?'Urgent repair':work.priority==='high'?'High priority':'Maintenance follow-up'}</small>
+                  </td>
+                  <td>{row.linkedRequestCount} linked request(s)
+                    <small>{row.openRequestCount} awaiting decision · {row.outstandingPlacedOrderCount} placed order(s) awaiting receipt</small>
+                    {(row.lateOrderCount>0||row.noEtaOrderCount>0)&&
+                      <small>{row.lateOrderCount} late · {row.noEtaOrderCount} no ETA</small>}
+                    {row.hasRecordedOnHand&&<small>Some stock recorded on hand; not reserved for this repair</small>}
+                  </td>
+                  <td>{work.due_on??'Not scheduled'}
+                    {work.due_on&&work.due_on<row.propertyToday&&<small className="ops-overdue">Repair overdue</small>}
+                    <small>Local date: {row.propertyToday}</small>
+                  </td>
+                  <td>{site
+                    ?<Link href={siteMaintenanceWorkLink(snapshot.organizationId,work.property_id,site.id,work.id)}>Review repair and parts</Link>
+                    :<Link href={propertyMaintenanceTriageLink(snapshot.organizationId,work.property_id,'waiting_parts')}>Review property waiting queue</Link>}
+                  </td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          {waitingQueue.total>waitingQueue.rows.length&&
+            <p className="muted small">More waiting repairs are listed in their property maintenance queues.</p>}
+        </>
+      ):<p role="status">{operations.status==='loading'?'Checking repair parts blockers…':'Maintenance purchasing records unavailable; no repair blockers assumed.'}</p>}
+      <p className="muted small">Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
     </div>
     <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
       <h3>Supplies needing restock</h3>
