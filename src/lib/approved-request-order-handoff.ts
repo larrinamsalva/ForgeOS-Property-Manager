@@ -12,6 +12,7 @@ export type LinkedPurchaseReview={
  placedUnreceivedMilli:string;
  preparingMilli:string;
  unplacedReceiptMilli:string;
+ placedReceiptMilli:string;
  cancelledLinkedOrders:number;
 };
 
@@ -35,7 +36,7 @@ export function linkedPurchaseReview(
 ):LinkedPurchaseReview{
  const empty:LinkedPurchaseReview={
   activeOrders:[],stage:'none',orderedMilli:'0',netReceivedMilli:'0',
-  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',unplacedReceiptMilli:'0',cancelledLinkedOrders:0,
+  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',unplacedReceiptMilli:'0',placedReceiptMilli:'0',cancelledLinkedOrders:0,
  };
  if(!propertyId||request.property_id!==propertyId)return empty;
  const orderById=new Map(orders.filter(o=>o.property_id===propertyId).map(o=>[o.id,o]));
@@ -86,6 +87,7 @@ export function linkedPurchaseReview(
   placedUnreceivedMilli:(placedTotal-placedReceived).toString(),
   preparingMilli:preparingTotal.toString(),
   unplacedReceiptMilli:unplacedReceived.toString(),
+  placedReceiptMilli:placedReceived.toString(),
   cancelledLinkedOrders:cancelledOrderIds.size,
  };
 }
