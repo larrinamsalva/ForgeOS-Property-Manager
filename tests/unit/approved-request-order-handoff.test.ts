@@ -102,7 +102,7 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
    stage:'placed_part_received',orderedMilli:'8000',netReceivedMilli:'2000',
    unreceivedMilli:'6000',
   });
-  expect(review('approved-placed')).toMatchObject({placedUnreceivedMilli:'6000',preparingMilli:'0'});
+  expect(review('approved-placed')).toMatchObject({placedUnreceivedMilli:'6000',preparingMilli:'0',placedReceiptMilli:'2000',unplacedReceiptMilli:'0'});
   expect(review('approved-draft')).toMatchObject({placedUnreceivedMilli:'0',preparingMilli:'5000'});
   expect(review('approved-mixed')).toMatchObject({
    stage:'receipt_recorded_preparing',orderedMilli:'6000',netReceivedMilli:'4000',
@@ -161,7 +161,7 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   const l=[line('draft-receipt-line','unplaced-receipt','draft-receipt'),line('approved-receipt-line','unplaced-receipt','approved-receipt')];
   const original=[{id:'draft-receipt-line',received_milli:'1000'},{id:'approved-receipt-line',received_milli:'6000'}];
   const result=linkedPurchaseReview(r,o,l,original,propertyId);
-  expect(result).toMatchObject({unplacedReceiptMilli:'6000',preparingMilli:'4000',netReceivedMilli:'6000'});
+  expect(result).toMatchObject({unplacedReceiptMilli:'6000',placedReceiptMilli:'0',preparingMilli:'4000',netReceivedMilli:'6000'});
   expect(original[0].received_milli).toBe('1000');
   expect(o[0].status).toBe('draft');
   expect(review('approved-placed').unplacedReceiptMilli).toBe('0');
