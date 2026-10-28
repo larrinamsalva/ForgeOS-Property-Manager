@@ -8,6 +8,7 @@ import { lowStockInventory, lowStockInventoryLink } from '@/lib/low-stock-invent
 import { existingRestockRequests } from '@/lib/existing-restock-requests';
 import { incomingDeliveryLines, incomingDeliveriesLink, incomingDeliveryOrderLink } from '@/lib/incoming-deliveries';
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
+import { waitingRepairsWithoutPartRequests } from '@/lib/work-parts-request-review';
 import { latestReview, type MeterSnapshot } from '@/lib/meter-domain';
 import { propertyMaintenancePriorities, propertyMaintenanceTriageLink } from '@/lib/property-maintenance-priorities';
 import { overviewMaintenancePriorityQueue } from '@/lib/overview-maintenance-priority-queue';
@@ -74,11 +75,14 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
   const incomingByProperty=new Map(authorized.map(property=>[
     property.id,incoming.filter(row=>row.order.property_id===property.id).length,
   ]));
+  const workPartsGaps=operations.data
+    ?waitingRepairsWithoutPartRequests(operations.data.work,operations.data.requests,[...authorizedIds])
+    :{waiting:0,withoutRequest:0};
   const supplyCoverage=incomingStockCoverage(lowStock,incoming);
   const shortagesWithoutPlacedOrders=supplyCoverage.filter(row=>!row.placedOrderIds.length).length;
   const shortagesWithLateOrders=supplyCoverage.filter(row=>row.overdueOrderCount>0).length;
   const oneProperty=authorized.length===1?authorized[0]:null;
-  const attentionTarget=(triage:'overdue'|'unassigned')=>oneProperty
+  const attentionTarget=(triage:'overdue'|'unassigned'|'waiting_parts')=>oneProperty
     ?propertyMaintenanceTriageLink(snapshot.organizationId,oneProperty.id,triage)
     :'#maintenance-property-handoff';
   const scopedReadings = meters.data?.readings.filter(r => authorizedIds.has(r.property_id)) ?? [];
@@ -96,6 +100,10 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
         <Link href={attentionTarget('overdue')}>{oneProperty?'Review overdue queue':'Choose a property below'}</Link></div>
       <div className="stat-card"><span>Unassigned work orders</span><strong>{metric(operations, unassigned)}</strong>
         <Link href={attentionTarget('unassigned')}>{oneProperty?'Review unassigned queue':'Choose a property below'}</Link></div>
+      <div className="stat-card"><span>Waiting repairs without recorded parts requests</span>
+        <strong>{metric(operations,workPartsGaps.withoutRequest)}</strong>
+        <Link href={attentionTarget('waiting_parts')}>{oneProperty?'Review waiting repairs':'Choose a property below'}</Link>
+      </div>
       <div className="stat-card"><span>Supplies at reorder threshold</span><strong>{metric(operations,lowStock.length)}</strong>
         <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
           {oneProperty?'Review low-stock items':'Choose property below'}
