@@ -7,6 +7,7 @@ import { lowStockInventory } from '@/lib/low-stock-inventory';
 import { existingRestockRequests, existingRestockStatusText } from '@/lib/existing-restock-requests';
 import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvRows, type IncomingDeliveryFilter } from '@/lib/incoming-deliveries';
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
+import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -252,6 +253,12 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
     events = data.events
       .filter((e) => e.work_order_id === id)
       .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+  const workProperty=ui.snapshot.properties.find(p=>p.id===w.property_id);
+  const outstandingSupplies=incomingDeliveryLines(
+    data.orders,data.lines,data.summary.purchase_lines,
+    [{id:w.property_id,timezone:workProperty?.timezone??'America/Los_Angeles'}],
+  );
+  const requestedParts=linkedWorkPartReview(w,data.requests,data.items,data.summary.stock,outstandingSupplies);
   const workPhotos = data.photos.filter(p => p.work_order_id === id);
   const visiblePhotos = workPhotos.filter(p => photoFilter === 'all' || p.status === photoFilter);
   async function showPhoto(photoId: string, caption: string) {
@@ -453,15 +460,46 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
           </button>
         </div>
       )}
-      <h3>Requested parts</h3>
-      {data.requests
-        .filter((r) => r.work_order_id === id)
-        .map((r) => (
-          <p key={r.id}>
-            {data.context.parts.find((i) => i.id === r.item_id)?.name ?? 'Stock item'} ·{' '}
-            {quantity(r.quantity_milli)} · {opsLabel(r.status)} · {r.description} {r.decision_reason}
-          </p>
-        ))}
+      <h3>Requested parts and purchasing status</h3>
+      <p className="muted small">
+        These are structured supply requests linked to this exact repair. On-hand figures are recorded inventory,
+        not reserved for this repair; on-order quantities are only outstanding placed-order lines explicitly linked to the request.
+        Check physical stock and confirm delivery before resuming work.
+      </p>
+      {requestedParts.length===0 ? <p>No structured parts request has been recorded for this repair.
+        {w.status==='waiting_parts'?' The job is marked waiting for parts; review its free-text requirements and request needed supplies.':''}
+      </p> : (
+        <div className="table-wrap" role="region" aria-label="Parts requests linked to this repair" tabIndex={0}>
+          <table>
+            <thead><tr><th>Part / request</th><th>Requested</th><th>Recorded on hand</th>
+              <th>Placed-order deliveries outstanding</th><th>Next step</th></tr></thead>
+            <tbody>{requestedParts.map(({request,item,onHandMilli,incomingMilli,placedOrderIds,overdueOrderCount,missingEtaOrderCount})=>(
+              <tr key={request.id}>
+                <th scope="row">{item?.name??'Unavailable inventory item'}
+                  <small>{item?.sku??'Stock item reference unavailable'} · {opsLabel(request.status)}</small>
+                  <small>Needed {request.needed_on}</small>
+                </th>
+                <td>{quantity(request.quantity_milli)} {item?.unit??'units'}</td>
+                <td>{onHandMilli===null?'Unavailable':`${quantity(onHandMilli)} ${item?.unit??'units'}`}
+                  <small>Not reserved</small>
+                </td>
+                <td>{quantity(incomingMilli)} {item?.unit??'units'} unreceived
+                  <small>{placedOrderIds.length ? `${placedOrderIds.length} placed order(s)`:'No placed order linked to this request'}
+                    {overdueOrderCount ? ` · ${overdueOrderCount} past expected date`:''}
+                    {missingEtaOrderCount ? ` · ${missingEtaOrderCount} with no ETA`:''}</small>
+                </td>
+                <td>{placedOrderIds.length>0?(
+                  <div className="action-group">
+                    {placedOrderIds.map(orderId=><Action key={orderId} click={()=>open('purchase_detail',orderId)}>
+                      Review placed order
+                    </Action>)}
+                  </div>
+                ) : <span className="muted small">Review request status in Purchasing</span>}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
       <h3>Work and time history</h3>
       <p>Total recorded time {events.reduce((sum, e) => sum + e.minutes, 0)} minutes</p>
       {events.map((e) => (
