@@ -147,7 +147,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
       {inWaitingReview && (
         <div className="ops-record" aria-label="Waiting repairs procurement blockers">
           <h3>Waiting-for-parts follow-up</h3>
-          <p>Filter by the verified reason a repair needs purchasing follow-up. Only this property's
+          <p>Filter by the verified reason a repair needs purchasing follow-up. Only this property&apos;s
             waiting repairs and structured request-to-order links are included. On-hand stock is not reserved for jobs.</p>
           <div className="quick-actions" role="group" aria-label="Waiting parts blocker filters">
             {waitingPartsFilterChoices.map(choice=>(
