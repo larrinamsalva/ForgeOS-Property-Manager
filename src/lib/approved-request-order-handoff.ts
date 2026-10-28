@@ -1,7 +1,7 @@
 import type {PurchaseRequest,PurchaseOrder,PurchaseLine,OperationsSnapshot} from './operations-domain';
 import type {PurchaseRequestAttentionRow} from './purchase-request-attention';
 
-export type LinkedPurchaseStage='none'|'preparing'|'placed_unreceived'|'placed_part_received'|'receipt_recorded'|'receipt_recorded_preparing'|'placed_part_received_preparing';
+export type LinkedPurchaseStage='none'|'preparing'|'placed_unreceived'|'placed_part_received'|'receipt_recorded'|'receipt_recorded_preparing'|'placed_part_received_preparing'|'placed_unreceived_preparing';
 
 export type LinkedPurchaseReview={
  activeOrders:PurchaseOrder[];
@@ -72,6 +72,7 @@ export function linkedPurchaseReview(
  const stage:LinkedPurchaseStage=!live.length?'none':
   placedTotal>0n && placedReceived<placedTotal && placedReceived>0n && preparingTotal>0n?'placed_part_received_preparing':
   placedTotal>0n && placedReceived<placedTotal && placedReceived>0n?'placed_part_received':
+  placedTotal>0n && placedReceived<placedTotal && preparingTotal>0n?'placed_unreceived_preparing':
   placedTotal>0n && placedReceived<placedTotal?'placed_unreceived':
   placedTotal>0n && placedReceived>=placedTotal && preparingTotal>0n?'receipt_recorded_preparing':
   placedTotal>0n && placedReceived>=placedTotal?'receipt_recorded':'preparing';
@@ -94,6 +95,7 @@ export const linkedPurchaseStageLabels:Record<LinkedPurchaseStage,string>={
  receipt_recorded:'Linked placed-order receipts recorded; verify request closeout',
  receipt_recorded_preparing:'Placed-order receipts recorded; other linked orders still being prepared',
  placed_part_received_preparing:'Placed order partly received; other linked orders still being prepared',
+ placed_unreceived_preparing:'Placed order awaiting recorded receipt; other linked orders still being prepared',
 };
 
 /** The manager's missing-order handoff is specifically APPROVED requests
