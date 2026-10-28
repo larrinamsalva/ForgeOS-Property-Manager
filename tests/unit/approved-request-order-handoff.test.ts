@@ -102,6 +102,8 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
    stage:'placed_part_received',orderedMilli:'8000',netReceivedMilli:'2000',
    unreceivedMilli:'6000',
   });
+  expect(review('approved-placed')).toMatchObject({placedUnreceivedMilli:'6000',preparingMilli:'0'});
+  expect(review('approved-draft')).toMatchObject({placedUnreceivedMilli:'0',preparingMilli:'5000'});
   expect(review('approved-mixed')).toMatchObject({
    stage:'receipt_recorded',orderedMilli:'6000',netReceivedMilli:'4000',
    unreceivedMilli:'2000',
