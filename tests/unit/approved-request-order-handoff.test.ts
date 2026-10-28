@@ -121,6 +121,19 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(review('approved-cross-property')).toMatchObject({stage:'none',activeOrders:[]});
   expect(review('approved-placed','park-b')).toMatchObject({stage:'none',activeOrders:[]});
  });
+ it('counts one cancelled supplier order only once even when it has multiple linked lines',()=>{
+  const record=request('cancelled-multi-line');
+  const cancelled=[order('cancelled-one','cancelled'),order('cancelled-two','cancelled')];
+  const linked=[
+   line('c1','cancelled-multi-line','cancelled-one'),
+   line('c2','cancelled-multi-line','cancelled-one'),
+   line('c3','cancelled-multi-line','cancelled-two'),
+   line('not-this-request','other-request','cancelled-two'),
+  ];
+  expect(linkedPurchaseReview(record,cancelled,linked,[],propertyId)).toMatchObject({
+   stage:'none',activeOrders:[],cancelledLinkedOrders:2,
+  });
+ });
  it('deduplicates the same supplier order across multiple matching request lines',()=>{
   expect(review('approved-placed').activeOrders.map(o=>o.id)).toEqual(['placed']);
   expect(review('approved-placed').unreceivedMilli).toBe('6000');
