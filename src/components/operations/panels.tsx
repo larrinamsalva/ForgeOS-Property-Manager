@@ -937,7 +937,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                     {deadline==='due_today'&&<small>Needed today</small>}
                   </td>
                   <td>
-                    {ui.manage&&ui.active?
+                    {hasInvalidRequestedQuantity(request.quantity_milli)?
+                      <span className="ops-overdue">Verify the approved quantity before preparing an order</span>:
+                      ui.manage&&ui.active?
                       <Action click={()=>open('new_purchase')}>Prepare order manually</Action>:
                       <span className="muted small">Manager follow-up required</span>}
                     {work&&<button type="button" className="text-button"
@@ -1044,7 +1046,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               {r.status==='approved'&&!linked.activeOrders.length&&
                 <p className="ops-overdue"><strong>Approved request has no active linked purchase order.</strong>
                   {linked.cancelledLinkedOrders>0&&<span> Prior linked purchase orders were cancelled. Review order history before preparing another order.</span>}
-                  {ui.manage&&ui.active&&
+                  {ui.manage&&ui.active&&!hasInvalidRequestedQuantity(r.quantity_milli)&&
                     <button type="button" className="text-button" onClick={()=>open('new_purchase')}>
                       Prepare order manually
                     </button>}
