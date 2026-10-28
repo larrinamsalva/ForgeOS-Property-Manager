@@ -58,11 +58,11 @@ export function linkedPurchaseReview(
    continue;
   }
   activeOrders.set(order.id,order);
-  if(typeof line.quantity_milli!=='string'||!/^\\d+$/.test(line.quantity_milli)||safeMilli(line.quantity_milli)===0n)invalidQuantityLines++;
+  if(typeof line.quantity_milli!=='string'||!/^\d+$/.test(line.quantity_milli)||safeMilli(line.quantity_milli)===0n)invalidQuantityLines++;
   const orderedQuantity=safeMilli(line.quantity_milli);
   if(orderedQuantity<=0n)continue;
   const receiptValue=receiptsById.get(line.id);
-  if(receiptValue!==undefined&&(typeof receiptValue!=='string'||! /^-?\\d+$/.test(receiptValue)))invalidReceiptLines++;
+  if(receiptValue!==undefined&&(typeof receiptValue!=='string'||! /^-?\d+$/.test(receiptValue)))invalidReceiptLines++;
   const recorded=safeMilli(receiptValue);
   const delivered=recorded<0n?0n:recorded>orderedQuantity?orderedQuantity:recorded;
   ordered+=orderedQuantity;
