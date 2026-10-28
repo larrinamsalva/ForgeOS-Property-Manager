@@ -1012,6 +1012,12 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 {linked.activeOrders.length>0&&` · ${linked.activeOrders.length} active linked order(s)`}
                 {linked.cancelledLinkedOrders>0&&` · ${linked.cancelledLinkedOrders} cancelled linked order(s)`}
               </p>
+              {linked.activeOrders.length>0&&<p className="muted small">
+                Linked purchase lines: {quantity(linked.orderedMilli)} {item?.unit??'units'} recorded on orders;
+                {' '}{quantity(linked.netReceivedMilli)} received;
+                {' '}{quantity(linked.unreceivedMilli)} not yet recorded as received.
+                {' '}Includes draft/approved lines where present; receipts do not confirm repair completion.
+              </p>}
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"
                   key={order.id} onClick={()=>open('purchase_detail',order.id)}>
