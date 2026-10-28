@@ -8,6 +8,11 @@ import { existingRestockRequests, existingRestockStatusText } from '@/lib/existi
 import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvRows, type IncomingDeliveryFilter } from '@/lib/incoming-deliveries';
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
+import { waitingPartsHandoff, waitingPartsReasonLabels } from '@/lib/waiting-parts-handoff';
+import {
+  filterWaitingPartsRows, waitingPartsFilterChoices, type WaitingPartsViewFilter,
+} from '@/lib/waiting-parts-handoff-review';
+import { maintenanceWaitingPartsWorklist } from '@/lib/maintenance-waiting-parts-worklist';
 import { employeeChecklistProgress } from '@/lib/employee-checklist-progress';
 import { propertyChecklistTemplates } from '@/lib/property-checklist-templates';
 import { employeeTodayWork } from '@/lib/employee-today-work';
@@ -47,11 +52,24 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
   onStatusChange?: (value: string) => void; siteId?: string;
   triage?: MaintenanceTriage; onTriageChange?: (value: MaintenanceTriage) => void;
 }) {
+  const [partsBlocker,setPartsBlocker]=useState<WaitingPartsViewFilter>('all');
   const siteWork = filterWorkOrdersBySite(scoped(ui, ui.data.work),siteId);
   const work = filterMaintenanceWorklist(siteWork,{
     propertyId:ui.propertyId,siteId,search,status,mineOnly,
     userId:ui.snapshot.userId,today:ui.today,triage,
   });
+  const inWaitingReview=triage==='waiting_parts'||status==='waiting_parts';
+  const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
+  const waitingQueue=inWaitingReview?waitingPartsHandoff(
+    siteWork,ui.data.requests,ui.data.items,ui.data.summary.stock,
+    ui.data.orders,ui.data.lines,ui.data.summary.purchase_lines,
+    [{id:ui.propertyId,timezone:propertyTimezone}],new Date(),Number.MAX_SAFE_INTEGER,
+  ).rows:[];
+  const eligibleWaitingRows=waitingQueue.filter(row=>
+    !mineOnly||row.work.assigned_to===ui.snapshot.userId);
+  const visibleWork=inWaitingReview
+    ?maintenanceWaitingPartsWorklist(work,eligibleWaitingRows,partsBlocker):work;
+  const reasonByWork=new Map(eligibleWaitingRows.map(row=>[row.work.id,row]));
   const activeWork = siteWork.filter((w) =>
     !['completed', 'closed', 'cancelled'].includes(w.status) &&
     (!mineOnly || w.assigned_to === ui.snapshot.userId));
@@ -103,7 +121,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
             <button key={group.value} type="button"
               className={`button ${status === group.value ? 'primary' : 'secondary'}`}
               aria-pressed={status === group.value}
-              onClick={() => onStatusChange(group.value)}>
+              onClick={() => {onStatusChange(group.value);setPartsBlocker('all');}}>
               {group.label} ({group.count})
             </button>
           ))}
@@ -121,12 +139,34 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           const eligible = siteWork.filter(w=>!mineOnly||w.assigned_to===ui.snapshot.userId);
           const count = eligible.filter(w=>maintenanceMatchesTriage(w,key,ui.today)).length;
           return <button key={key} type="button" className={`button ${triage===key?'primary':'secondary'}`}
-            aria-pressed={triage===key} onClick={()=>onTriageChange(key)}>
+            aria-pressed={triage===key} onClick={()=>{onTriageChange(key);setPartsBlocker('all');}}>
             {label} ({count})
           </button>;
         })}
       </div>}
-      {triage!=='all' && <p className="muted small" role="status">
+      {inWaitingReview && (
+        <div className="ops-record" aria-label="Waiting repairs procurement blockers">
+          <h3>Waiting-for-parts follow-up</h3>
+          <p>Filter by the verified reason a repair needs purchasing follow-up. Only this property&apos;s
+            waiting repairs and structured request-to-order links are included. On-hand stock is not reserved for jobs.</p>
+          <div className="quick-actions" role="group" aria-label="Waiting parts blocker filters">
+            {waitingPartsFilterChoices.map(choice=>(
+              <button key={choice.value} type="button"
+                className={`button ${partsBlocker===choice.value?'primary':'secondary'}`}
+                aria-pressed={partsBlocker===choice.value}
+                onClick={()=>setPartsBlocker(choice.value)}>
+                {choice.label} ({filterWaitingPartsRows(eligibleWaitingRows,choice.value,'','').length})
+              </button>
+            ))}
+          </div>
+          <p className="muted small" role="status">Showing {visibleWork.length} of {work.length}
+            repairs matching the existing search, status and attention filters.
+            Blocker counts above cover the current site or property before search.</p>
+          <p className="muted small">A placed order is not proof of shipment, delivery or parts allocation.
+            Open a repair to confirm the linked request and recorded stock before making changes.</p>
+        </div>
+      )}
+      {triage!=='all' && !inWaitingReview && <p className="muted small" role="status">
         Showing {work.length} work orders matching the attention, work status and search filters.
         Attention counts above cover the selected site or property before search and work-status filters.
       </p>}
@@ -184,7 +224,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
         </section>
       )}
       {!mineOnly && !siteId && <MaintenanceMonthCalendar ui={ui} />}
-      {!work.length ? (
+      {!visibleWork.length ? (
         <Empty title="No matching work orders">
           No repairs match these selections. Choose All work, change the work status or clear your search to see more results.
         </Empty>
@@ -200,7 +240,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
               </tr>
             </thead>
             <tbody>
-              {work.map((w) => (
+              {visibleWork.map((w) => (
                 <tr key={w.id}>
                   <th scope="row">
                     <button className="text-button" onClick={() => ui.open('work_detail', w.id)}>
@@ -222,6 +262,22 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
                       {opsLabel(w.priority)}
                     </span>
                     <small>{opsLabel(w.status)}</small>
+                    {w.status==='waiting_parts'&&inWaitingReview&&reasonByWork.get(w.id)&&(
+                      <>
+                        <small><strong>{waitingPartsReasonLabels[reasonByWork.get(w.id)!.reason]}</strong></small>
+                        <small>{reasonByWork.get(w.id)!.linkedRequestCount} recorded request(s) ·
+                          {reasonByWork.get(w.id)!.outstandingPlacedOrderCount} placed order(s) awaiting receipt</small>
+                        {reasonByWork.get(w.id)!.lateOrderCount>0&&
+                          <small className="ops-overdue">{reasonByWork.get(w.id)!.lateOrderCount} placed order(s) past expected date</small>}
+                        {reasonByWork.get(w.id)!.noEtaOrderCount>0&&
+                          <small>{reasonByWork.get(w.id)!.noEtaOrderCount} placed order(s) missing ETA</small>}
+                        <div className="action-group">
+                          {ui.active && reasonByWork.get(w.id)!.reason==='no_structured_request'&&
+                            <Action click={()=>ui.open('purchase_request',w.id)}>Request needed parts</Action>}
+                          <Action click={()=>ui.open('work_detail',w.id)}>Review parts &amp; repair</Action>
+                        </div>
+                      </>
+                    )}
                   </td>
                   <td>
                     {w.due_on ?? 'Not scheduled'}
