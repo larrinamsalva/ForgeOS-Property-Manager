@@ -221,6 +221,16 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
    {id:'valid-quantity',received_milli:'1000'},
   ],propertyId)).toMatchObject({stage:'placed_part_received',netReceivedMilli:'1000'});
  });
+ it('flags malformed linked quantities while keeping valid zero receipts and existing totals',()=>{
+  const r=request('invalid-review');
+  const o=[order('invalid-order','ordered')];
+  const l=[line('invalid-line','invalid-review','invalid-order',{quantity_milli:'broken'}),
+   line('valid-line','invalid-review','invalid-order',{quantity_milli:'2000'})];
+  expect(linkedPurchaseReview(r,o,l,[{id:'valid-line',received_milli:'bad'}],propertyId)).toMatchObject({
+   invalidQuantityLines:1,invalidReceiptLines:1,orderedMilli:'2000',netReceivedMilli:'0',
+  });
+  expect(linkedPurchaseReview(r,o,l,[{id:'valid-line',received_milli:'0'}],propertyId).invalidReceiptLines).toBe(0);
+ });
  it('never mutates original order, receipt or request history',()=>{
   const beforeR=requests.map(x=>({...x}));
   const beforeO=orders.map(x=>({...x}));
