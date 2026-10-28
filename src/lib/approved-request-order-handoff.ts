@@ -14,7 +14,7 @@ export type LinkedPurchaseReview={
 
 /** A malformed persisted quantity must not crash purchasing review. */
 function safeMilli(value:string|undefined|null):bigint{
- return typeof value==='string' && /^-?\\d+$/.test(value)?BigInt(value):0n;
+ return typeof value==='string' && /^-?\d+$/.test(value)?BigInt(value):0n;
 }
 
 /** Read-only, same-property linked purchasing records for ONE request.
