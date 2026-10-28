@@ -1029,6 +1029,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               {linked.unplacedReceiptMilli!=='0'&&<p className="ops-overdue">
                 <strong>Review order status:</strong> {quantity(linked.unplacedReceiptMilli)} {item?.unit??'units'} recorded received against linked draft/approved orders. Verify order and receipt records; this warning does not change stock or order status.
               </p>}
+              {(linked.invalidQuantityLines>0||linked.invalidReceiptLines>0)&&<p className="ops-overdue" role="status">
+                <strong>Review purchasing data:</strong> {linked.invalidQuantityLines} linked line(s) have invalid or zero order quantities; {linked.invalidReceiptLines} linked line(s) have malformed receipt quantities. Verify the original records; this summary does not edit them.
+              </p>}
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"
                   key={order.id} onClick={()=>open('purchase_detail',order.id)}>
