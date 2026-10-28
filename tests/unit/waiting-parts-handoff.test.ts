@@ -174,7 +174,7 @@ describe('property-wide waiting-for-parts manager handoff',()=>{
   expect(review.overdueRequestCount).toBe(2);
   expect(review.dueTodayRequestCount).toBe(1);
   expect(review.earliestActiveNeededOn).toBe('2026-10-01');
-  expect(review.openRequestCount).toBe(3);
+  expect(review.openRequestCount).toBe(2); // Only requests still awaiting a decision are 'open'.
  });
  it('retains full backlog size when display is limited and never mutates input records',()=>{
   const workIds=works.map(w=>w.id);
