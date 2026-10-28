@@ -127,6 +127,17 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(result).toMatchObject({stage:'placed_part_received_preparing',placedUnreceivedMilli:'3000',preparingMilli:'3000'});
   expect(linkedPurchaseStageLabels[result.stage]).toContain('still being prepared');
  });
+ it('shows placed orders awaiting first receipt alongside other preparing orders',()=>{
+  const record=request('unreceived-and-draft');
+  const mixedOrders=[order('waiting-placed','ordered'),order('waiting-draft','draft')];
+  const mixedLines=[
+   line('awaiting-line','unreceived-and-draft','waiting-placed',{quantity_milli:'5000'}),
+   line('preparing-line','unreceived-and-draft','waiting-draft',{quantity_milli:'3000'}),
+  ];
+  const result=linkedPurchaseReview(record,mixedOrders,mixedLines,[],propertyId);
+  expect(result).toMatchObject({stage:'placed_unreceived_preparing',placedUnreceivedMilli:'5000',preparingMilli:'3000',netReceivedMilli:'0'});
+  expect(linkedPurchaseStageLabels[result.stage]).toContain('still being prepared');
+ });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
    stage:'none',cancelledLinkedOrders:1,activeOrders:[],orderedMilli:'0',
