@@ -121,7 +121,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
             <button key={group.value} type="button"
               className={`button ${status === group.value ? 'primary' : 'secondary'}`}
               aria-pressed={status === group.value}
-              onClick={() => {onStatusChange(group.value);setPartsBlocker('all');}}> 
+              onClick={() => {onStatusChange(group.value);setPartsBlocker('all');}}>
               {group.label} ({group.count})
             </button>
           ))}
@@ -139,7 +139,7 @@ export function WorkPanel({ ui, search, status, mineOnly = false, onStatusChange
           const eligible = siteWork.filter(w=>!mineOnly||w.assigned_to===ui.snapshot.userId);
           const count = eligible.filter(w=>maintenanceMatchesTriage(w,key,ui.today)).length;
           return <button key={key} type="button" className={`button ${triage===key?'primary':'secondary'}`}
-            aria-pressed={triage===key} onClick={()=>{onTriageChange(key);setPartsBlocker('all');}}> 
+            aria-pressed={triage===key} onClick={()=>{onTriageChange(key);setPartsBlocker('all');}}>
             {label} ({count})
           </button>;
         })}
