@@ -153,6 +153,21 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(linkedPurchaseReview(record,reqOrders,reqLines,[{id:'line1',received_milli:'-100'}],propertyId)
    .netReceivedMilli).toBe('0');
  });
+ it('does not crash on malformed stored order or receipt quantities',()=>{
+  const record=request('malformed');
+  const purchase=[order('malformed-order','ordered')];
+  const purchaseLines=[
+   line('bad-quantity','malformed','malformed-order',{quantity_milli:'not-a-number'}),
+   line('valid-quantity','malformed','malformed-order',{quantity_milli:'2000'}),
+  ];
+  expect(linkedPurchaseReview(record,purchase,purchaseLines,[
+   {id:'bad-quantity',received_milli:'100'},
+   {id:'valid-quantity',received_milli:'broken'},
+  ],propertyId)).toMatchObject({stage:'placed_unreceived',orderedMilli:'2000',netReceivedMilli:'0',unreceivedMilli:'2000'});
+  expect(linkedPurchaseReview(record,purchase,purchaseLines,[
+   {id:'valid-quantity',received_milli:'1000'},
+  ],propertyId)).toMatchObject({stage:'placed_part_received',netReceivedMilli:'1000'});
+ });
  it('never mutates original order, receipt or request history',()=>{
   const beforeR=requests.map(x=>({...x}));
   const beforeO=orders.map(x=>({...x}));
