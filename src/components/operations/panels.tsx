@@ -554,7 +554,7 @@ export function WorkDetail({ ui, id }: { ui: OpsUI; id: string }) {
                   {['open','approved','ordered'].includes(request.status)&&request.needed_on===ui.today&&
                     <small>Parts needed today</small>}
                 </th>
-                <td>{quantity(request.quantity_milli)} {item?.unit??'units'}</td>
+                <td>{hasInvalidRequestedQuantity(request.quantity_milli)?<strong className="ops-overdue">Invalid quantity</strong>:<>{quantity(request.quantity_milli)} {item?.unit??'units'}</>}</td>
                 <td>{onHandMilli===null?'Unavailable':`${quantity(onHandMilli)} ${item?.unit??'units'}`}
                   <small>Not reserved</small>
                 </td>
@@ -1007,7 +1007,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           visibleRequests.map(({request:r,item,work,deadline}) => {
             const linked=linkedPurchaseReview(r,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
             return <article className="ops-record" key={r.id}>
-              <h3>{item?.name ?? 'Unavailable stock item'} · {quantity(r.quantity_milli)} {item?.unit??'units'}</h3>
+              <h3>{item?.name ?? 'Unavailable stock item'} · {hasInvalidRequestedQuantity(r.quantity_milli)?<span className="ops-overdue">Invalid quantity</span>:<>{quantity(r.quantity_milli)} {item?.unit??'units'}</>}</h3>
               <p>Needed {r.needed_on||'Date unavailable'} · {opsLabel(r.status)}</p>
               <p className="muted small">
                 {linkedPurchaseStageLabels[linked.stage]}
