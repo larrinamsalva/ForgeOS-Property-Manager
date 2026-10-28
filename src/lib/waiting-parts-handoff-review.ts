@@ -3,19 +3,21 @@ import {waitingPartsReasonLabels} from './waiting-parts-handoff';
 
 export type WaitingPartsViewFilter=
  'all'|'no_request'|'awaiting_decision'|'delivery_attention'|
- 'purchasing_review'|'verify_parts'|'urgent';
+ 'purchasing_review'|'verify_parts'|'urgent'|'request_overdue'|'request_due_today';
 
 export const waitingPartsFilterChoices:readonly {value:WaitingPartsViewFilter;label:string}[]=[
  {value:'all',label:'All waiting repairs'},
  {value:'no_request',label:'No parts request'},
  {value:'awaiting_decision',label:'Request awaiting decision'},
+ {value:'request_overdue',label:'Parts needed date passed'},
+ {value:'request_due_today',label:'Parts needed today'},
  {value:'delivery_attention',label:'Delayed or no ETA'},
  {value:'purchasing_review',label:'Other purchasing follow-up'},
  {value:'verify_parts',label:'Check received parts'},
  {value:'urgent',label:'Urgent repairs'},
 ];
 
-const groups:Record<Exclude<WaitingPartsViewFilter,'all'|'urgent'>,readonly WaitingPartsReason[]>={
+const groups:Record<Exclude<WaitingPartsViewFilter,'all'|'urgent'|'request_overdue'|'request_due_today'>,readonly WaitingPartsReason[]>={
  no_request:['no_structured_request'],
  awaiting_decision:['open_request'],
  delivery_attention:['late_linked_delivery','missing_eta'],
@@ -37,7 +39,10 @@ export function filterWaitingPartsRows(
  return rows.filter(row=>
   (!propertyId || row.work.property_id===propertyId) &&
   (filter==='all'||(filter==='urgent'
-   ?row.work.priority==='urgent':groups[filter].includes(row.reason))) &&
+   ?row.work.priority==='urgent':
+   filter==='request_overdue'?row.overdueRequestCount>0:
+   filter==='request_due_today'?row.dueTodayRequestCount>0:
+   groups[filter].includes(row.reason))) &&
   (!query||[
    row.work.number,row.work.title,row.work.category,
   ].some(value=>value.toLocaleLowerCase().includes(query)))
@@ -57,7 +62,8 @@ export function waitingPartsCsvRows(
  const propertyNames=new Map(properties.map(p=>[p.id,p.name]));
  return [
   ['Work order','Repair title','Property','Space / area','Category','Priority',
-   'Attention reason','Linked requests','Awaiting decision','Placed orders outstanding',
+   'Attention reason','Linked requests','Awaiting decision','Parts requests past needed date',
+   'Parts requests needed today','Earliest active parts needed by','Placed orders outstanding',
    'Late placed orders','Placed orders without ETA','Recorded stock on hand (unreserved)',
    'Repair due date','Property local date'],
   ...rows.map(row=>{
@@ -68,6 +74,8 @@ export function waitingPartsCsvRows(
     site?.label??'Property / common area',
     work.category,work.priority,waitingPartsReasonLabels[row.reason],
     String(row.linkedRequestCount),String(row.openRequestCount),
+    String(row.overdueRequestCount),String(row.dueTodayRequestCount),
+    row.earliestActiveNeededOn??'',
     String(row.outstandingPlacedOrderCount),String(row.lateOrderCount),
     String(row.noEtaOrderCount),row.hasRecordedOnHand?'Yes - not reserved':'No recorded positive stock',
     work.due_on??'',row.propertyToday,

@@ -127,6 +127,55 @@ describe('property-wide waiting-for-parts manager handoff',()=>{
   expect(rows.find(r=>r.work.id==='same-id-east')!.propertyToday).toBe('2026-11-01');
   expect(rows.find(r=>r.work.id==='same-id-east')!.reason).toBe('no_structured_request');
  });
+ it('flags needed-by dates per authorized property without mistaking placed orders for delivery',()=>{
+  const changed=[
+   ...requests.filter(row=>!['open','approved','fulfilled','declined'].includes(row.id)),
+   request('open','open-request','open',{needed_on:'2026-10-30'}),
+   request('approved','approved-no-order','approved',{needed_on:'2026-10-31'}),
+   request('fulfilled','fulfilled','fulfilled',{needed_on:'2026-10-25'}),
+   request('declined','declined','declined',{needed_on:'2026-10-25'}),
+   request('east-needed','same-id-east','open',{property_id:'park-east',needed_on:'2026-10-31'}),
+  ];
+  const rows=waitingPartsHandoff(
+   works,changed,items,stock,orders,lines,receipts,props,now,30,
+  ).rows;
+  const find=(id:string)=>rows.find(row=>row.work.id===id)!;
+  expect(find('open-request')).toMatchObject({
+   reason:'open_request',propertyToday:'2026-10-31',
+   overdueRequestCount:1,dueTodayRequestCount:0,
+   earliestActiveNeededOn:'2026-10-30',
+  });
+  expect(find('approved-no-order')).toMatchObject({
+   overdueRequestCount:0,dueTodayRequestCount:1,
+   earliestActiveNeededOn:'2026-10-31',
+  });
+  expect(find('same-id-east')).toMatchObject({
+   propertyToday:'2026-11-01',overdueRequestCount:1,dueTodayRequestCount:0,
+  });
+  expect(find('fulfilled').overdueRequestCount).toBe(0);
+  expect(find('declined').overdueRequestCount).toBe(0);
+  // An expired *request* deadline and supplier ETA are independently recorded.
+  expect(find('late-order').lateOrderCount).toBe(1);
+  expect(find('late-order').dueTodayRequestCount).toBe(1);
+ });
+ it('ignores empty or malformed required dates and counts multiple still-active requests once each',()=>{
+  const records=[
+   request('need-one','open-request','open',{needed_on:'2026-10-01'}),
+   request('need-two','open-request','approved',{needed_on:'2026-10-25'}),
+   request('blank','open-request','ordered',{needed_on:''}),
+   request('malformed','open-request','open',{needed_on:'01/01/2026'}),
+   request('cancelled','open-request','cancelled',{needed_on:'2026-10-01'}),
+   request('due-today','open-request','ordered',{needed_on:'2026-10-31'}),
+  ];
+  const rows=waitingPartsHandoff(
+   works,records,items,stock,orders,lines,receipts,props,now,30,
+  ).rows;
+  const review=rows.find(row=>row.work.id==='open-request')!;
+  expect(review.overdueRequestCount).toBe(2);
+  expect(review.dueTodayRequestCount).toBe(1);
+  expect(review.earliestActiveNeededOn).toBe('2026-10-01');
+  expect(review.openRequestCount).toBe(2); // Only requests still awaiting a decision are 'open'.
+ });
  it('retains full backlog size when display is limited and never mutates input records',()=>{
   const workIds=works.map(w=>w.id);
   const requestIds=requests.map(x=>x.id);

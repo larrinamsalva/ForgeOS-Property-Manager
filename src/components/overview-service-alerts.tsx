@@ -92,6 +92,8 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       new Date(),Number.MAX_SAFE_INTEGER,
     ) : null;
   const waitingAll=waitingQueue?.rows??[];
+  const overduePartsRepairs=waitingAll.filter(row=>row.overdueRequestCount>0).length;
+  const dueTodayPartsRepairs=waitingAll.filter(row=>row.dueTodayRequestCount>0).length;
   const activeWaitingProperty=waitingProperty==='all'||authorizedIds.has(waitingProperty)
     ?waitingProperty:'all';
   const waitingFiltered=filterWaitingPartsRows(
@@ -136,6 +138,14 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
       <div className="stat-card"><span>Waiting repairs without recorded parts requests</span>
         <strong>{metric(operations,workPartsGaps.withoutRequest)}</strong>
         <Link href={attentionTarget('waiting_parts')}>{oneProperty?'Review waiting repairs':'Choose a property below'}</Link>
+      </div>
+      <div className="stat-card"><span>Waiting repairs with parts needed dates passed</span>
+        <strong>{metric(operations,overduePartsRepairs)}</strong>
+        <Link href="#waiting-parts-repair-handoff">Review overdue parts requests</Link>
+      </div>
+      <div className="stat-card"><span>Waiting repairs needing parts today</span>
+        <strong>{metric(operations,dueTodayPartsRepairs)}</strong>
+        <Link href="#waiting-parts-repair-handoff">Review today&apos;s parts requests</Link>
       </div>
       <div className="stat-card"><span>Supplies at reorder threshold</span><strong>{metric(operations,lowStock.length)}</strong>
         <Link href={oneProperty?lowStockInventoryLink(snapshot.organizationId,oneProperty.id):'#inventory-reorder-handoff'}>
@@ -284,6 +294,11 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
                   </td>
                   <td>{row.linkedRequestCount} linked request(s)
                     <small>{row.openRequestCount} awaiting decision · {row.outstandingPlacedOrderCount} placed order(s) awaiting receipt</small>
+                    {row.overdueRequestCount>0&&<small className="ops-overdue">
+                      {row.overdueRequestCount} active parts request(s) past needed date
+                    </small>}
+                    {row.dueTodayRequestCount>0&&<small>{row.dueTodayRequestCount} parts request(s) needed today</small>}
+                    {row.earliestActiveNeededOn&&<small>Earliest active needed date: {row.earliestActiveNeededOn}</small>}
                     {(row.lateOrderCount>0||row.noEtaOrderCount>0)&&
                       <small>{row.lateOrderCount} late · {row.noEtaOrderCount} no ETA</small>}
                     {row.hasRecordedOnHand&&<small>Some stock recorded on hand; not reserved for this repair</small>}
@@ -309,7 +324,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
             </div>}
         </>
       ):<p role="status">{operations.status==='loading'?'Checking repair parts blockers…':'Maintenance purchasing records unavailable; no repair blockers assumed.'}</p>}
-      <p className="muted small">CSV contains only the displayed authorized repairs and omits resident records, contact fields and free-text notes. Staff-entered repair titles can contain sensitive details; review the file before sharing. Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
+      <p className="muted small">Parts needed-by dates reflect active requests, even if a purchase order exists; they are separate from supplier ETAs. CSV contains only the displayed authorized repairs and omits resident records, contact fields and free-text notes. Staff-entered repair titles can contain sensitive details; review the file before sharing. Requests awaiting approval, placed orders and expected dates are not proof of delivered parts. This handoff does not allocate inventory, change repair status, or order supplies.</p>
     </div>
     <div id="inventory-reorder-handoff" className="ops-record" aria-label="Supplies needing restock">
       <h3>Supplies needing restock</h3>
