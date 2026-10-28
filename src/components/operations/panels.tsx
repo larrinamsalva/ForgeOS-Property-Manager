@@ -8,6 +8,11 @@ import { existingRestockRequests, existingRestockStatusText } from '@/lib/existi
 import { incomingDeliveryLines, filterIncomingDeliveries, incomingDeliveriesCsvRows, type IncomingDeliveryFilter } from '@/lib/incoming-deliveries';
 import { incomingStockCoverage } from '@/lib/incoming-stock-coverage';
 import { linkedWorkPartReview } from '@/lib/work-parts-request-review';
+import {
+  purchaseRequestAttention,filterPurchaseRequestAttention,
+  purchaseRequestAttentionCsvRows,purchaseRequestAttentionChoices,
+  type PurchaseRequestAttentionFilter,
+} from '@/lib/purchase-request-attention';
 import { waitingPartsHandoff, waitingPartsReasonLabels } from '@/lib/waiting-parts-handoff';
 import {
   filterWaitingPartsRows, waitingPartsFilterChoices, type WaitingPartsViewFilter,
@@ -794,12 +799,31 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const { data, open } = ui;
   const [deliveryFilter,setDeliveryFilter]=useState<IncomingDeliveryFilter>('all');
   const [deliverySearch,setDeliverySearch]=useState('');
+  const [requestFilter,setRequestFilter]=useState<PurchaseRequestAttentionFilter>('all');
+  const [requestSearch,setRequestSearch]=useState('');
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
     [{id:ui.propertyId,timezone:propertyTimezone}],
   );
   const visibleIncoming=filterIncomingDeliveries(incoming,deliveryFilter,deliverySearch);
+  const purchaseRequests=purchaseRequestAttention(
+    data.requests,data.items,data.work,ui.propertyId,ui.today,
+  );
+  const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch);
+  const requestOverdue=purchaseRequests.filter(row=>row.deadline==='overdue').length;
+  const requestDueToday=purchaseRequests.filter(row=>row.deadline==='due_today').length;
+  const requestOpen=purchaseRequests.filter(row=>row.request.status==='open').length;
+  const exportRequests=()=>{
+    if(!visibleRequests.length)return;
+    const payload=csv(purchaseRequestAttentionCsvRows(visibleRequests));
+    const url=URL.createObjectURL(new Blob([payload],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='forgeos-visible-parts-requests.csv';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
   const attentionChoices:[IncomingDeliveryFilter,string][]=[
     ['all','All outstanding'],['overdue','Past expected date'],
     ['due_today','Expected today'],['upcoming','Upcoming'],
@@ -882,22 +906,60 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         <div className="panel-heading">
           <div>
             <h2>Purchase requests</h2>
-            <p>Managers approve requests before linking them to a purchase order.</p>
+            <p>Review the needed-by date for each active supply request before approving or preparing an order.
+              An order being placed does not prove the supplies were received.</p>
           </div>
           {ui.active && <Action click={() => open('purchase_request')}>Request supplies</Action>}
         </div>
-        {!scoped(ui, data.requests).length ? (
-          <p>No purchase requests.</p>
+        <div className="stat-grid" aria-label="Supply request deadline summary">
+          <div className="stat-card"><span>Requests past needed date</span><strong>{requestOverdue}</strong></div>
+          <div className="stat-card"><span>Requests needed today</span><strong>{requestDueToday}</strong></div>
+          <div className="stat-card"><span>Awaiting decision</span><strong>{requestOpen}</strong></div>
+        </div>
+        {purchaseRequests.length>0&&<>
+          <div className="quick-actions" role="group" aria-label="Supply request attention filters">
+            {purchaseRequestAttentionChoices.map(choice=>(
+              <button type="button" key={choice.value}
+                className={`button ${requestFilter===choice.value?'primary':'secondary'}`}
+                aria-pressed={requestFilter===choice.value}
+                onClick={()=>setRequestFilter(choice.value)}>
+                {choice.label} ({filterPurchaseRequestAttention(purchaseRequests,choice.value,'').length})
+              </button>
+            ))}
+          </div>
+          <div className="action-group">
+            <label>Search parts requests
+              <input type="search" value={requestSearch}
+                placeholder="Item, SKU, repair number or request ID"
+                onChange={event=>setRequestSearch(event.target.value)}/>
+            </label>
+            <button type="button" className="button secondary"
+              onClick={exportRequests} disabled={!visibleRequests.length}>
+              Export visible requests CSV ({visibleRequests.length})
+            </button>
+          </div>
+          <p className="muted small" role="status">
+            Showing {visibleRequests.length} of {purchaseRequests.length} property requests,
+            prioritized by active needed-by dates. Filter counts are before search.
+            Export includes exactly the displayed rows; milliunits are labeled (1000 = 1 unit).
+          </p>
+        </>}
+        {!purchaseRequests.length ? (
+          <p>No purchase requests for this property.</p>
+        ) : !visibleRequests.length ? (
+          <p role="status">No requests match these filters. Choose All requests or clear the search to review more.</p>
         ) : (
-          scoped(ui, data.requests).map((r) => (
+          visibleRequests.map(({request:r,item,work,deadline}) => (
             <article className="ops-record" key={r.id}>
-              <h3>
-                {data.items.find((i) => i.id === r.item_id)?.name ?? 'Stock item'} ·{' '}
-                {quantity(r.quantity_milli)}
-              </h3>
-              <p>
-                Needed {r.needed_on} · {opsLabel(r.status)}
-              </p>
+              <h3>{item?.name ?? 'Unavailable stock item'} · {quantity(r.quantity_milli)} {item?.unit??'units'}</h3>
+              <p>Needed {r.needed_on||'Date unavailable'} · {opsLabel(r.status)}</p>
+              {deadline==='overdue'&&<p className="ops-overdue"><strong>Past parts needed date — review request</strong></p>}
+              {deadline==='due_today'&&<p><strong>Parts needed today — review request</strong></p>}
+              {deadline==='no_valid_date'&&<p className="muted small">Needed date unavailable or invalid; verify the record.</p>}
+              {work&&<p>
+                Linked repair: <button className="text-button" type="button"
+                  onClick={()=>open('work_detail',work.id)}>{work.number}</button>
+              </p>}
               <p>{r.description}</p>
               {r.decision_reason && <p>Decision: {r.decision_reason}</p>}
               {ui.manage &&
@@ -929,6 +991,10 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             </article>
           ))
         )}
+        <p className="muted small">Needed-by alerts apply only to open, approved or marked-ordered requests.
+          Resolved requests do not count as overdue, and recorded orders are not guaranteed deliveries.
+          Dates and summaries are read-only; approving or cancelling requires the existing explicit action.
+          Staff-entered item names can contain sensitive information—review CSV files before sharing.</p>
       </section>
       <section className="panel">
         <div className="panel-heading">
