@@ -943,7 +943,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                     {work&&<button type="button" className="text-button"
                       onClick={()=>open('work_detail',work.id)}>Review repair</button>}
                     {linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
-                      .cancelledLinkedOrders>0&&<small>Previous linked order cancelled; review history</small>}
+                      .cancelledLinkedOrders>0&&<small>Cancelled linked orders: {linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId).cancelledLinkedOrders}. Review order history before purchasing again.</small>}
                   </td>
                 </tr>
               ))}</tbody>
