@@ -58,7 +58,7 @@ describe('Purchasing request needed-by attention and export',()=>{
   expect(purchaseRequestAttentionChoices).toHaveLength(7);
   expect(ids('overdue')).toEqual(['past-ordered','past-open','past-approved']);
   expect(ids('due_today')).toEqual(['another-item','due','nonlinked']);
-  expect(ids('needs_decision')).toEqual(['past-open','another-item','due','nonlinked','empty','bad']);
+  expect(ids('needs_decision')).toEqual(['past-open','another-item','due','nonlinked','bad','empty']);
   expect(ids('approved')).toEqual(['past-approved','future']);
   expect(ids('ordered')).toEqual(['past-ordered']);
   expect(ids('resolved')).toEqual(['fulfilled','declined','cancelled']);
