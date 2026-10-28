@@ -155,6 +155,17 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   expect(linkedOrderQuantityExcess('invalid','5000')).toBe('0');
   expect(linkedOrderQuantityExcess('5000','invalid')).toBe('0');
  });
+ it('flags recorded receipts on draft or approved orders without changing any records',()=>{
+  const r=request('unplaced-receipt');
+  const o=[order('draft-receipt','draft'),order('approved-receipt','approved')];
+  const l=[line('draft-receipt-line','unplaced-receipt','draft-receipt'),line('approved-receipt-line','unplaced-receipt','approved-receipt')];
+  const original=[{id:'draft-receipt-line',received_milli:'1000'},{id:'approved-receipt-line',received_milli:'6000'}];
+  const result=linkedPurchaseReview(r,o,l,original,propertyId);
+  expect(result).toMatchObject({unplacedReceiptMilli:'6000',preparingMilli:'4000',netReceivedMilli:'6000'});
+  expect(original[0].received_milli).toBe('1000');
+  expect(o[0].status).toBe('draft');
+  expect(review('approved-placed').unplacedReceiptMilli).toBe('0');
+ });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
    stage:'none',cancelledLinkedOrders:1,activeOrders:[],orderedMilli:'0',

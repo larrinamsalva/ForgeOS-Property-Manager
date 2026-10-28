@@ -11,6 +11,7 @@ export type LinkedPurchaseReview={
  unreceivedMilli:string;
  placedUnreceivedMilli:string;
  preparingMilli:string;
+ unplacedReceiptMilli:string;
  cancelledLinkedOrders:number;
 };
 
@@ -34,7 +35,7 @@ export function linkedPurchaseReview(
 ):LinkedPurchaseReview{
  const empty:LinkedPurchaseReview={
   activeOrders:[],stage:'none',orderedMilli:'0',netReceivedMilli:'0',
-  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',cancelledLinkedOrders:0,
+  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',unplacedReceiptMilli:'0',cancelledLinkedOrders:0,
  };
  if(!propertyId||request.property_id!==propertyId)return empty;
  const orderById=new Map(orders.filter(o=>o.property_id===propertyId).map(o=>[o.id,o]));
@@ -42,7 +43,7 @@ export function linkedPurchaseReview(
  let ordered=0n,received=0n,remaining=0n;
  const cancelledOrderIds=new Set<string>();
  const activeOrders=new Map<string,PurchaseOrder>();
- let placedTotal=0n,placedReceived=0n,preparingTotal=0n;
+ let placedTotal=0n,placedReceived=0n,preparingTotal=0n,unplacedReceived=0n;
  for(const line of lines){
   if(line.property_id!==propertyId||
      line.request_id!==request.id||line.item_id!==request.item_id)continue;
@@ -65,6 +66,7 @@ export function linkedPurchaseReview(
    placedReceived+=delivered;
   }else{
    preparingTotal+=orderedQuantity-delivered;
+   unplacedReceived+=delivered;
   }
  }
  const live=[...activeOrders.values()].sort((a,b)=>
@@ -83,6 +85,7 @@ export function linkedPurchaseReview(
   unreceivedMilli:remaining.toString(),
   placedUnreceivedMilli:(placedTotal-placedReceived).toString(),
   preparingMilli:preparingTotal.toString(),
+  unplacedReceiptMilli:unplacedReceived.toString(),
   cancelledLinkedOrders:cancelledOrderIds.size,
  };
 }
