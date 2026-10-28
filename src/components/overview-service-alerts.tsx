@@ -299,7 +299,7 @@ export function OverviewServiceAlerts({ snapshot, propertyId, href }: {
                 </tr>;
               })}</tbody>
             </table>
-          </div>
+          </div>}
           {waitingFiltered.length>waitingVisible.length&&
             <div className="action-group">
               <button type="button" className="button secondary"
