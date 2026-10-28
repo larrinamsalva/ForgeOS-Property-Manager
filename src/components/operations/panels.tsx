@@ -1025,6 +1025,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               {r.status==='approved'&&linked.activeOrders.length>0&&linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli)!=='0'&&<p className="ops-overdue">
                 <strong>Review possible excess purchasing:</strong> {quantity(linkedOrderQuantityExcess(r.quantity_milli,linked.orderedMilli))} {item?.unit??'units'} more on active linked orders than the approved request quantity. Verify linked lines, existing stock and supplier records; this does not prove a duplicate order.
               </p>}
+              {linked.unplacedReceiptMilli!=='0'&&<p className="ops-overdue">
+                <strong>Review order status:</strong> {quantity(linked.unplacedReceiptMilli)} {item?.unit??'units'} recorded received against linked draft/approved orders. Verify order and receipt records; this warning does not change stock or order status.
+              </p>}
               {linked.activeOrders.length>0&&<div className="action-group">
                 {linked.activeOrders.map(order=><button type="button" className="text-button"
                   key={order.id} onClick={()=>open('purchase_detail',order.id)}>
