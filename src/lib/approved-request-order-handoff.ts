@@ -12,6 +12,11 @@ export type LinkedPurchaseReview={
  cancelledLinkedOrders:number;
 };
 
+/** A malformed persisted quantity must not crash purchasing review. */
+function safeMilli(value:string|undefined|null):bigint{
+ return typeof value==='string' && /^-?\\d+$/.test(value)?BigInt(value):0n;
+}
+
 /** Read-only, same-property linked purchasing records for ONE request.
  * We require the exact request ID, stock item ID, line property and
  * supplier order property. A similar SKU or supplier name is not a link.
@@ -46,9 +51,9 @@ export function linkedPurchaseReview(
    continue;
   }
   activeOrders.set(order.id,order);
-  const orderedQuantity=BigInt(line.quantity_milli);
+  const orderedQuantity=safeMilli(line.quantity_milli);
   if(orderedQuantity<=0n)continue;
-  const recorded=BigInt(receiptsById.get(line.id)??'0');
+  const recorded=safeMilli(receiptsById.get(line.id));
   const delivered=recorded<0n?0n:recorded>orderedQuantity?orderedQuantity:recorded;
   ordered+=orderedQuantity;
   received+=delivered;
