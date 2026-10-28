@@ -50,15 +50,15 @@ describe('Purchasing request needed-by attention and export',()=>{
   expect(result.filter(row=>row.deadline==='overdue').map(row=>row.request.id))
    .toEqual(['past-ordered','past-open','past-approved']);
   expect(result.filter(row=>row.deadline==='due_today').map(row=>row.request.id))
-   .toEqual(['due','another-item','nonlinked']);
+   .toEqual(['another-item','due','nonlinked']);
   expect(result.find(row=>row.request.id==='past-ordered')?.deadline).toBe('overdue');
   expect(result.find(row=>row.request.id==='fulfilled')?.deadline).toBe('resolved');
  });
  it('has seven filters that compose with search without changing deadline priority',()=>{
   expect(purchaseRequestAttentionChoices).toHaveLength(7);
   expect(ids('overdue')).toEqual(['past-ordered','past-open','past-approved']);
-  expect(ids('due_today')).toEqual(['due','another-item','nonlinked']);
-  expect(ids('needs_decision')).toEqual(['past-open','due','another-item','nonlinked','bad','empty']);
+  expect(ids('due_today')).toEqual(['another-item','due','nonlinked']);
+  expect(ids('needs_decision')).toEqual(['past-open','another-item','due','nonlinked','empty','bad']);
   expect(ids('approved')).toEqual(['past-approved','future']);
   expect(ids('ordered')).toEqual(['past-ordered']);
   expect(ids('resolved')).toEqual(['fulfilled','declined','cancelled']);
@@ -81,7 +81,7 @@ describe('Purchasing request needed-by attention and export',()=>{
  });
  it('recognizes invalid and absent needed dates without false overdue claims',()=>{
   expect(ids('all').slice(0,6)).toEqual([
-   'past-ordered','past-open','past-approved','due','another-item','nonlinked',
+   'past-ordered','past-open','past-approved','another-item','due','nonlinked',
   ]);
   expect(rows().find(x=>x.request.id==='bad')?.deadline).toBe('no_valid_date');
   expect(rows().find(x=>x.request.id==='empty')?.deadline).toBe('no_valid_date');
