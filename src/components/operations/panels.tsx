@@ -1014,7 +1014,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               </p>
               {linked.activeOrders.length>0&&<p className="muted small">
                 Linked purchase lines: {quantity(linked.orderedMilli)} {item?.unit??'units'} total;
-                {' '}{quantity(linked.netReceivedMilli)} recorded received;
+                {' '}{quantity(linked.placedReceiptMilli)} recorded received on placed orders;
+                {' '}{quantity(linked.unplacedReceiptMilli)} recorded on draft/approved orders (review status);
                 {' '}{quantity(linked.placedUnreceivedMilli)} outstanding on placed orders;
                 {' '}{quantity(linked.preparingMilli)} remaining on draft/approved orders.
                 {' '}Placed does not prove shipment; recorded receipts do not confirm repair completion.
