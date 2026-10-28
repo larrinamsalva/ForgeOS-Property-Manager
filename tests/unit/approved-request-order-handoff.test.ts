@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {
- linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,
+ linkedPurchaseReview,approvedRequestsWithoutLinkedOrders,linkedPurchaseStageLabels,linkedOrderQuantityGap,
 } from '../../src/lib/approved-request-order-handoff';
 import {purchaseRequestAttention} from '../../src/lib/purchase-request-attention';
 import type {
@@ -137,6 +137,15 @@ describe('approved parts requests with no explicitly linked purchase order',()=>
   const result=linkedPurchaseReview(record,mixedOrders,mixedLines,[],propertyId);
   expect(result).toMatchObject({stage:'placed_unreceived_preparing',placedUnreceivedMilli:'5000',preparingMilli:'3000',netReceivedMilli:'0'});
   expect(linkedPurchaseStageLabels[result.stage]).toContain('still being prepared');
+ });
+ it('reports only positive uncovered requested quantity without unsafe number conversion',()=>{
+  expect(linkedOrderQuantityGap('7500','5000')).toBe('2500');
+  expect(linkedOrderQuantityGap('5000','5000')).toBe('0');
+  expect(linkedOrderQuantityGap('5000','8000')).toBe('0');
+  expect(linkedOrderQuantityGap('9007199254740993000','9007199254740992000')).toBe('1000');
+  expect(linkedOrderQuantityGap('broken','2000')).toBe('0');
+  expect(linkedOrderQuantityGap('1000','broken')).toBe('1000');
+  expect(linkedOrderQuantityGap('-100','100')).toBe('0');
  });
  it('excludes cancelled, wrong-property, wrong-item and unrelated order lines',()=>{
   expect(review('approved-cancelled')).toMatchObject({
