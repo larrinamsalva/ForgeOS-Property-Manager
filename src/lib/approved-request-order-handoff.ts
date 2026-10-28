@@ -33,7 +33,7 @@ export function linkedPurchaseReview(
  const orderById=new Map(orders.filter(o=>o.property_id===propertyId).map(o=>[o.id,o]));
  const receiptsById=new Map(totals.map(t=>[t.id,t.received_milli]));
  let ordered=0n,received=0n,remaining=0n;
- let cancelledLinkedOrders=0;
+ const cancelledOrderIds=new Set<string>();
  const activeOrders=new Map<string,PurchaseOrder>();
  let placedTotal=0n,placedReceived=0n;
  for(const line of lines){
@@ -42,7 +42,7 @@ export function linkedPurchaseReview(
   const order=orderById.get(line.purchase_order_id);
   if(!order)continue;
   if(order.status==='cancelled'){
-   cancelledLinkedOrders+=1;
+   cancelledOrderIds.add(order.id);
    continue;
   }
   activeOrders.set(order.id,order);
@@ -69,7 +69,7 @@ export function linkedPurchaseReview(
   orderedMilli:ordered.toString(),
   netReceivedMilli:received.toString(),
   unreceivedMilli:remaining.toString(),
-  cancelledLinkedOrders,
+  cancelledLinkedOrders:cancelledOrderIds.size,
  };
 }
 
