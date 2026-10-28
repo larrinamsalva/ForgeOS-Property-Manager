@@ -19,6 +19,9 @@ function repair(
   work,reason,propertyToday:'2026-10-27',
   linkedRequestCount:reason==='no_structured_request'?0:2,
   openRequestCount:reason==='open_request'?1:0,
+  overdueRequestCount:['pending','late'].includes(id)?1:0,
+  dueTodayRequestCount:id==='eta'?1:0,
+  earliestActiveNeededOn:id==='eta'?'2026-10-27':(['pending','late'].includes(id)?'2026-10-24':null),
   outstandingPlacedOrderCount:reason.includes('delivery')?1:0,
   lateOrderCount:reason==='late_linked_delivery'?1:0,
   noEtaOrderCount:reason==='missing_eta'?1:0,
@@ -52,7 +55,9 @@ describe('waiting repair handoff filters and export',()=>{
   expect(ids('purchasing_review')).toEqual(['purchasing','waiting','no-active','urgent-delivery']);
   expect(ids('verify_parts')).toEqual(['verify']);
   expect(ids('urgent')).toEqual(['missing','urgent-delivery']);
-  expect(waitingPartsFilterChoices.length).toBe(7);
+  expect(waitingPartsFilterChoices.length).toBe(9);
+  expect(ids('request_overdue')).toEqual(['late','pending']);
+  expect(ids('request_due_today')).toEqual(['eta']);
   expect(rows.map(x=>x.work.id)).toEqual(['late','missing','pending','eta','purchasing',
    'waiting','no-active','verify','urgent-delivery']);
  });
@@ -60,6 +65,8 @@ describe('waiting repair handoff filters and export',()=>{
   expect(ids('all','park-b')).toEqual(['eta','verify']);
   expect(ids('all','park-a')).not.toContain('eta');
   expect(ids('delivery_attention','park-b')).toEqual(['eta']);
+  expect(ids('request_overdue','park-b')).toEqual([]);
+  expect(ids('request_due_today','park-a')).toEqual([]);
   expect(ids('all','unlisted')).toEqual([]);
   expect(ids('all','','  W-PENDING ')).toEqual(['pending']);
   expect(ids('all','','fIx VeRiFy')).toEqual(['verify']);
@@ -73,7 +80,7 @@ describe('waiting repair handoff filters and export',()=>{
   expect(exported).toHaveLength(2);
   expect(exported[1]).toEqual([
    'W-eta','Fix eta','Park B','Apartment 12','plumbing','normal',
-   'Linked delivery missing ETA','2','0','0','0','1',
+   'Linked delivery missing ETA','2','0','0','1','2026-10-27','0','0','1',
    'No recorded positive stock','2026-10-31','2026-10-27',
   ]);
   const serialized=csv(exported);
