@@ -20,6 +20,10 @@ export type WaitingPartsHandoffRow={
  outstandingPlacedOrderCount:number;
  lateOrderCount:number;
  noEtaOrderCount:number;
+ /** Still-active structured requests whose needed-on date is before today. */
+ overdueRequestCount:number;
+ dueTodayRequestCount:number;
+ earliestActiveNeededOn:string|null;
  hasRecordedOnHand:boolean;
 };
 export type WaitingPartsHandoff={total:number;rows:WaitingPartsHandoffRow[]};
@@ -72,6 +76,13 @@ export function waitingPartsHandoff(
    const linked=linkedWorkPartReview(w,requests,items,stock,incoming);
    const active=linked.filter(p=>['open','approved','ordered'].includes(p.request.status));
    const open=linked.filter(p=>p.request.status==='open').length;
+   // A placed order is not delivery; active requests remain outstanding
+   // until explicitly fulfilled, declined or cancelled.
+   const hasDay=(date:string)=>/^\d{4}-\d{2}-\d{2}$/.test(date);
+   const today=propertyClock.get(w.property_id)!;
+   const overdueRequests=active.filter(p=>hasDay(p.request.needed_on)&&p.request.needed_on<today);
+   const dueTodayRequests=active.filter(p=>p.request.needed_on===today);
+   const neededDates=active.map(p=>p.request.needed_on).filter(hasDay).sort();
    const allOrders=new Set(linked.flatMap(p=>p.placedOrderIds));
    const late=new Set(incoming.filter(row=>
     allOrders.has(row.order.id)&&row.eta==='overdue').map(row=>row.order.id)).size;
@@ -95,6 +106,9 @@ export function waitingPartsHandoff(
     reason,linkedRequestCount:linked.length,openRequestCount:open,
     outstandingPlacedOrderCount:allOrders.size,lateOrderCount:late,
     noEtaOrderCount:noEta,hasRecordedOnHand,
+    overdueRequestCount:overdueRequests.length,
+    dueTodayRequestCount:dueTodayRequests.length,
+    earliestActiveNeededOn:neededDates[0]??null,
    };
   });
  rows.sort((a,b)=>
