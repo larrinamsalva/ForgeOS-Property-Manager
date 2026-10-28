@@ -95,6 +95,13 @@ export function linkedOrderQuantityGap(requestedMilli:string,orderedMilli:string
  return (requested>ordered && requested>0n?requested-(ordered>0n?ordered:0n):0n).toString();
 }
 
+/** Read-only excess linked-order quantity, not proof of an erroneous purchase. */
+export function linkedOrderQuantityExcess(requestedMilli:string,orderedMilli:string):string{
+ const requested=safeMilli(requestedMilli);
+ const ordered=safeMilli(orderedMilli);
+ return (requested>0n && ordered>requested?ordered-requested:0n).toString();
+}
+
 export const linkedPurchaseStageLabels:Record<LinkedPurchaseStage,string>={
  none:'No active linked purchase order',
  preparing:'Linked order still being prepared or approved',
