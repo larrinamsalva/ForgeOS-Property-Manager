@@ -14,6 +14,8 @@ export type LinkedPurchaseReview={
  unplacedReceiptMilli:string;
  placedReceiptMilli:string;
  cancelledLinkedOrders:number;
+ invalidQuantityLines:number;
+ invalidReceiptLines:number;
 };
 
 /** A malformed persisted quantity must not crash purchasing review. */
@@ -36,7 +38,7 @@ export function linkedPurchaseReview(
 ):LinkedPurchaseReview{
  const empty:LinkedPurchaseReview={
   activeOrders:[],stage:'none',orderedMilli:'0',netReceivedMilli:'0',
-  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',unplacedReceiptMilli:'0',placedReceiptMilli:'0',cancelledLinkedOrders:0,
+  unreceivedMilli:'0',placedUnreceivedMilli:'0',preparingMilli:'0',unplacedReceiptMilli:'0',placedReceiptMilli:'0',cancelledLinkedOrders:0,invalidQuantityLines:0,invalidReceiptLines:0,
  };
  if(!propertyId||request.property_id!==propertyId)return empty;
  const orderById=new Map(orders.filter(o=>o.property_id===propertyId).map(o=>[o.id,o]));
@@ -45,6 +47,7 @@ export function linkedPurchaseReview(
  const cancelledOrderIds=new Set<string>();
  const activeOrders=new Map<string,PurchaseOrder>();
  let placedTotal=0n,placedReceived=0n,preparingTotal=0n,unplacedReceived=0n;
+ let invalidQuantityLines=0,invalidReceiptLines=0;
  for(const line of lines){
   if(line.property_id!==propertyId||
      line.request_id!==request.id||line.item_id!==request.item_id)continue;
@@ -55,9 +58,12 @@ export function linkedPurchaseReview(
    continue;
   }
   activeOrders.set(order.id,order);
+  if(typeof line.quantity_milli!=='string'||!/^\\d+$/.test(line.quantity_milli)||safeMilli(line.quantity_milli)===0n)invalidQuantityLines++;
   const orderedQuantity=safeMilli(line.quantity_milli);
   if(orderedQuantity<=0n)continue;
-  const recorded=safeMilli(receiptsById.get(line.id));
+  const receiptValue=receiptsById.get(line.id);
+  if(receiptValue!==undefined&&(typeof receiptValue!=='string'||! /^-?\\d+$/.test(receiptValue)))invalidReceiptLines++;
+  const recorded=safeMilli(receiptValue);
   const delivered=recorded<0n?0n:recorded>orderedQuantity?orderedQuantity:recorded;
   ordered+=orderedQuantity;
   received+=delivered;
@@ -89,6 +95,7 @@ export function linkedPurchaseReview(
   unplacedReceiptMilli:unplacedReceived.toString(),
   placedReceiptMilli:placedReceived.toString(),
   cancelledLinkedOrders:cancelledOrderIds.size,
+  invalidQuantityLines,invalidReceiptLines,
  };
 }
 
