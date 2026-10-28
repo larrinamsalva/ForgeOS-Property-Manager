@@ -35,7 +35,7 @@ export function linkedPurchaseReview(
  let ordered=0n,received=0n,remaining=0n;
  let cancelledLinkedOrders=0;
  const activeOrders=new Map<string,PurchaseOrder>();
- let placed=false,placedPartial=false,placedReceived=false;
+ let placedTotal=0n,placedReceived=0n;
  for(const line of lines){
   if(line.property_id!==propertyId||
      line.request_id!==request.id||line.item_id!==request.item_id)continue;
@@ -54,17 +54,16 @@ export function linkedPurchaseReview(
   received+=delivered;
   remaining+=orderedQuantity-delivered;
   if(order.status==='ordered'){
-   placed=true;
-   if(delivered>0n && delivered<orderedQuantity)placedPartial=true;
-   if(delivered===orderedQuantity)placedReceived=true;
+   placedTotal+=orderedQuantity;
+   placedReceived+=delivered;
   }
  }
  const live=[...activeOrders.values()].sort((a,b)=>
   a.number.localeCompare(b.number)||a.id.localeCompare(b.id));
  const stage:LinkedPurchaseStage=!live.length?'none':
-  placed && remaining>0n && (placedPartial||received>0n)?'placed_part_received':
-  placed && remaining>0n?'placed_unreceived':
-  placed && placedReceived?'receipt_recorded':'preparing';
+  placedTotal>0n && placedReceived<placedTotal && placedReceived>0n?'placed_part_received':
+  placedTotal>0n && placedReceived<placedTotal?'placed_unreceived':
+  placedTotal>0n && placedReceived>=placedTotal?'receipt_recorded':'preparing';
  return {
   activeOrders:live,stage,
   orderedMilli:ordered.toString(),
