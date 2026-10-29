@@ -1018,6 +1018,14 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               Export visible requests CSV ({visibleRequests.length})
             </button>
           </div>
+          {(requestFilter!=='all'||requestSearch.trim()!==''||onlyReview)&&
+            <p className="muted small" aria-label="Active supply request filters">
+              Active filters: {[
+                requestFilter!=='all'?purchaseRequestAttentionChoices.find(choice=>choice.value===requestFilter)?.label:undefined,
+                onlyReview?'Needs purchasing review':undefined,
+                requestSearch.trim()!==''?'Search text entered':undefined,
+              ].filter(Boolean).join(' · ')}.
+            </p>}
           <p className="muted small" role="status">
             Showing {visibleRequests.length} of {purchaseRequests.length} property requests; {visibleReviewCount} visible approved request(s) need purchasing review.
             Requests are prioritized by active needed-by dates. Filter counts are before search.
