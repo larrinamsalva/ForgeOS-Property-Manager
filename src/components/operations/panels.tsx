@@ -1005,6 +1005,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                   <td>{request.needed_on||'Unavailable'}
                     {deadline==='overdue'&&<small className="ops-overdue">Past needed date</small>}
                     {deadline==='due_today'&&<small>Needed today</small>}
+                    {deadline==='upcoming'&&<small>Coming up</small>}
                     {deadline==='no_valid_date'&&<small className="ops-overdue">Verify missing or invalid needed-by date</small>}
                   </td>
                   <td>
