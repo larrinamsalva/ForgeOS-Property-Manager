@@ -804,6 +804,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [deliverySearch,setDeliverySearch]=useState('');
   const [requestFilter,setRequestFilter]=useState<PurchaseRequestAttentionFilter>('all');
   const [requestSearch,setRequestSearch]=useState('');
+  const [onlyReview,setOnlyReview]=useState(false);
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -813,7 +814,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const purchaseRequests=purchaseRequestAttention(
     data.requests,data.items,data.work,ui.propertyId,ui.today,
   );
-  const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch);
+
   const requestOverdue=purchaseRequests.filter(row=>row.deadline==='overdue').length;
   const requestDueToday=purchaseRequests.filter(row=>row.deadline==='due_today').length;
   const requestOpen=purchaseRequests.filter(row=>row.request.status==='open').length;
@@ -824,14 +825,17 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
   // One count per approved request, not one per warning or linked order.
-  const approvedNeedingReview=purchaseRequests.filter(({request})=>{
+  const approvedReviewIds=new Set(purchaseRequests.filter(({request})=>{
     if(request.status!=='approved')return false;
     const review=linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
     return hasInvalidRequestedQuantity(request.quantity_milli)||review.activeOrders.length===0||
       review.invalidQuantityLines>0||review.invalidReceiptLines>0||review.unplacedReceiptMilli!=='0'||
       linkedOrderQuantityGap(request.quantity_milli,review.orderedMilli)!=='0'||
       linkedOrderQuantityExcess(request.quantity_milli,review.orderedMilli)!=='0';
-  }).length;
+  }).map(({request})=>request.id));
+  const approvedNeedingReview=approvedReviewIds.size;
+  const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch)
+    .filter(({request})=>!onlyReview||approvedReviewIds.has(request.id));
   const exportRequests=()=>{
     if(!visibleRequests.length)return;
     const payload=csv(purchaseRequestAttentionCsvRows(visibleRequests));
@@ -993,6 +997,10 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             ))}
           </div>
           <div className="action-group">
+            <button type="button" className={`button ${onlyReview?'primary':'secondary'}`}
+              aria-pressed={onlyReview} onClick={()=>setOnlyReview(value=>!value)}>
+              Needs purchasing review ({approvedNeedingReview})
+            </button>
             <label>Search parts requests
               <input type="search" value={requestSearch}
                 placeholder="Item, SKU, repair number or request ID"
@@ -1004,7 +1012,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             </button>
           </div>
           <p className="muted small" role="status">
-            Showing {visibleRequests.length} of {purchaseRequests.length} property requests,
+            Showing {visibleRequests.length} of {purchaseRequests.length} property requests{onlyReview?' needing purchasing review':''},
             prioritized by active needed-by dates. Filter counts are before search.
             Export includes exactly the displayed rows; milliunits are labeled (1000 = 1 unit).
           </p>
@@ -1012,7 +1020,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         {!purchaseRequests.length ? (
           <p>No purchase requests for this property.</p>
         ) : !visibleRequests.length ? (
-          <p role="status">No requests match these filters. Choose All requests or clear the search to review more.</p>
+          <p role="status">No requests match these filters. Choose All requests, clear the search or turn off Needs purchasing review to see more.</p>
         ) : (
           visibleRequests.map(({request:r,item,work,deadline}) => {
             const linked=linkedPurchaseReview(r,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
