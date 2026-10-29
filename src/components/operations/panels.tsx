@@ -950,6 +950,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedQuantityFilter==='valid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='valid'} onClick={()=>setUnlinkedQuantityFilter('valid')}>Valid quantities ({approvedUnlinkedValid})</button>
           <button type="button" className={`button ${unlinkedQuantityFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='invalid'} onClick={()=>setUnlinkedQuantityFilter('invalid')}>Needs quantity correction ({approvedUnlinkedInvalid})</button>
         </div>}
+        {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<p role="status">No awaiting-order requests match this quantity filter. Select All awaiting-order requests to review the complete list.</p>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
