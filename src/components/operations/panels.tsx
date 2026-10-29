@@ -960,8 +960,21 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             Past needed date only ({approvedUnlinkedOverdue})
           </button>
         </div>}
+        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedOverdueOnly)&&
+          <div className="action-group">
+            <button type="button" className="button secondary" onClick={()=>{
+              setUnlinkedQuantityFilter('all');
+              setUnlinkedOverdueOnly(false);
+            }}>Clear awaiting-order filters</button>
+          </div>}
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedOverdueOnly?' past their needed-by date':''}. Filtering does not create purchase orders.</p>}
-        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<p role="status">No awaiting-order requests match these filters. Turn off Past needed date only or select All awaiting-order requests to review more.</p>:(
+        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
+          <p>No awaiting-order requests match these filters. Clear awaiting-order filters to show the full queue.</p>
+          <button type="button" className="button secondary" onClick={()=>{
+            setUnlinkedQuantityFilter('all');
+            setUnlinkedOverdueOnly(false);
+          }}>Clear awaiting-order filters</button>
+        </div>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
               <thead><tr><th>Supply / repair</th><th>Quantity</th><th>Needed by</th><th>Next step</th></tr></thead>
