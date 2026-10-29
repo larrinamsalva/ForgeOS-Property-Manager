@@ -806,7 +806,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [requestSearch,setRequestSearch]=useState('');
   const [onlyReview,setOnlyReview]=useState(false);
   const [unlinkedQuantityFilter,setUnlinkedQuantityFilter]=useState<'all'|'valid'|'invalid'>('all');
-  const [unlinkedOverdueOnly,setUnlinkedOverdueOnly]=useState(false);
+  const [unlinkedDateFilter,setUnlinkedDateFilter]=useState<'all'|'overdue'|'today'>('all');
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -826,9 +826,10 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
   const approvedUnlinkedOverdue=approvedUnlinked.filter(({deadline})=>deadline==='overdue').length;
+  const approvedUnlinkedToday=approvedUnlinked.filter(({deadline})=>deadline==='due_today').length;
   const visibleUnlinked=approvedUnlinked.filter(({request,deadline})=>(unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
-    (!unlinkedOverdueOnly||deadline==='overdue'));
+    (unlinkedDateFilter==='all'||deadline===(unlinkedDateFilter==='overdue'?'overdue':'due_today')));
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
@@ -954,28 +955,27 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedQuantityFilter==='valid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='valid'} onClick={()=>setUnlinkedQuantityFilter('valid')}>Valid quantities ({approvedUnlinkedValid})</button>
           <button type="button" className={`button ${unlinkedQuantityFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='invalid'} onClick={()=>setUnlinkedQuantityFilter('invalid')}>Needs quantity correction ({approvedUnlinkedInvalid})</button>
         </div>}
-        {approvedUnlinked.length>0&&<div className="action-group">
-          <button type="button" className={`button ${unlinkedOverdueOnly?'primary':'secondary'}`}
-            aria-pressed={unlinkedOverdueOnly} onClick={()=>setUnlinkedOverdueOnly(value=>!value)}>
-            Past needed date only ({approvedUnlinkedOverdue})
-          </button>
+        {approvedUnlinked.length>0&&<div className="action-group" role="group" aria-label="Awaiting-order date filters">
+          <button type="button" className={`button ${unlinkedDateFilter==='all'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='all'} onClick={()=>setUnlinkedDateFilter('all')}>All needed-by dates</button>
+          <button type="button" className={`button ${unlinkedDateFilter==='overdue'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='overdue'} onClick={()=>setUnlinkedDateFilter('overdue')}>Past needed date ({approvedUnlinkedOverdue})</button>
+          <button type="button" className={`button ${unlinkedDateFilter==='today'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='today'} onClick={()=>setUnlinkedDateFilter('today')}>Needed today ({approvedUnlinkedToday})</button>
         </div>}
-        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedOverdueOnly)&&
+        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all')&&
           <div className="action-group">
             <button type="button" className="button secondary" onClick={()=>{
               setUnlinkedQuantityFilter('all');
-              setUnlinkedOverdueOnly(false);
+              setUnlinkedDateFilter('all');
             }}>Clear awaiting-order filters</button>
           </div>}
         {approvedUnlinked.length>0&&<p className="muted small" aria-label="Active awaiting-order filters">
-          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedOverdueOnly?'Past needed date only':'All needed-by dates'}.
+          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':'All needed-by dates'}.
         </p>}
-        {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedOverdueOnly?' past their needed-by date':''}. Filtering does not create purchase orders.</p>}
+        {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedDateFilter==='overdue'?' past their needed-by date':unlinkedDateFilter==='today'?' needed today':''}. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
-          <p>No awaiting-order requests match these filters. Clear awaiting-order filters to show the full queue.</p>
+          <p>No awaiting-order requests match these quantity and date filters. Clear awaiting-order filters to show the full queue.</p>
           <button type="button" className="button secondary" onClick={()=>{
             setUnlinkedQuantityFilter('all');
-            setUnlinkedOverdueOnly(false);
+            setUnlinkedDateFilter('all');
           }}>Clear awaiting-order filters</button>
         </div>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
