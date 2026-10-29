@@ -824,6 +824,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   );
   const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
+  const approvedUnlinkedOverdue=approvedUnlinked.filter(({deadline})=>deadline==='overdue').length;
   const visibleUnlinked=approvedUnlinked.filter(({request})=>unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'));
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
@@ -942,6 +943,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <strong>{approvedUnlinked.length} to review</strong>
         </div>
         <p><strong>{approvedUnlinkedValid} approved request(s) with valid quantities</strong> awaiting linked-order review; {approvedUnlinkedInvalid} request(s) need quantity correction first. Both groups are included in the {approvedUnlinked.length} awaiting-order total. Verify existing orders before purchasing.</p>
+        {approvedUnlinkedOverdue>0&&<p className="ops-overdue" role="status"><strong>{approvedUnlinkedOverdue} awaiting-order request(s) are past their needed-by dates.</strong> Review urgency, available stock and existing supplier orders before purchasing.</p>}
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
         <p role="status"><strong>{approvedNeedingReview} approved request(s) need purchasing review</strong> across this property, including invalid quantities, missing links, linked quantity differences, or receipt/order inconsistencies. Each request is counted once; review does not create orders.</p>
         {approvedInvalidQuantityCount>0&&<p className="ops-overdue" role="status"><strong>{approvedInvalidQuantityCount} approved request(s) have invalid quantities.</strong> Verify these source records before preparing orders; they are included in the review count above.</p>}
