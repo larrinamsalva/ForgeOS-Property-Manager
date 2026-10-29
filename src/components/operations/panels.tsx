@@ -967,6 +967,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               setUnlinkedOverdueOnly(false);
             }}>Clear awaiting-order filters</button>
           </div>}
+        {approvedUnlinked.length>0&&<p className="muted small" aria-label="Active awaiting-order filters">
+          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedOverdueOnly?'Past needed date only':'All needed-by dates'}.
+        </p>}
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedOverdueOnly?' past their needed-by date':''}. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
           <p>No awaiting-order requests match these filters. Clear awaiting-order filters to show the full queue.</p>
