@@ -833,6 +833,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
       linkedOrderQuantityGap(request.quantity_milli,review.orderedMilli)!=='0'||
       linkedOrderQuantityExcess(request.quantity_milli,review.orderedMilli)!=='0';
   }).map(({request})=>request.id));
+  const approvedInvalidQuantityCount=purchaseRequests.filter(({request})=>
+    request.status==='approved'&&hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedNeedingReview=approvedReviewIds.size;
   const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch.trim())
     .filter(({request})=>!onlyReview||approvedReviewIds.has(request.id));
@@ -936,6 +938,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         </div>
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
         <p role="status"><strong>{approvedNeedingReview} approved request(s) need purchasing review</strong> across this property, including invalid quantities, missing links, linked quantity differences, or receipt/order inconsistencies. Each request is counted once; review does not create orders.</p>
+        {approvedInvalidQuantityCount>0&&<p className="ops-overdue" role="status"><strong>{approvedInvalidQuantityCount} approved request(s) have invalid quantities.</strong> Verify these source records before preparing orders; they are included in the review count above.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
