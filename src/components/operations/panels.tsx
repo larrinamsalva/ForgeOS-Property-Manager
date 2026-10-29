@@ -932,8 +932,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                     <Action click={()=>open('purchase_detail',row.order.id)}>Review order</Action>
                     {ui.active && <Action click={()=>open('receive_purchase',row.line.id)}>Record delivery</Action>}
                   </div></td>
-                </tr>
-              ))}</tbody>
+                </tr>;
+              })}</tbody>
             </table>
           </div>
         )}
@@ -995,8 +995,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
               <thead><tr><th>Supply / repair</th><th>Quantity</th><th>Needed by</th><th>Next step</th></tr></thead>
-              <tbody>{visibleUnlinked.map(({request,item,work,deadline})=>(
-                <tr key={request.id}>
+              <tbody>{visibleUnlinked.map(({request,item,work,deadline})=>{
+                const cancelledLinkedOrders=linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId).cancelledLinkedOrders;
+                return <tr key={request.id}>
                   <th scope="row">{item?.name??'Inventory item unavailable'}
                     <small>{item?.sku??'SKU unavailable'}</small>
                     <small>Request ID: {request.id}</small>
@@ -1017,8 +1018,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                       <span className="muted small">Manager follow-up required</span>}
                     {work&&<button type="button" className="text-button"
                       onClick={()=>open('work_detail',work.id)}>Review repair</button>}
-                    {linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
-                      .cancelledLinkedOrders>0&&<small>Cancelled linked orders: {linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId).cancelledLinkedOrders}. Review order history before purchasing again.</small>}
+                    {cancelledLinkedOrders>0&&<small>Cancelled linked orders: {cancelledLinkedOrders}. Review order history before purchasing again.</small>}
                   </td>
                 </tr>
               ))}</tbody>
