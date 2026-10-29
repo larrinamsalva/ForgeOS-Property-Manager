@@ -834,7 +834,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
       linkedOrderQuantityExcess(request.quantity_milli,review.orderedMilli)!=='0';
   }).map(({request})=>request.id));
   const approvedNeedingReview=approvedReviewIds.size;
-  const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch)
+  const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch.trim())
     .filter(({request})=>!onlyReview||approvedReviewIds.has(request.id));
   const visibleReviewCount=visibleRequests.filter(({request})=>approvedReviewIds.has(request.id)).length;
   const exportRequests=()=>{
@@ -1007,7 +1007,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 placeholder="Item, SKU, repair number or request ID"
                 onChange={event=>setRequestSearch(event.target.value)}/>
             </label>
-            {(requestFilter!=='all'||requestSearch!==''||onlyReview)&&
+            {(requestFilter!=='all'||requestSearch.trim()!==''||onlyReview)&&
               <button type="button" className="button secondary" onClick={()=>{
                 setRequestFilter('all');
                 setRequestSearch('');
