@@ -1006,6 +1006,12 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 placeholder="Item, SKU, repair number or request ID"
                 onChange={event=>setRequestSearch(event.target.value)}/>
             </label>
+            {(requestFilter!=='all'||requestSearch!==''||onlyReview)&&
+              <button type="button" className="button secondary" onClick={()=>{
+                setRequestFilter('all');
+                setRequestSearch('');
+                setOnlyReview(false);
+              }}>Clear request filters</button>}
             <button type="button" className="button secondary"
               onClick={exportRequests} disabled={!visibleRequests.length}>
               Export visible requests CSV ({visibleRequests.length})
