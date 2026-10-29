@@ -805,6 +805,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [requestFilter,setRequestFilter]=useState<PurchaseRequestAttentionFilter>('all');
   const [requestSearch,setRequestSearch]=useState('');
   const [onlyReview,setOnlyReview]=useState(false);
+  const [onlyValidUnlinked,setOnlyValidUnlinked]=useState(false);
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -823,6 +824,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   );
   const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
+  const visibleUnlinked=onlyValidUnlinked?approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)):approvedUnlinked;
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
@@ -942,11 +944,15 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
         <p role="status"><strong>{approvedNeedingReview} approved request(s) need purchasing review</strong> across this property, including invalid quantities, missing links, linked quantity differences, or receipt/order inconsistencies. Each request is counted once; review does not create orders.</p>
         {approvedInvalidQuantityCount>0&&<p className="ops-overdue" role="status"><strong>{approvedInvalidQuantityCount} approved request(s) have invalid quantities.</strong> Verify these source records before preparing orders; they are included in the review count above.</p>}
-        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:(
+        {approvedUnlinked.length>0&&<div className="action-group" role="group" aria-label="Awaiting-order quantity filters">
+          <button type="button" className={`button ${!onlyValidUnlinked?'primary':'secondary'}`} aria-pressed={!onlyValidUnlinked} onClick={()=>setOnlyValidUnlinked(false)}>All awaiting-order requests ({approvedUnlinked.length})</button>
+          <button type="button" className={`button ${onlyValidUnlinked?'primary':'secondary'}`} aria-pressed={onlyValidUnlinked} onClick={()=>setOnlyValidUnlinked(true)}>Valid quantities ({approvedUnlinkedValid})</button>
+        </div>}
+        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<p role="status">No awaiting-order requests have valid quantities. Review and correct the quantities first, or select All awaiting-order requests.</p>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
               <thead><tr><th>Supply / repair</th><th>Quantity</th><th>Needed by</th><th>Next step</th></tr></thead>
-              <tbody>{approvedUnlinked.map(({request,item,work,deadline})=>(
+              <tbody>{visibleUnlinked.map(({request,item,work,deadline})=>(
                 <tr key={request.id}>
                   <th scope="row">{item?.name??'Inventory item unavailable'}
                     <small>{item?.sku??'SKU unavailable'}</small>
