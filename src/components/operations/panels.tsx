@@ -836,6 +836,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedNeedingReview=approvedReviewIds.size;
   const visibleRequests=filterPurchaseRequestAttention(purchaseRequests,requestFilter,requestSearch)
     .filter(({request})=>!onlyReview||approvedReviewIds.has(request.id));
+  const visibleReviewCount=visibleRequests.filter(({request})=>approvedReviewIds.has(request.id)).length;
   const exportRequests=()=>{
     if(!visibleRequests.length)return;
     const payload=csv(purchaseRequestAttentionCsvRows(visibleRequests));
@@ -1018,7 +1019,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             </button>
           </div>
           <p className="muted small" role="status">
-            Showing {visibleRequests.length} of {purchaseRequests.length} property requests{onlyReview?' needing purchasing review':''},
+            Showing {visibleRequests.length} of {purchaseRequests.length} property requests; {visibleReviewCount} visible approved request(s) need purchasing review.
             prioritized by active needed-by dates. Filter counts are before search.
             Export includes exactly the displayed rows; milliunits are labeled (1000 = 1 unit).
           </p>
