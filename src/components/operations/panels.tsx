@@ -999,6 +999,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                 <tr key={request.id}>
                   <th scope="row">{item?.name??'Inventory item unavailable'}
                     <small>{item?.sku??'SKU unavailable'}</small>
+                    <small>Request ID: {request.id}</small>
                     {work&&<small>{work.number} · linked repair</small>}
                   </th>
                   <td>{hasInvalidRequestedQuantity(request.quantity_milli)?<strong className="ops-overdue">Invalid quantity</strong>:<>{quantity(request.quantity_milli)} {item?.unit??'units'}</>}</td>
