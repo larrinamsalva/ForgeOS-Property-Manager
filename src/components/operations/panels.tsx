@@ -823,6 +823,15 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
+  // One count per approved request, not one per warning or linked order.
+  const approvedNeedingReview=purchaseRequests.filter(({request})=>{
+    if(request.status!=='approved')return false;
+    const review=linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
+    return hasInvalidRequestedQuantity(request.quantity_milli)||review.activeOrders.length===0||
+      review.invalidQuantityLines>0||review.invalidReceiptLines>0||review.unplacedReceiptMilli!=='0'||
+      linkedOrderQuantityGap(request.quantity_milli,review.orderedMilli)!=='0'||
+      linkedOrderQuantityExcess(request.quantity_milli,review.orderedMilli)!=='0';
+  }).length;
   const exportRequests=()=>{
     if(!visibleRequests.length)return;
     const payload=csv(purchaseRequestAttentionCsvRows(visibleRequests));
@@ -921,6 +930,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <strong>{approvedUnlinked.length} to review</strong>
         </div>
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
+        <p role="status"><strong>{approvedNeedingReview} approved request(s) need purchasing review</strong> across this property, including invalid quantities, missing links, linked quantity differences, or receipt/order inconsistencies. Each request is counted once; review does not create orders.</p>
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
