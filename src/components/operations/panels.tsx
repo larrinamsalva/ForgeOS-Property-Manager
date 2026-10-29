@@ -831,6 +831,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinkedUpcoming=approvedUnlinked.filter(({deadline})=>deadline==='upcoming').length;
   const approvedUnlinkedInvalidDate=approvedUnlinked.filter(({deadline})=>deadline==='no_valid_date').length;
   const approvedUnlinkedValidDate=approvedUnlinked.length-approvedUnlinkedInvalidDate;
+  const approvedUnlinkedCompleteFields=approvedUnlinked.filter(({request,deadline})=>
+    !hasInvalidRequestedQuantity(request.quantity_milli)&&deadline!=='no_valid_date').length;
   const visibleUnlinked=approvedUnlinked.filter(({request,deadline,item,work})=>(unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
     (unlinkedDateFilter==='all'||(unlinkedDateFilter==='valid'&&deadline!=='no_valid_date')||
@@ -956,6 +958,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <strong>{approvedUnlinked.length} to review</strong>
         </div>
+        <p><strong>{approvedUnlinkedCompleteFields} request(s) have both a valid quantity and needed-by date.</strong> Confirm stock, supplier orders and approval details before preparing any purchase order.</p>
         <p><strong>{approvedUnlinkedValid} approved request(s) with valid quantities</strong> awaiting linked-order review; {approvedUnlinkedInvalid} request(s) need quantity correction first. Both groups are included in the {approvedUnlinked.length} awaiting-order total. Verify existing orders before purchasing.</p>
         {approvedUnlinkedOverdue>0&&<p className="ops-overdue" role="status"><strong>{approvedUnlinkedOverdue} awaiting-order request(s) are past their needed-by dates.</strong> Review urgency, available stock and existing supplier orders before purchasing.</p>}
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
