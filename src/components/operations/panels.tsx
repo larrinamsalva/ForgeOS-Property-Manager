@@ -949,7 +949,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                     <small>{item?.sku??'SKU unavailable'}</small>
                     {work&&<small>{work.number} · linked repair</small>}
                   </th>
-                  <td>{quantity(request.quantity_milli)} {item?.unit??'units'}</td>
+                  <td>{hasInvalidRequestedQuantity(request.quantity_milli)?<strong className="ops-overdue">Invalid quantity</strong>:<>{quantity(request.quantity_milli)} {item?.unit??'units'}</>}</td>
                   <td>{request.needed_on||'Unavailable'}
                     {deadline==='overdue'&&<small className="ops-overdue">Past needed date</small>}
                     {deadline==='due_today'&&<small>Needed today</small>}
