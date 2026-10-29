@@ -807,6 +807,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [onlyReview,setOnlyReview]=useState(false);
   const [unlinkedQuantityFilter,setUnlinkedQuantityFilter]=useState<'all'|'valid'|'invalid'>('all');
   const [unlinkedDateFilter,setUnlinkedDateFilter]=useState<'all'|'overdue'|'today'|'upcoming'|'invalid'>('all');
+  const [unlinkedSearch,setUnlinkedSearch]=useState('');
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -829,9 +830,10 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinkedToday=approvedUnlinked.filter(({deadline})=>deadline==='due_today').length;
   const approvedUnlinkedUpcoming=approvedUnlinked.filter(({deadline})=>deadline==='upcoming').length;
   const approvedUnlinkedInvalidDate=approvedUnlinked.filter(({deadline})=>deadline==='no_valid_date').length;
-  const visibleUnlinked=approvedUnlinked.filter(({request,deadline})=>(unlinkedQuantityFilter==='all'||
+  const visibleUnlinked=approvedUnlinked.filter(({request,deadline,item,work})=>(unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
-    (unlinkedDateFilter==='all'||deadline===(unlinkedDateFilter==='overdue'?'overdue':unlinkedDateFilter==='today'?'due_today':unlinkedDateFilter==='upcoming'?'upcoming':'no_valid_date')));
+    (unlinkedDateFilter==='all'||deadline===(unlinkedDateFilter==='overdue'?'overdue':unlinkedDateFilter==='today'?'due_today':unlinkedDateFilter==='upcoming'?'upcoming':'no_valid_date'))&&
+    (!unlinkedSearch.trim()||[item?.name,item?.sku,work?.number,request.id].some(value=>value?.toLowerCase().includes(unlinkedSearch.trim().toLowerCase()))));
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
@@ -964,15 +966,22 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedDateFilter==='upcoming'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='upcoming'} onClick={()=>setUnlinkedDateFilter('upcoming')}>Coming up ({approvedUnlinkedUpcoming})</button>
           <button type="button" className={`button ${unlinkedDateFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='invalid'} onClick={()=>setUnlinkedDateFilter('invalid')}>No valid needed-by date ({approvedUnlinkedInvalidDate})</button>
         </div>}
-        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all')&&
+        {approvedUnlinked.length>0&&<div className="action-group">
+          <label>Search awaiting-order requests
+            <input type="search" value={unlinkedSearch} placeholder="Supply, SKU, repair number or request ID"
+              onChange={event=>setUnlinkedSearch(event.target.value)}/>
+          </label>
+        </div>}
+        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedSearch.trim()!=='')&&
           <div className="action-group">
             <button type="button" className="button secondary" onClick={()=>{
               setUnlinkedQuantityFilter('all');
               setUnlinkedDateFilter('all');
+              setUnlinkedSearch('');
             }}>Clear awaiting-order filters</button>
           </div>}
         {approvedUnlinked.length>0&&<p className="muted small" aria-label="Active awaiting-order filters">
-          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':unlinkedDateFilter==='upcoming'?'Coming up':unlinkedDateFilter==='invalid'?'No valid needed-by date':'All needed-by dates'}.
+          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':unlinkedDateFilter==='upcoming'?'Coming up':unlinkedDateFilter==='invalid'?'No valid needed-by date':'All needed-by dates'}{unlinkedSearch.trim()?'; Search text entered':''}.
         </p>}
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedDateFilter==='overdue'?' past their needed-by date':unlinkedDateFilter==='today'?' needed today':unlinkedDateFilter==='upcoming'?' coming up':unlinkedDateFilter==='invalid'?' with no valid needed-by date':''}. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
