@@ -985,10 +985,11 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         </p>}
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedDateFilter==='overdue'?' past their needed-by date':unlinkedDateFilter==='today'?' needed today':unlinkedDateFilter==='upcoming'?' coming up':unlinkedDateFilter==='invalid'?' with no valid needed-by date':''}. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
-          <p>No awaiting-order requests match these quantity and date filters. Clear awaiting-order filters to show the full queue.</p>
+          <p>No awaiting-order requests match these quantity, date or search filters. Clear awaiting-order filters to show the full queue.</p>
           <button type="button" className="button secondary" onClick={()=>{
             setUnlinkedQuantityFilter('all');
             setUnlinkedDateFilter('all');
+            setUnlinkedSearch('');
           }}>Clear awaiting-order filters</button>
         </div>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
