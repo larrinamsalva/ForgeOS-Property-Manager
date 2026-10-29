@@ -806,6 +806,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [requestSearch,setRequestSearch]=useState('');
   const [onlyReview,setOnlyReview]=useState(false);
   const [unlinkedQuantityFilter,setUnlinkedQuantityFilter]=useState<'all'|'valid'|'invalid'>('all');
+  const [unlinkedOverdueOnly,setUnlinkedOverdueOnly]=useState(false);
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -825,8 +826,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
   const approvedUnlinkedOverdue=approvedUnlinked.filter(({deadline})=>deadline==='overdue').length;
-  const visibleUnlinked=approvedUnlinked.filter(({request})=>unlinkedQuantityFilter==='all'||
-    hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'));
+  const visibleUnlinked=approvedUnlinked.filter(({request,deadline})=>(unlinkedQuantityFilter==='all'||
+    hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
+    (!unlinkedOverdueOnly||deadline==='overdue'));
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
@@ -952,8 +954,14 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedQuantityFilter==='valid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='valid'} onClick={()=>setUnlinkedQuantityFilter('valid')}>Valid quantities ({approvedUnlinkedValid})</button>
           <button type="button" className={`button ${unlinkedQuantityFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='invalid'} onClick={()=>setUnlinkedQuantityFilter('invalid')}>Needs quantity correction ({approvedUnlinkedInvalid})</button>
         </div>}
-        {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}. Filtering does not create purchase orders.</p>}
-        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<p role="status">No awaiting-order requests match this quantity filter. Select All awaiting-order requests to review the complete list.</p>:(
+        {approvedUnlinked.length>0&&<div className="action-group">
+          <button type="button" className={`button ${unlinkedOverdueOnly?'primary':'secondary'}`}
+            aria-pressed={unlinkedOverdueOnly} onClick={()=>setUnlinkedOverdueOnly(value=>!value)}>
+            Past needed date only ({approvedUnlinkedOverdue})
+          </button>
+        </div>}
+        {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review{unlinkedQuantityFilter==='valid'?' with valid quantities':unlinkedQuantityFilter==='invalid'?' needing quantity correction':''}{unlinkedOverdueOnly?' past their needed-by date':''}. Filtering does not create purchase orders.</p>}
+        {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<p role="status">No awaiting-order requests match these filters. Turn off Past needed date only or select All awaiting-order requests to review more.</p>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
             <table>
               <thead><tr><th>Supply / repair</th><th>Quantity</th><th>Needed by</th><th>Next step</th></tr></thead>
