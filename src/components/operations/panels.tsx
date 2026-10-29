@@ -833,7 +833,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const visibleUnlinked=approvedUnlinked.filter(({request,deadline,item,work})=>(unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
     (unlinkedDateFilter==='all'||deadline===(unlinkedDateFilter==='overdue'?'overdue':unlinkedDateFilter==='today'?'due_today':unlinkedDateFilter==='upcoming'?'upcoming':'no_valid_date'))&&
-    (!unlinkedSearch.trim()||[item?.name,item?.sku,work?.number,request.id].some(value=>value?.toLowerCase().includes(unlinkedSearch.trim().toLowerCase()))));
+    (!unlinkedSearch.trim()||[item?.name,item?.sku,work?.number,request.id,request.needed_on].some(value=>value?.toLowerCase().includes(unlinkedSearch.trim().toLowerCase()))));
   const visibleUnlinkedOverdue=visibleUnlinked.filter(({deadline})=>deadline==='overdue').length;
   const visibleUnlinkedInvalidQuantity=visibleUnlinked.filter(({request})=>hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const visibleUnlinkedInvalidDate=visibleUnlinked.filter(({deadline})=>deadline==='no_valid_date').length;
@@ -971,7 +971,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         </div>}
         {approvedUnlinked.length>0&&<div className="action-group">
           <label>Search awaiting-order requests
-            <input type="search" value={unlinkedSearch} placeholder="Supply, SKU, repair number or request ID"
+            <input type="search" value={unlinkedSearch} placeholder="Supply, SKU, repair, request ID or needed-by date"
               onChange={event=>setUnlinkedSearch(event.target.value)}/>
           </label>
         </div>}
