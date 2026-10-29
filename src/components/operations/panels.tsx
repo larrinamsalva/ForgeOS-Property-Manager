@@ -1020,14 +1020,21 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <p className="muted small" role="status">
             Showing {visibleRequests.length} of {purchaseRequests.length} property requests; {visibleReviewCount} visible approved request(s) need purchasing review.
-            prioritized by active needed-by dates. Filter counts are before search.
+            Requests are prioritized by active needed-by dates. Filter counts are before search.
             Export includes exactly the displayed rows; milliunits are labeled (1000 = 1 unit).
           </p>
         </>}
         {!purchaseRequests.length ? (
           <p>No purchase requests for this property.</p>
         ) : !visibleRequests.length ? (
-          <p role="status">No requests match these filters. Choose All requests, clear the search or turn off Needs purchasing review to see more.</p>
+          <div role="status">
+            <p>No requests match these filters. Clear request filters to return to the full list.</p>
+            <button type="button" className="button secondary" onClick={()=>{
+              setRequestFilter('all');
+              setRequestSearch('');
+              setOnlyReview(false);
+            }}>Clear request filters</button>
+          </div>
         ) : (
           visibleRequests.map(({request:r,item,work,deadline}) => {
             const linked=linkedPurchaseReview(r,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId);
