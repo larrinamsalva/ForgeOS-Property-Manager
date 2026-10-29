@@ -821,6 +821,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinked=approvedRequestsWithoutLinkedOrders(
     purchaseRequests,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId,
   );
+  const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
+  const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
   const approvedWithOrder=purchaseRequests.filter(row=>row.request.status==='approved'&&
     linkedPurchaseReview(row.request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId)
       .activeOrders.length>0).length;
@@ -936,6 +938,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <strong>{approvedUnlinked.length} to review</strong>
         </div>
+        <p><strong>{approvedUnlinkedValid} approved request(s) with valid quantities</strong> awaiting linked-order review; {approvedUnlinkedInvalid} request(s) need quantity correction first. Both groups are included in the {approvedUnlinked.length} awaiting-order total. Verify existing orders before purchasing.</p>
         <p>{approvedWithOrder} approved request(s) already linked to an active recorded order.</p>
         <p role="status"><strong>{approvedNeedingReview} approved request(s) need purchasing review</strong> across this property, including invalid quantities, missing links, linked quantity differences, or receipt/order inconsistencies. Each request is counted once; review does not create orders.</p>
         {approvedInvalidQuantityCount>0&&<p className="ops-overdue" role="status"><strong>{approvedInvalidQuantityCount} approved request(s) have invalid quantities.</strong> Verify these source records before preparing orders; they are included in the review count above.</p>}
