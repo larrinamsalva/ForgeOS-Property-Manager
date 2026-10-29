@@ -670,8 +670,8 @@ export function StockPanel({ ui, search, lowStockOnly = false, onLowStockChange,
                     ?<Action click={() => ui.open('purchase_request',undefined,item.id)}>Request suggested refill</Action>
                     :<span className="muted small">Review restock target</span>}
                   </td>
-                </tr>;
-              })}</tbody>
+                </tr>
+              ))}</tbody>
             </table>
           </div>
         )}
@@ -1020,8 +1020,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
                       onClick={()=>open('work_detail',work.id)}>Review repair</button>}
                     {cancelledLinkedOrders>0&&<small>Cancelled linked orders: {cancelledLinkedOrders}. Review order history before purchasing again.</small>}
                   </td>
-                </tr>
-              ))}</tbody>
+                </tr>;
+              })}</tbody>
             </table>
           </div>
         )}
