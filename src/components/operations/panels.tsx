@@ -825,6 +825,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinked=approvedRequestsWithoutLinkedOrders(
     purchaseRequests,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId,
   );
+  const approvedUnlinkedCancelledHistory=approvedUnlinked.filter(({request})=>
+    linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId).cancelledLinkedOrders>0).length;
   const approvedUnlinkedValid=approvedUnlinked.filter(({request})=>!hasInvalidRequestedQuantity(request.quantity_milli)).length;
   const approvedUnlinkedInvalid=approvedUnlinked.length-approvedUnlinkedValid;
   const approvedUnlinkedOverdue=approvedUnlinked.filter(({deadline})=>deadline==='overdue').length;
@@ -963,6 +965,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           </div>
           <strong>{approvedUnlinked.length} to review</strong>
         </div>
+        {approvedUnlinkedCancelledHistory>0&&<p className="ops-overdue" role="status"><strong>{approvedUnlinkedCancelledHistory} awaiting-order request(s) have cancelled linked orders in their history.</strong> Review earlier orders before purchasing again to avoid duplicate purchasing.</p>}
         <p><strong>{approvedUnlinkedCompleteFields} request(s) have both a valid quantity and needed-by date.</strong> Confirm stock, supplier orders and approval details before preparing any purchase order.</p>
         <p><strong>{approvedUnlinkedValid} approved request(s) with valid quantities</strong> awaiting linked-order review; {approvedUnlinkedInvalid} request(s) need quantity correction first. Both groups are included in the {approvedUnlinked.length} awaiting-order total. Verify existing orders before purchasing.</p>
         {approvedUnlinkedOverdue>0&&<p className="ops-overdue" role="status"><strong>{approvedUnlinkedOverdue} awaiting-order request(s) are past their needed-by dates.</strong> Review urgency, available stock and existing supplier orders before purchasing.</p>}
