@@ -1038,6 +1038,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             onClick={()=>setUnlinkedSearch('')}>Clear search only</button>}
           {unlinkedCancelledOnly&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedCancelledOnly(false)}>Turn off cancelled-history filter</button>}
+          {unlinkedQuantityFilter!=='all'&&<button type="button" className="button secondary"
+            onClick={()=>setUnlinkedQuantityFilter('all')}>Clear quantity filter</button>}
           {unlinkedCompleteOnly&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedCompleteOnly(false)}>Turn off complete-fields filter</button>}
           {unlinkedUrgentOnly&&<button type="button" className="button secondary"
