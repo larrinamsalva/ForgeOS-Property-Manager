@@ -808,6 +808,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const [unlinkedQuantityFilter,setUnlinkedQuantityFilter]=useState<'all'|'valid'|'invalid'>('all');
   const [unlinkedDateFilter,setUnlinkedDateFilter]=useState<'all'|'valid'|'overdue'|'today'|'upcoming'|'invalid'>('all');
   const [unlinkedSearch,setUnlinkedSearch]=useState('');
+  const [unlinkedCompleteOnly,setUnlinkedCompleteOnly]=useState(false);
   const propertyTimezone=ui.snapshot.properties.find(p=>p.id===ui.propertyId)?.timezone??'America/Los_Angeles';
   const incoming=incomingDeliveryLines(
     data.orders,data.lines,data.summary.purchase_lines,
@@ -833,7 +834,9 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
   const approvedUnlinkedValidDate=approvedUnlinked.length-approvedUnlinkedInvalidDate;
   const approvedUnlinkedCompleteFields=approvedUnlinked.filter(({request,deadline})=>
     !hasInvalidRequestedQuantity(request.quantity_milli)&&deadline!=='no_valid_date').length;
-  const visibleUnlinked=approvedUnlinked.filter(({request,deadline,item,work})=>(unlinkedQuantityFilter==='all'||
+  const visibleUnlinked=approvedUnlinked.filter(({request,deadline,item,work})=>(!unlinkedCompleteOnly||
+    (!hasInvalidRequestedQuantity(request.quantity_milli)&&deadline!=='no_valid_date'))&&
+    (unlinkedQuantityFilter==='all'||
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
     (unlinkedDateFilter==='all'||(unlinkedDateFilter==='valid'&&deadline!=='no_valid_date')||
       (unlinkedDateFilter!=='valid'&&deadline===(unlinkedDateFilter==='overdue'?'overdue':unlinkedDateFilter==='today'?'due_today':unlinkedDateFilter==='upcoming'?'upcoming':'no_valid_date')))&&
@@ -979,22 +982,26 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedDateFilter==='upcoming'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='upcoming'} onClick={()=>setUnlinkedDateFilter('upcoming')}>Coming up ({approvedUnlinkedUpcoming})</button>
           <button type="button" className={`button ${unlinkedDateFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='invalid'} onClick={()=>setUnlinkedDateFilter('invalid')}>No valid needed-by date ({approvedUnlinkedInvalidDate})</button>
         </div>}
+        {approvedUnlinked.length>0&&<div className="action-group" role="group" aria-label="Awaiting-order field completeness filter">
+          <button type="button" className={`button ${unlinkedCompleteOnly?'primary':'secondary'}`} aria-pressed={unlinkedCompleteOnly} onClick={()=>setUnlinkedCompleteOnly(!unlinkedCompleteOnly)}>Valid quantity and date only ({approvedUnlinkedCompleteFields})</button>
+        </div>}
         {approvedUnlinked.length>0&&<div className="action-group">
           <label>Search awaiting-order requests
             <input type="search" value={unlinkedSearch} placeholder="Supply, SKU, repair, request ID or needed-by date"
               onChange={event=>setUnlinkedSearch(event.target.value)}/>
           </label>
         </div>}
-        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedSearch.trim()!=='')&&
+        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedCompleteOnly||unlinkedSearch.trim()!=='')&&
           <div className="action-group">
             <button type="button" className="button secondary" onClick={()=>{
               setUnlinkedQuantityFilter('all');
               setUnlinkedDateFilter('all');
               setUnlinkedSearch('');
+              setUnlinkedCompleteOnly(false);
             }}>Clear awaiting-order filters</button>
           </div>}
         {approvedUnlinked.length>0&&<p className="muted small" aria-label="Active awaiting-order filters">
-          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='valid'?'Valid needed-by dates':unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':unlinkedDateFilter==='upcoming'?'Coming up':unlinkedDateFilter==='invalid'?'No valid needed-by date':'All needed-by dates'}{unlinkedSearch.trim()?'; Search text entered':''}.
+          Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='valid'?'Valid needed-by dates':unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':unlinkedDateFilter==='upcoming'?'Coming up':unlinkedDateFilter==='invalid'?'No valid needed-by date':'All needed-by dates'}{unlinkedSearch.trim()?'; Search text entered':''}{unlinkedCompleteOnly?'; Valid quantity and date only':''}.
         </p>}
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review. Of the visible requests, {visibleUnlinkedOverdue} are past their needed-by date, {visibleUnlinkedToday} are needed today, {visibleUnlinkedUpcoming} are coming up, {visibleUnlinkedInvalidQuantity} need quantity correction, and {visibleUnlinkedInvalidDate} have no valid needed-by date. Of these visible requests, {visibleUnlinkedCompleteFields} have both a valid quantity and needed-by date. Counts reflect the active filters. Each request belongs to one needed-by date category, but a quantity correction can overlap any date category. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
