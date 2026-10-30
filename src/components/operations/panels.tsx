@@ -1011,6 +1011,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             setUnlinkedQuantityFilter('all');
             setUnlinkedDateFilter('all');
             setUnlinkedSearch('');
+            setUnlinkedCompleteOnly(false);
           }}>Clear awaiting-order filters</button>
         </div>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
