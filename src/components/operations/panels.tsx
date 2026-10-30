@@ -975,7 +975,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <button type="button" className={`button ${unlinkedQuantityFilter==='invalid'?'primary':'secondary'}`} aria-pressed={unlinkedQuantityFilter==='invalid'} onClick={()=>setUnlinkedQuantityFilter('invalid')}>Needs quantity correction ({approvedUnlinkedInvalid})</button>
         </div>}
         {approvedUnlinked.length>0&&<div className="action-group" role="group" aria-label="Awaiting-order date filters">
-          <button type="button" className={`button ${unlinkedDateFilter==='all'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='all'} onClick={()=>setUnlinkedDateFilter('all')}>All needed-by dates</button>
+          <button type="button" className={`button ${unlinkedDateFilter==='all'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='all'} onClick={()=>setUnlinkedDateFilter('all')}>All needed-by dates ({approvedUnlinked.length})</button>
           <button type="button" className={`button ${unlinkedDateFilter==='valid'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='valid'} onClick={()=>setUnlinkedDateFilter('valid')}>Valid needed-by dates ({approvedUnlinkedValidDate})</button>
           <button type="button" className={`button ${unlinkedDateFilter==='overdue'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='overdue'} onClick={()=>setUnlinkedDateFilter('overdue')}>Past needed date ({approvedUnlinkedOverdue})</button>
           <button type="button" className={`button ${unlinkedDateFilter==='today'?'primary':'secondary'}`} aria-pressed={unlinkedDateFilter==='today'} onClick={()=>setUnlinkedDateFilter('today')}>Needed today ({approvedUnlinkedToday})</button>
