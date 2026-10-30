@@ -1029,11 +1029,13 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
         {approvedUnlinked.length>0&&<p className="muted small" role="status">Showing {visibleUnlinked.length} of {approvedUnlinked.length} approved requests awaiting linked-order review. Of the visible requests, {visibleUnlinkedOverdue} are past their needed-by date, {visibleUnlinkedToday} are needed today, {visibleUnlinkedUpcoming} are coming up, {visibleUnlinkedInvalidQuantity} need quantity correction, and {visibleUnlinkedInvalidDate} have no valid needed-by date. Of these visible requests, {visibleUnlinkedCompleteFields} have both a valid quantity and needed-by date. {visibleUnlinkedCancelledHistory} visible request(s) have cancelled linked orders in their history and need previous orders checked before buying again. Counts reflect the active filters. Each request belongs to one needed-by date category, but a quantity correction can overlap any date category. Filtering does not create purchase orders.</p>}
         {approvedUnlinked.length>0&&unlinkedCompleteOnly&&(unlinkedQuantityFilter==='invalid'||unlinkedDateFilter==='invalid')&&<p className="ops-overdue" role="status">These filters conflict: “Valid quantity and date only” excludes requests needing quantity correction or a valid needed-by date. Turn off the completeness filter or choose a different quantity/date filter to see matching requests. <button type="button" className="button secondary" onClick={()=>setUnlinkedCompleteOnly(false)}>Turn off complete-fields filter</button></p>}
         {approvedUnlinked.length===0?<p>No approved requests are missing an active linked order.</p>:!visibleUnlinked.length?<div role="status">
-          <p>No awaiting-order requests match the current quantity, date, complete-fields, cancelled-order history or search filters. Clear the search or turn off cancelled-order history to keep your other selections, or clear all awaiting-order filters to show the full queue.</p>
+          <p>No awaiting-order requests match the current urgency, quantity, date, complete-fields, cancelled-order history or search filters. Turn off an individual active filter to keep your other selections, or clear all awaiting-order filters to show the full queue.</p>
           {unlinkedSearch.length>0&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedSearch('')}>Clear search only</button>}
           {unlinkedCancelledOnly&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedCancelledOnly(false)}>Turn off cancelled-history filter</button>}
+          {unlinkedUrgentOnly&&<button type="button" className="button secondary"
+            onClick={()=>setUnlinkedUrgentOnly(false)}>Turn off urgent-only filter</button>}
           <button type="button" className="button secondary" onClick={()=>{
             setUnlinkedQuantityFilter('all');
             setUnlinkedDateFilter('all');
