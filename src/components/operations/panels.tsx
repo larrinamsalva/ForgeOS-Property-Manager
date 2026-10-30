@@ -1012,7 +1012,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           {unlinkedSearch.length>0&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedSearch('')}>Clear search</button>}
         </div>}
-        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedCompleteOnly||unlinkedCancelledOnly||unlinkedUrgentOnly||unlinkedSearch.trim()!=='')&&
+        {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedCompleteOnly||unlinkedCancelledOnly||unlinkedUrgentOnly||unlinkedSearch.length>0)&&
           <div className="action-group">
             <button type="button" className="button secondary" onClick={()=>{
               setUnlinkedQuantityFilter('all');
