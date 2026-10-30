@@ -1024,6 +1024,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           <p>No awaiting-order requests match the current quantity, date, complete-fields or search filters. Clear the search text to keep your other filters, or clear all awaiting-order filters to show the full queue.</p>
           {unlinkedSearch.length>0&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedSearch('')}>Clear search only</button>}
+          {unlinkedCancelledOnly&&<button type="button" className="button secondary"
+            onClick={()=>setUnlinkedCancelledOnly(false)}>Turn off cancelled-history filter</button>}
           <button type="button" className="button secondary" onClick={()=>{
             setUnlinkedQuantityFilter('all');
             setUnlinkedDateFilter('all');
