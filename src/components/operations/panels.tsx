@@ -1035,7 +1035,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
           {unlinkedCancelledOnly&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedCancelledOnly(false)}>Turn off cancelled-history filter</button>}
           {unlinkedUrgentOnly&&<button type="button" className="button secondary"
-            onClick={()=>setUnlinkedUrgentOnly(false)}>Turn off urgent-only filter</button>
+            onClick={()=>setUnlinkedUrgentOnly(false)}>Turn off urgent-only filter</button>}
           <button type="button" className="button secondary" onClick={()=>{
             setUnlinkedQuantityFilter('all');
             setUnlinkedDateFilter('all');
