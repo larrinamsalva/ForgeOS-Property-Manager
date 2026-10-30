@@ -1040,6 +1040,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             onClick={()=>setUnlinkedCancelledOnly(false)}>Turn off cancelled-history filter</button>}
           {unlinkedQuantityFilter!=='all'&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedQuantityFilter('all')}>Clear quantity filter</button>}
+          {unlinkedDateFilter!=='all'&&<button type="button" className="button secondary"
+            onClick={()=>setUnlinkedDateFilter('all')}>Clear date filter</button>}
           {unlinkedCompleteOnly&&<button type="button" className="button secondary"
             onClick={()=>setUnlinkedCompleteOnly(false)}>Turn off complete-fields filter</button>}
           {unlinkedUrgentOnly&&<button type="button" className="button secondary"
