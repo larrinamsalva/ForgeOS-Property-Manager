@@ -1012,7 +1012,6 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               setUnlinkedDateFilter('all');
               setUnlinkedSearch('');
               setUnlinkedCompleteOnly(false);
-            setUnlinkedCancelledOnly(false);
               setUnlinkedCancelledOnly(false);
             }}>Clear awaiting-order filters</button>
           </div>}
@@ -1030,6 +1029,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             setUnlinkedDateFilter('all');
             setUnlinkedSearch('');
             setUnlinkedCompleteOnly(false);
+            setUnlinkedCancelledOnly(false);
           }}>Clear awaiting-order filters</button>
         </div>:(
           <div className="table-wrap" role="region" aria-label="Approved requests needing order review" tabIndex={0}>
