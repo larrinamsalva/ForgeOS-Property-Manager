@@ -990,6 +990,8 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
             <input type="search" value={unlinkedSearch} placeholder="Supply, SKU, repair, request ID or needed-by date"
               onChange={event=>setUnlinkedSearch(event.target.value)}/>
           </label>
+          {unlinkedSearch.length>0&&<button type="button" className="button secondary"
+            onClick={()=>setUnlinkedSearch('')}>Clear search</button>}
         </div>}
         {approvedUnlinked.length>0&&(unlinkedQuantityFilter!=='all'||unlinkedDateFilter!=='all'||unlinkedCompleteOnly||unlinkedSearch.trim()!=='')&&
           <div className="action-group">
