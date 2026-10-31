@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
 import { summarizeGuestCustomers } from '@/lib/guest-customer-summary';
+import { guestExtendedVisitReviewList } from '@/lib/guest-visitor-review';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -208,6 +209,7 @@ export function GuestDemo() {
       (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
   });
   const customerSummary = summarizeGuestCustomers(filteredCustomers);
+  const extendedReviewList = guestExtendedVisitReviewList(customers);
   const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
     const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
     if (customerSort === 'name-asc') return byName;
@@ -609,6 +611,39 @@ export function GuestDemo() {
           {tab === 'tenants' && (
             <>
               <GuestCustomerForm sites={sites} onSave={saveCustomer}/>
+              <section className="demo-panel" aria-label="Extended visitor review list">
+                <div className="demo-section-head"><div>
+                  <h2>Extended visitor review</h2>
+                  <p>{extendedReviewList.length} fictional customer files with visits recorded for more than 14 days. Open the customer record to check details.</p>
+                </div></div>
+                {extendedReviewList.length===0 ? <p>No extended visitor records have been entered yet.</p> : <>
+                  <div className="demo-table-wrap">
+                    <table className="demo-table">
+                      <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Review</th></tr></thead>
+                      <tbody>{extendedReviewList.slice(0, 10).map((record) =>
+                        <tr key={record.id}>
+                          <td>{record.name}</td>
+                          <td>{record.siteId ?? 'Not assigned'}</td>
+                          <td>{record.extendedVisits} over 14 days</td>
+                          <td><button type="button" className="demo-small-button"
+                            onClick={()=>setSelectedCustomerId(record.id)}
+                            aria-label={'Open visitor review for '+record.name+' customer '+record.id}>Open customer record</button></td>
+                        </tr>
+                      )}</tbody>
+                    </table>
+                  </div>
+                  {extendedReviewList.length>10&&<p>Showing the first 10 of {extendedReviewList.length} flagged customer files.</p>}
+                  <button type="button" className="demo-small-button" onClick={()=>{
+                    setCustomerQuery('');
+                    setCustomerPetFilter('all');
+                    setCustomerAnimalType('all');
+                    setCustomerVisitFilter('extended');
+                    setCustomerSort('extended-desc');
+                    setCustomerPage(0);
+                  }}>Show all extended-visit customers in directory</button>
+                </>}
+                <small>Review list is based on recorded date ranges only. It does not establish current occupancy, approval, noncompliance, or property policy. No notifications are sent.</small>
+              </section>
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestCustomerForm key={'customer-' + selectedCustomerId} customer={customers.find((customer) => customer.id === selectedCustomerId)} sites={sites} onSave={saveCustomer} onClose={() => setSelectedCustomerId(null)}/>}
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId && !!customer.siteId) &&
                 (() => { const customer = customers.find((c) => c.id === selectedCustomerId)!;
