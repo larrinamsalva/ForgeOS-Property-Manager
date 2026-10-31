@@ -545,6 +545,17 @@ test('extended visitor review list opens flagged fictional customer records', as
   await row.getByRole('button', { name: /Open visitor review for Example Long Stay Customer/ }).click();
   await expect(page.getByRole('region', { name: 'Edit customer Example Long Stay Customer' })).toContainText('Example Visitor');
 
+  const reviewSearch = review.getByLabel('Find visitor review by customer or space');
+  await reviewSearch.fill('no-such-customer');
+  await expect(review).toContainText('Showing 0 of 1 extended-visit customer files.');
+  await expect(review).toContainText('No customer or space matches this visitor-review search.');
+  await expect(review.getByRole('row')).toHaveCount(0);
+  await review.getByRole('button', { name: 'Clear review search' }).click();
+  await expect(reviewSearch).toHaveValue('');
+  await expect(row).toContainText('1 over 14 days');
+  await reviewSearch.fill('  example LONG  ');
+  await expect(review).toContainText('Showing 1 of 1 extended-visit customer files.');
+
   await review.getByRole('button', { name: 'Show all extended-visit customers in directory' }).click();
   await expect(page.locator('#demo-customer-visitor-filter')).toHaveValue('extended');
   await expect(page.getByRole('row').filter({ hasText: 'Example Long Stay Customer' })).toHaveCount(2);

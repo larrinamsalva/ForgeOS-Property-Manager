@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extendedVisitCount, guestExtendedVisitReviewList, paginateGuestVisitorReview } from '../../src/lib/guest-visitor-review';
+import { extendedVisitCount, guestExtendedVisitReviewList, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews } from '../../src/lib/guest-visitor-review';
 
 describe('fictional extended visitor review list', () => {
   const longStay = { name: 'Fictional visitor', arrival: '2026-10-01', departure: '2026-10-16' };
@@ -47,6 +47,19 @@ describe('fictional extended visitor review list', () => {
     expect(last.rows.map((entry) => entry.id)).toEqual([21,22,23]);
     expect(paginateGuestVisitorReview(entries.slice(0, 1), 2)).toMatchObject({ page: 0, pages: 1 });
     expect(paginateGuestVisitorReview([], 15)).toMatchObject({ page: 0, pages: 1, rows: [] });
+  });
+
+  it('searches flagged review records by customer name or space without changing priority order', () => {
+    const reviews = [
+      { id: 1, name: 'Alpha Family', siteId: 'RV-08', extendedVisits: 3 },
+      { id: 2, name: 'Beta Household', siteId: 'RV-12', extendedVisits: 2 },
+      { id: 3, name: 'Alpine Friend', siteId: null, extendedVisits: 1 },
+    ];
+    expect(searchGuestExtendedVisitorReviews(reviews, ' aLp ' ).map((review) => review.id)).toEqual([1, 3]);
+    expect(searchGuestExtendedVisitorReviews(reviews, 'rv-12').map((review) => review.id)).toEqual([2]);
+    expect(searchGuestExtendedVisitorReviews(reviews, '  ')).toEqual(reviews);
+    expect(searchGuestExtendedVisitorReviews(reviews, 'not-present')).toEqual([]);
+    expect(reviews.map((review) => review.id)).toEqual([1, 2, 3]);
   });
 
 });
