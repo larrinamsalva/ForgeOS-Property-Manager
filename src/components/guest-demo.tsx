@@ -69,6 +69,7 @@ export function GuestDemo() {
   const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
   const [customerAnimalType, setCustomerAnimalType] = useState<'all' | 'dogs' | 'cats' | 'horses' | 'cows'>('all');
   const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
+  const [customerSort, setCustomerSort] = useState<'original' | 'name-asc' | 'name-desc' | 'site-asc' | 'animals-desc' | 'extended-desc'>('original');
   const [overviewQuery, setOverviewQuery] = useState('');
   const [overviewStatus, setOverviewStatus] = useState<'all' | Status>('all');
   const [overviewPage, setOverviewPage] = useState(0);
@@ -204,7 +205,24 @@ export function GuestDemo() {
       (customerAnimalType === 'all' || (c.pets?.[customerAnimalType] ?? 0) > 0) &&
       (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
   });
-  const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
+  const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
+    const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
+    if (customerSort === 'name-asc') return byName;
+    if (customerSort === 'name-desc') return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
+    if (customerSort === 'site-asc') {
+      if (!a.siteId || !b.siteId) return !a.siteId && !b.siteId ? byName : a.siteId ? -1 : 1;
+      return a.siteId.localeCompare(b.siteId, undefined, { numeric: true, sensitivity: 'base' }) || byName;
+    }
+    if (customerSort === 'animals-desc') {
+      const total = (customer: typeof a) => Object.values(customer.pets ?? {}).reduce((sum, count) => sum + count, 0);
+      return total(b) - total(a) || byName;
+    }
+    const extended = (customer: typeof a) => (customer.guestVisits ?? []).filter((visit) =>
+      (Date.parse(visit.departure + 'T00:00:00Z') - Date.parse(visit.arrival + 'T00:00:00Z')) / 86400000 > 14
+    ).length;
+    return extended(b) - extended(a) || byName;
+  });
+  const customerPages = Math.max(1, Math.ceil(sortedCustomers.length / 50));
   const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
   function openSpaceRecord(siteId: string) {
     setSelectedSiteId(siteId);
@@ -355,6 +373,7 @@ export function GuestDemo() {
     setCustomerPetFilter('all');
     setCustomerAnimalType('all');
     setCustomerVisitFilter('all');
+    setCustomerSort('original');
     setOverviewQuery('');
     setOverviewStatus('all');
     setOverviewPage(0);
@@ -620,12 +639,22 @@ export function GuestDemo() {
                       <option value="none">No visits over 14 days</option>
                     </select>
                   </label>
+                  <label htmlFor="demo-customer-sort">Sort customers
+                    <select id="demo-customer-sort" value={customerSort} onChange={(event)=>{setCustomerSort(event.target.value as typeof customerSort);setCustomerPage(0);}}>
+                      <option value="original">Original directory order</option>
+                      <option value="name-asc">Name A to Z</option>
+                      <option value="name-desc">Name Z to A</option>
+                      <option value="site-asc">Space number (ascending)</option>
+                      <option value="animals-desc">Most registered animals first</option>
+                      <option value="extended-desc">Most extended visitor records first</option>
+                    </select>
+                  </label>
                 </div>
                 <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerAnimalType!=='all'||customerVisitFilter!=='all')&&
                   <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerAnimalType('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
                 {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
-                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
+                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{sortedCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
                   return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
                   <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)===0
