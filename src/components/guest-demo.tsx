@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
 import { summarizeGuestCustomers } from '@/lib/guest-customer-summary';
-import { guestExtendedVisitReviewList, paginateGuestVisitorReview } from '@/lib/guest-visitor-review';
+import { guestExtendedVisitReviewList, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews } from '@/lib/guest-visitor-review';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -70,6 +70,7 @@ export function GuestDemo() {
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
   const [extendedReviewPage, setExtendedReviewPage] = useState(0);
+  const [extendedReviewQuery, setExtendedReviewQuery] = useState('');
   const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
   const [customerAnimalType, setCustomerAnimalType] = useState<'all' | 'dogs' | 'cats' | 'horses' | 'cows'>('all');
   const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
@@ -211,7 +212,8 @@ export function GuestDemo() {
   });
   const customerSummary = summarizeGuestCustomers(filteredCustomers);
   const extendedReviewList = guestExtendedVisitReviewList(customers);
-  const pagedExtendedReviews = paginateGuestVisitorReview(extendedReviewList, extendedReviewPage);
+  const filteredExtendedReviews = searchGuestExtendedVisitorReviews(extendedReviewList, extendedReviewQuery);
+  const pagedExtendedReviews = paginateGuestVisitorReview(filteredExtendedReviews, extendedReviewPage);
   const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
     const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
     if (customerSort === 'name-asc') return byName;
@@ -391,6 +393,7 @@ export function GuestDemo() {
     setSiteQuery('');
     setCustomerQuery('');
     setExtendedReviewPage(0);
+    setExtendedReviewQuery('');
     setCustomerPetFilter('all');
     setCustomerAnimalType('all');
     setCustomerVisitFilter('all');
@@ -618,9 +621,15 @@ export function GuestDemo() {
                 <div className="demo-section-head"><div>
                   <h2>Extended visitor review</h2>
                   <p>{extendedReviewList.length} fictional customer files with visits recorded for more than 14 days. Open the customer record to check details.</p>
-                </div></div>
+                </div>
+                  <label className="demo-filter" htmlFor="demo-extended-review-search">Find visitor review by customer or space
+                    <input id="demo-extended-review-search" value={extendedReviewQuery} onChange={(event)=>{setExtendedReviewQuery(event.target.value);setExtendedReviewPage(0);}} placeholder="Customer name or space number" />
+                  </label>
+                </div>
                 {extendedReviewList.length===0 ? <p>No extended visitor records have been entered yet.</p> : <>
-                  <div className="demo-table-wrap">
+                  <p>Showing {filteredExtendedReviews.length} of {extendedReviewList.length} extended-visit customer files.</p>
+                  {extendedReviewQuery.trim()&&<button type="button" className="demo-small-button" onClick={()=>{setExtendedReviewQuery('');setExtendedReviewPage(0);}}>Clear review search</button>}
+                  {filteredExtendedReviews.length===0 ? <p>No customer or space matches this visitor-review search.</p> : <div className="demo-table-wrap">
                     <table className="demo-table">
                       <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Review</th></tr></thead>
                       <tbody>{pagedExtendedReviews.rows.map((record) =>
@@ -635,10 +644,10 @@ export function GuestDemo() {
                       )}</tbody>
                     </table>
                   </div>
-                  {extendedReviewList.length>10&&<Pagination
+                  {filteredExtendedReviews.length>10&&<Pagination
                     page={pagedExtendedReviews.page}
                     pages={pagedExtendedReviews.pages}
-                    total={extendedReviewList.length}
+                    total={filteredExtendedReviews.length}
                     label="extended visitor customers"
                     onChange={setExtendedReviewPage}
                   />}
