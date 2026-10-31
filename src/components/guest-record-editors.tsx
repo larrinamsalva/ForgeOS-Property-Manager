@@ -490,6 +490,16 @@ export function GuestCustomerForm({
         <label htmlFor={fieldId('guest-departure')}>Expected departure
           <input id={fieldId('guest-departure')} type="date" value={guestDeparture} onChange={(event)=>setGuestDeparture(event.target.value)}/>
         </label>
+        {guestArrival&&guestDeparture&&(()=>{
+          const start=Date.parse(guestArrival+'T00:00:00Z');
+          const end=Date.parse(guestDeparture+'T00:00:00Z');
+          const duration=(end-start)/86400000;
+          return <p className="demo-record-meta" role="status">
+            {!Number.isFinite(duration)||duration<0?'Departure must be on or after arrival.':
+              duration>14?duration+' days · Extended stay: manager review required':
+              duration+' days · Within 14-day visitor review threshold'}
+          </p>;
+        })()}
         <button type="button" className="demo-small-button" onClick={()=>{
           const days=(Date.parse(guestDeparture+'T00:00:00Z')-Date.parse(guestArrival+'T00:00:00Z'))/86400000;
           if(!validName(guestName)||!guestArrival||!guestDeparture||!Number.isFinite(days)||days<0){
