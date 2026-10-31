@@ -45,3 +45,15 @@ export function paginateGuestVisitorReview<T>(
     rows: records.slice(page * GUEST_VISITOR_REVIEW_PAGE_SIZE, (page + 1) * GUEST_VISITOR_REVIEW_PAGE_SIZE),
   };
 }
+
+/** Search only customer names and space IDs, never private visitor identities. */
+export function searchGuestExtendedVisitorReviews<T extends { name: string; siteId: string | null }>(
+  records: readonly T[],
+  query: string,
+): T[] {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return [...records];
+  return records.filter((record) =>
+    (record.name + ' ' + (record.siteId ?? '')).toLocaleLowerCase().includes(normalized)
+  );
+}
