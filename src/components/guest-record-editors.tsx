@@ -155,6 +155,8 @@ export function GuestSiteEditor({
         <div><small>Move-in date</small><span>{customer.arrivalDate || 'Not entered'}</span></div>
         <div><small>Emergency contact</small><span>{customer.emergencyContact || 'Not provided'}</span></div>
         <div><small>Vehicle / RV</small><span>{customer.vehicle || 'Not entered'}</span></div>
+        <div><small>Registered animals</small><span>{(['dogs','cats','horses','cows'] as const).map((animal)=>animal+': '+(customer.pets?.[animal]??0)).join(' · ')}</span></div>
+        <div><small>Recorded visitors</small><span>{customer.guestVisits?.length??0} visitor records · {(customer.guestVisits??[]).filter((visit)=>(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000>14).length} extended stays over 14 days</span></div>
         {customer.notes && <div className="demo-site-resident-notes"><small>Customer notes</small><span>{customer.notes}</span></div>}
       </div> : <p>{site.status === 'occupied'
         ? site.resident ? site.resident + ' — no linked customer information yet.' : 'Occupied — customer information not recorded.'
