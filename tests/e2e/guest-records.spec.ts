@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 
 test('each space can have its own type, rate, utilities, notes and an assigned customer record', async ({ page }) => {
@@ -477,4 +478,29 @@ test('guest customer directory sorting works with existing records', async ({ pa
   await expect(table.locator('tbody tr').first()).toBeVisible();
   await sort.selectOption('original');
   await expect(table.locator('tbody tr').first()).toBeVisible();
+});
+
+
+test('guest directory CSV downloads only matching fictional customers in selected sort order', async ({ page }) => {
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Customers' }).click();
+  await page.getByLabel('Sort customers').selectOption('name-desc');
+
+  const button = page.getByRole('button', { name: 'Download filtered customers CSV' });
+  const [allDownload] = await Promise.all([page.waitForEvent('download'), button.click()]);
+  expect(allDownload.suggestedFilename()).toBe('forgeos-demo-customers.csv');
+  const allCsv = (await readFile(await allDownload.path(), 'utf8')).replace(/^\uFEFF/, '');
+  expect(allCsv).toContain('"Customer name","Space"');
+  expect(allCsv.indexOf('"Example Resident 14"')).toBeLessThan(allCsv.indexOf('"Example Resident 01"'));
+  expect(allCsv).not.toContain('example@invalid.test');
+
+  await page.getByLabel('Search', { exact: true }).fill('Example Resident 01');
+  const [filteredDownload] = await Promise.all([page.waitForEvent('download'), button.click()]);
+  const filteredCsv = (await readFile(await filteredDownload.path(), 'utf8')).replace(/^\uFEFF/, '');
+  expect(filteredCsv).toContain('"Example Resident 01"');
+  expect(filteredCsv).not.toContain('"Example Resident 02"');
+
+  await page.getByLabel('Search', { exact: true }).fill('no-such-customer');
+  await expect(button).toBeDisabled();
 });

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
+import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -224,6 +225,19 @@ export function GuestDemo() {
   });
   const customerPages = Math.max(1, Math.ceil(sortedCustomers.length / 50));
   const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
+  function downloadCustomerDirectoryCsv() {
+    if (sortedCustomers.length === 0) return;
+    // Only filtered/sorted fictional demo records; never export private contacts or notes.
+    const blob = new Blob(['\uFEFF', createGuestCustomerDirectoryCsv(sortedCustomers, sites)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'forgeos-demo-customers.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   function openSpaceRecord(siteId: string) {
     setSelectedSiteId(siteId);
     setSiteQuery(siteId);
@@ -651,6 +665,8 @@ export function GuestDemo() {
                   </label>
                 </div>
                 <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
+                <button type="button" className="demo-small-button" disabled={sortedCustomers.length===0} onClick={downloadCustomerDirectoryCsv}>Download filtered customers CSV</button>
+                <small>Fictional demo records only · exports all matching customers in the selected sort order, not only this page. Includes animal and visitor counts; excludes contacts and private notes.</small>
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerAnimalType!=='all'||customerVisitFilter!=='all')&&
                   <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerAnimalType('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
                 {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
