@@ -315,6 +315,10 @@ export function GuestCustomerForm({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const deposit = depositText.trim() === '' ? 0 : Number(depositText);
+    if (guestName.trim() || guestArrival || guestDeparture || editingVisitIndex !== null) {
+      setError('You have an unfinished visitor entry. Add or save the visitor above, or cancel the visitor edit, before saving this customer.');
+      return;
+    }
     if (placement === 'assigned' && !draft.siteId && !unitNumberText.trim()) {
       setError('Choose an available site for Assigned, or select Waiting List.');
       return;
