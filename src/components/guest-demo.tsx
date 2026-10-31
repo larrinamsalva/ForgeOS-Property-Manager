@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
 import { summarizeGuestCustomers } from '@/lib/guest-customer-summary';
-import { guestExtendedVisitReviewList } from '@/lib/guest-visitor-review';
+import { guestExtendedVisitReviewList, paginateGuestVisitorReview } from '@/lib/guest-visitor-review';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -69,6 +69,7 @@ export function GuestDemo() {
   const [customerPage, setCustomerPage] = useState(0);
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
+  const [extendedReviewPage, setExtendedReviewPage] = useState(0);
   const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
   const [customerAnimalType, setCustomerAnimalType] = useState<'all' | 'dogs' | 'cats' | 'horses' | 'cows'>('all');
   const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
@@ -210,6 +211,7 @@ export function GuestDemo() {
   });
   const customerSummary = summarizeGuestCustomers(filteredCustomers);
   const extendedReviewList = guestExtendedVisitReviewList(customers);
+  const pagedExtendedReviews = paginateGuestVisitorReview(extendedReviewList, extendedReviewPage);
   const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
     const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
     if (customerSort === 'name-asc') return byName;
@@ -388,6 +390,7 @@ export function GuestDemo() {
     setCustomerPage(0);
     setSiteQuery('');
     setCustomerQuery('');
+    setExtendedReviewPage(0);
     setCustomerPetFilter('all');
     setCustomerAnimalType('all');
     setCustomerVisitFilter('all');
@@ -620,7 +623,7 @@ export function GuestDemo() {
                   <div className="demo-table-wrap">
                     <table className="demo-table">
                       <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Review</th></tr></thead>
-                      <tbody>{extendedReviewList.slice(0, 10).map((record) =>
+                      <tbody>{pagedExtendedReviews.rows.map((record) =>
                         <tr key={record.id}>
                           <td>{record.name}</td>
                           <td>{record.siteId ?? 'Not assigned'}</td>
@@ -632,7 +635,13 @@ export function GuestDemo() {
                       )}</tbody>
                     </table>
                   </div>
-                  {extendedReviewList.length>10&&<p>Showing the first 10 of {extendedReviewList.length} flagged customer files.</p>}
+                  {extendedReviewList.length>10&&<Pagination
+                    page={pagedExtendedReviews.page}
+                    pages={pagedExtendedReviews.pages}
+                    total={extendedReviewList.length}
+                    label="extended visitor customers"
+                    onChange={setExtendedReviewPage}
+                  />}
                   <button type="button" className="demo-small-button" onClick={()=>{
                     setCustomerQuery('');
                     setCustomerPetFilter('all');
