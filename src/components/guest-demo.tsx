@@ -604,7 +604,7 @@ export function GuestDemo() {
                     </select>
                   </label>
                 </div>
-                <p className="demo-record-meta" role="status">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
+                <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerVisitFilter!=='all')&&
                   <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
                 {filteredCustomers.length===0&&<p role="status">No customers match these filters. Clear customer filters to show everyone.</p>}
