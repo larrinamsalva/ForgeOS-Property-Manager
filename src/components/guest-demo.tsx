@@ -746,7 +746,7 @@ export function GuestDemo() {
                 {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
                 <div className="demo-table-wrap"><table className="demo-table demo-customer-directory-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{sortedCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
-                  return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
+                  return <tr key={customer.id}><td>{customer.name}<button className="demo-small-button demo-mobile-customer-edit" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
                   <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)===0
                     ? 'No registered animals'
                     : (['dogs','cats','horses','cows'] as const)
