@@ -546,6 +546,6 @@ test('extended visitor review list opens flagged fictional customer records', as
   await expect(page.getByRole('region', { name: 'Edit customer Example Long Stay Customer' })).toContainText('Example Visitor');
 
   await review.getByRole('button', { name: 'Show all extended-visit customers in directory' }).click();
-  await expect(page.getByLabel('Extended visitor records')).toHaveValue('extended');
+  await expect(page.locator('#demo-customer-visitor-filter')).toHaveValue('extended');
   await expect(page.getByRole('row').filter({ hasText: 'Example Long Stay Customer' })).toHaveCount(2);
 });
