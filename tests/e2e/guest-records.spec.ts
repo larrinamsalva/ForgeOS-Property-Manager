@@ -522,3 +522,30 @@ test('guest customer snapshot follows directory search and shows an empty result
   // Summary and empty message must not compete with customer save announcements.
   await expect(page.getByRole('status')).toHaveCount(0);
 });
+
+
+test('extended visitor review list opens flagged fictional customer records', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('navigation', { name: 'Guest demo navigation' }).getByRole('button', { name: 'Customers' }).click();
+  const review = page.getByRole('region', { name: 'Extended visitor review list' });
+  await expect(review).toContainText('No extended visitor records have been entered yet.');
+
+  const addCustomer = page.getByRole('region', { name: 'Add customer information' });
+  await addCustomer.getByLabel('Fictional customer name').fill('Example Long Stay Customer');
+  await addCustomer.getByRole('radio', { name: 'Waiting List' }).check();
+  await addCustomer.getByLabel('Visitor name').fill('Example Visitor');
+  await addCustomer.getByLabel('Visitor arrival').fill('2026-10-01');
+  await addCustomer.getByLabel('Expected departure').fill('2026-10-16');
+  await addCustomer.getByRole('button', { name: 'Add visitor to customer record' }).click();
+  await addCustomer.getByRole('button', { name: 'Add example customer' }).click();
+
+  await expect(review).toContainText('1 fictional customer files');
+  const row = review.getByRole('row').filter({ hasText: 'Example Long Stay Customer' });
+  await expect(row).toContainText('1 over 14 days');
+  await row.getByRole('button', { name: /Open visitor review for Example Long Stay Customer/ }).click();
+  await expect(page.getByRole('region', { name: 'Edit customer Example Long Stay Customer' })).toContainText('Example Visitor');
+
+  await review.getByRole('button', { name: 'Show all extended-visit customers in directory' }).click();
+  await expect(page.getByLabel('Extended visitor records')).toHaveValue('extended');
+  await expect(page.getByRole('row').filter({ hasText: 'Example Long Stay Customer' })).toHaveCount(2);
+});
