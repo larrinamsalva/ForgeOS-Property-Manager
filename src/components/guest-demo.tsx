@@ -576,10 +576,10 @@ export function GuestDemo() {
                     <input id="demo-customer-search" placeholder="Name or site" value={customerQuery} onChange={(e) => {setCustomerQuery(e.target.value); setCustomerPage(0);}}/>
                   </label>
                 </div>
-                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
+                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
                   return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
-                  <td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
+                  <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)} animals</td><td>{(customer.guestVisits??[]).filter((visit)=>(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000>14).length} over 14 days</td><td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
                 })}</tbody></table></div>
                 <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
               </section>
