@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
 import { summarizeGuestCustomers } from '@/lib/guest-customer-summary';
-import { guestExtendedVisitReviewList, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews } from '@/lib/guest-visitor-review';
+import { guestExtendedVisitReviewWithWindows, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews } from '@/lib/guest-visitor-review';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -71,6 +71,7 @@ export function GuestDemo() {
   const [customerQuery, setCustomerQuery] = useState('');
   const [extendedReviewPage, setExtendedReviewPage] = useState(0);
   const [extendedReviewQuery, setExtendedReviewQuery] = useState('');
+  const [extendedReviewDateFilter, setExtendedReviewDateFilter] = useState<'all' | 'upcoming' | 'within' | 'ended'>('all');
   const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
   const [customerAnimalType, setCustomerAnimalType] = useState<'all' | 'dogs' | 'cats' | 'horses' | 'cows'>('all');
   const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
@@ -211,8 +212,9 @@ export function GuestDemo() {
       (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
   });
   const customerSummary = summarizeGuestCustomers(filteredCustomers);
-  const extendedReviewList = guestExtendedVisitReviewList(customers);
-  const filteredExtendedReviews = searchGuestExtendedVisitorReviews(extendedReviewList, extendedReviewQuery);
+  const extendedReviewList = guestExtendedVisitReviewWithWindows(customers, todayAtPark);
+  const filteredExtendedReviews = searchGuestExtendedVisitorReviews(extendedReviewList, extendedReviewQuery)
+    .filter((record) => extendedReviewDateFilter === 'all' || record.dateWindows[extendedReviewDateFilter] > 0);
   const pagedExtendedReviews = paginateGuestVisitorReview(filteredExtendedReviews, extendedReviewPage);
   const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
     const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
@@ -394,6 +396,7 @@ export function GuestDemo() {
     setCustomerQuery('');
     setExtendedReviewPage(0);
     setExtendedReviewQuery('');
+    setExtendedReviewDateFilter('all');
     setCustomerPetFilter('all');
     setCustomerAnimalType('all');
     setCustomerVisitFilter('all');
@@ -617,51 +620,6 @@ export function GuestDemo() {
           {tab === 'tenants' && (
             <>
               <GuestCustomerForm sites={sites} onSave={saveCustomer}/>
-              <section className="demo-panel" aria-label="Extended visitor review list">
-                <div className="demo-section-head"><div>
-                  <h2>Extended visitor review</h2>
-                  <p>{extendedReviewList.length} fictional customer files with visits recorded for more than 14 days. Open the customer record to check details.</p>
-                </div>
-                  <label className="demo-filter" htmlFor="demo-extended-review-search">Find visitor review by customer or space
-                    <input id="demo-extended-review-search" value={extendedReviewQuery} onChange={(event)=>{setExtendedReviewQuery(event.target.value);setExtendedReviewPage(0);}} placeholder="Customer name or space number" />
-                  </label>
-                </div>
-                {extendedReviewList.length===0 ? <p>No extended visitor records have been entered yet.</p> : <>
-                  <p>Showing {filteredExtendedReviews.length} of {extendedReviewList.length} extended-visit customer files.</p>
-                  {extendedReviewQuery.trim()&&<button type="button" className="demo-small-button" onClick={()=>{setExtendedReviewQuery('');setExtendedReviewPage(0);}}>Clear review search</button>}
-                  {filteredExtendedReviews.length===0 ? <p>No customer or space matches this visitor-review search.</p> : <div className="demo-table-wrap">
-                    <table className="demo-table">
-                      <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Review</th></tr></thead>
-                      <tbody>{pagedExtendedReviews.rows.map((record) =>
-                        <tr key={record.id}>
-                          <td>{record.name}</td>
-                          <td>{record.siteId ?? 'Not assigned'}</td>
-                          <td>{record.extendedVisits} over 14 days</td>
-                          <td><button type="button" className="demo-small-button"
-                            onClick={()=>setSelectedCustomerId(record.id)}
-                            aria-label={'Open visitor review for '+record.name+' customer '+record.id}>Open customer record</button></td>
-                        </tr>
-                      )}</tbody>
-                    </table>
-                  </div>}
-                  {filteredExtendedReviews.length>10&&<Pagination
-                    page={pagedExtendedReviews.page}
-                    pages={pagedExtendedReviews.pages}
-                    total={filteredExtendedReviews.length}
-                    label="extended visitor customers"
-                    onChange={setExtendedReviewPage}
-                  />}
-                  <button type="button" className="demo-small-button" onClick={()=>{
-                    setCustomerQuery('');
-                    setCustomerPetFilter('all');
-                    setCustomerAnimalType('all');
-                    setCustomerVisitFilter('extended');
-                    setCustomerSort('extended-desc');
-                    setCustomerPage(0);
-                  }}>Show all extended-visit customers in directory</button>
-                </>}
-                <small>Review list is based on recorded date ranges only. It does not establish current occupancy, approval, noncompliance, or property policy. No notifications are sent.</small>
-              </section>
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId) && <GuestCustomerForm key={'customer-' + selectedCustomerId} customer={customers.find((customer) => customer.id === selectedCustomerId)} sites={sites} onSave={saveCustomer} onClose={() => setSelectedCustomerId(null)}/>}
               {selectedCustomerId !== null && customers.some((customer) => customer.id === selectedCustomerId && !!customer.siteId) &&
                 (() => { const customer = customers.find((c) => c.id === selectedCustomerId)!;
@@ -731,9 +689,9 @@ export function GuestDemo() {
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerAnimalType!=='all'||customerVisitFilter!=='all')&&
                   <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerAnimalType('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
                 {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
-                <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{sortedCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
+                <div className="demo-table-wrap"><table className="demo-table demo-customer-directory-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{sortedCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
-                  return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
+                  return <tr key={customer.id}><td>{customer.name}<button className="demo-small-button demo-mobile-customer-edit" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
                   <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)===0
                     ? 'No registered animals'
                     : (['dogs','cats','horses','cows'] as const)
@@ -741,6 +699,61 @@ export function GuestDemo() {
                       .map((animal)=>(customer.pets?.[animal]??0)+' '+animal).join(' · ')}</td><td>{(customer.guestVisits??[]).filter((visit)=>(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000>14).length} over 14 days</td><td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
                 })}</tbody></table></div>
                 <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
+              </section>
+              <section className="demo-panel demo-visitor-review-panel" aria-label="Extended visitor review list">
+                <div className="demo-section-head"><div>
+                  <h2>Extended visitor review</h2>
+                  <p>{extendedReviewList.length} fictional customer files with visits recorded for more than 14 days. Open the customer record to check details.</p>
+                </div>
+                  <label className="demo-filter" htmlFor="demo-extended-review-search">Find visitor review by customer or space
+                    <input id="demo-extended-review-search" value={extendedReviewQuery} onChange={(event)=>{setExtendedReviewQuery(event.target.value);setExtendedReviewPage(0);}} placeholder="Customer name or space number" />
+                  </label>
+                </div>
+                <label className="demo-filter" htmlFor="demo-extended-review-date-filter">Recorded visitor date window (property date: {todayAtPark})
+                  <select id="demo-extended-review-date-filter" value={extendedReviewDateFilter} onChange={(event)=>{setExtendedReviewDateFilter(event.target.value as typeof extendedReviewDateFilter);setExtendedReviewPage(0);}}>
+                    <option value="all">All recorded extended visits</option>
+                    <option value="upcoming">Upcoming recorded dates</option>
+                    <option value="within">Today is within recorded dates</option>
+                    <option value="ended">Recorded departure date has passed</option>
+                  </select>
+                </label>
+                {extendedReviewDateFilter!=='all'&&<button type="button" className="demo-small-button" onClick={()=>{setExtendedReviewDateFilter('all');setExtendedReviewPage(0);}}>Clear date-window filter</button>}
+                {extendedReviewList.length===0 ? <p>No extended visitor records have been entered yet.</p> : <>
+                  <p>Showing {filteredExtendedReviews.length} of {extendedReviewList.length} extended-visit customer files.</p>
+                  {extendedReviewQuery.trim()&&<button type="button" className="demo-small-button" onClick={()=>{setExtendedReviewQuery('');setExtendedReviewPage(0);}}>Clear review search</button>}
+                  {filteredExtendedReviews.length===0 ? <p>No visitor-review records match the current search and date-window filter.</p> : <div className="demo-table-wrap">
+                    <table className="demo-table demo-visitor-review-table">
+                      <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Recorded date windows</th><th>Review</th></tr></thead>
+                      <tbody>{pagedExtendedReviews.rows.map((record) =>
+                        <tr key={record.id}>
+                          <td>{record.name}</td>
+                          <td>{record.siteId ?? 'Not assigned'}</td>
+                          <td>{record.extendedVisits} over 14 days</td>
+                          <td>Upcoming: {record.dateWindows.upcoming} · Within dates: {record.dateWindows.within} · Ended: {record.dateWindows.ended}</td>
+                          <td><button type="button" className="demo-small-button"
+                            onClick={()=>setSelectedCustomerId(record.id)}
+                            aria-label={'Open visitor review for '+record.name+' customer '+record.id}>Open customer record</button></td>
+                        </tr>
+                      )}</tbody>
+                    </table>
+                  </div>}
+                  {filteredExtendedReviews.length>10&&<Pagination
+                    page={pagedExtendedReviews.page}
+                    pages={pagedExtendedReviews.pages}
+                    total={filteredExtendedReviews.length}
+                    label="extended visitor customers"
+                    onChange={setExtendedReviewPage}
+                  />}
+                  <button type="button" className="demo-small-button" onClick={()=>{
+                    setCustomerQuery('');
+                    setCustomerPetFilter('all');
+                    setCustomerAnimalType('all');
+                    setCustomerVisitFilter('extended');
+                    setCustomerSort('extended-desc');
+                    setCustomerPage(0);
+                  }}>Show all extended-visit customers in directory</button>
+                </>}
+                <small>Date-window categories use expected visitor arrival/departure dates in the property timezone. They do not verify arrival, current presence, checkout, approval, noncompliance or property policy. No notifications are sent.</small>
               </section>
             </>
           )}

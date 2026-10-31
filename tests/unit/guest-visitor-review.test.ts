@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extendedVisitCount, guestExtendedVisitReviewList, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews } from '../../src/lib/guest-visitor-review';
+import { extendedVisitCount, guestExtendedVisitReviewList, paginateGuestVisitorReview, searchGuestExtendedVisitorReviews, extendedVisitorDateWindows, guestExtendedVisitReviewWithWindows } from '../../src/lib/guest-visitor-review';
 
 describe('fictional extended visitor review list', () => {
   const longStay = { name: 'Fictional visitor', arrival: '2026-10-01', departure: '2026-10-16' };
@@ -60,6 +60,34 @@ describe('fictional extended visitor review list', () => {
     expect(searchGuestExtendedVisitorReviews(reviews, '  ')).toEqual(reviews);
     expect(searchGuestExtendedVisitorReviews(reviews, 'not-present')).toEqual([]);
     expect(reviews.map((review) => review.id)).toEqual([1, 2, 3]);
+  });
+
+
+  it('classifies recorded extended visits relative to property day without declaring actual presence', () => {
+    const customer = { id: 33, name: 'Example', siteId: 'RV-08', guestVisits: [
+      { name: 'Past dates', arrival: '2026-10-01', departure: '2026-10-17' },
+      { name: 'Current date range', arrival: '2026-10-20', departure: '2026-11-10' },
+      { name: 'Future dates', arrival: '2026-11-15', departure: '2026-12-01' },
+      { name: 'Exactly 14 days', arrival: '2026-10-20', departure: '2026-11-03' },
+      { name: 'Invalid', arrival: 'not-a-date', departure: '2026-12-02' },
+    ] };
+    expect(extendedVisitorDateWindows(customer, '2026-10-31')).toEqual({ upcoming: 1, within: 1, ended: 1 });
+    expect(extendedVisitorDateWindows(customer, '2026-10-20')).toEqual({ upcoming: 1, within: 1, ended: 1 });
+    expect(extendedVisitorDateWindows(customer, '2026-11-10')).toEqual({ upcoming: 1, within: 1, ended: 1 });
+    expect(extendedVisitorDateWindows(customer, 'invalid')).toEqual({ upcoming: 0, within: 0, ended: 0 });
+    const listed = guestExtendedVisitReviewWithWindows([customer], '2026-10-31');
+    expect(listed).toEqual([{ id: 33, name: 'Example', siteId: 'RV-08', extendedVisits: 3, dateWindows: { upcoming: 1, within: 1, ended: 1 } }]);
+  });
+
+  it('uses inclusive arrival and departure boundaries and excludes 14-day ranges', () => {
+    const customer = { id: 1, name: 'Another', siteId: null, guestVisits: [
+      { name: 'One long stay', arrival: '2026-11-01', departure: '2026-11-16' },
+      { name: 'Fourteen days', arrival: '2026-11-01', departure: '2026-11-15' },
+    ] };
+    expect(extendedVisitorDateWindows(customer, '2026-10-31')).toEqual({ upcoming: 1, within: 0, ended: 0 });
+    expect(extendedVisitorDateWindows(customer, '2026-11-01')).toEqual({ upcoming: 0, within: 1, ended: 0 });
+    expect(extendedVisitorDateWindows(customer, '2026-11-16')).toEqual({ upcoming: 0, within: 1, ended: 0 });
+    expect(extendedVisitorDateWindows(customer, '2026-11-17')).toEqual({ upcoming: 0, within: 0, ended: 1 });
   });
 
 });
