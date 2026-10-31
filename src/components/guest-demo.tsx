@@ -46,6 +46,7 @@ const initialJobs = (): Job[] => [
   { id: 2, title: 'Replace walkway light', location: 'North path', status: 'Open' },
   { id: 3, title: 'Check laundry equipment', location: 'Laundry room', status: 'Done' },
 ];
+const GUEST_INVENTORY_STORAGE_KEY = 'forgeos-guest-inventory-v1';
 const initialStock = (): Stock[] => [
   { name: 'Water fittings', quantity: 12, unit: 'pieces' },
   { name: 'Air filters', quantity: 4, unit: 'pieces' },
@@ -87,6 +88,7 @@ export function GuestDemo() {
   const [plannerReset, setPlannerReset] = useState(0);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
+  const [stockLoaded, setStockLoaded] = useState(false);
   const [newStockName, setNewStockName] = useState('');
   const [newStockQuantity, setNewStockQuantity] = useState('0');
   const [newStockUnit, setNewStockUnit] = useState('pieces');
@@ -98,6 +100,44 @@ export function GuestDemo() {
   const [scanCases, setScanCases] = useState('1');
   const [editingStockName, setEditingStockName] = useState<string | null>(null);
   const [stockEdit, setStockEdit] = useState({name:'',quantity:'0',unit:'',barcode:'',unitsPerCase:'1'});
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(GUEST_INVENTORY_STORAGE_KEY);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length <= 10000) {
+          const valid = parsed.every((item: unknown) => {
+            if (typeof item !== 'object' || item === null) return false;
+            const entry = item as Partial<Stock>;
+            return typeof entry.name === 'string' && entry.name.trim().length > 0 && entry.name.length <= 100 &&
+              typeof entry.unit === 'string' && entry.unit.trim().length > 0 && entry.unit.length <= 40 &&
+              typeof entry.quantity === 'number' && Number.isSafeInteger(entry.quantity) && entry.quantity >= 0 && entry.quantity <= 1000000 &&
+              (entry.barcode === undefined || (typeof entry.barcode === 'string' && (entry.barcode === '' || /^[A-Za-z0-9-]{4,64}$/.test(entry.barcode)))) &&
+              (entry.unitsPerCase === undefined || (typeof entry.unitsPerCase === 'number' && Number.isSafeInteger(entry.unitsPerCase) && entry.unitsPerCase >= 1 && entry.unitsPerCase <= 1000000));
+          });
+          if (valid) {
+            const entries = parsed as Stock[];
+            const names = entries.map((item) => item.name.toLocaleLowerCase());
+            const barcodes = entries.map((item) => item.barcode).filter((barcode): barcode is string => !!barcode);
+            if (new Set(names).size === names.length && new Set(barcodes).size === barcodes.length) {
+              setStock(entries);
+            }
+          }
+        }
+      }
+    } catch {
+      // Storage can be blocked or contain old data; retain fictional samples.
+    }
+    setStockLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!stockLoaded) return;
+    try {
+      window.localStorage.setItem(GUEST_INVENTORY_STORAGE_KEY, JSON.stringify(stock));
+    } catch {
+      // Quota or privacy settings may block local saving; guest demo still works.
+    }
+  }, [stock, stockLoaded]);
   const [readings, setReadings] = useState<Reading[]>([]);
   const [paidRentKeys, setPaidRentKeys] = useState<string[]>([]);
   const [noticeDrafts, setNoticeDrafts] = useState<DemoNoticeDraft[]>([]);
@@ -307,6 +347,7 @@ export function GuestDemo() {
     setPlannerReset((current) => current + 1);
     setJobs(initialJobs());
     setStock(initialStock());
+    try { window.localStorage.removeItem(GUEST_INVENTORY_STORAGE_KEY); } catch { /* Storage may be unavailable. */ }
     setNewStockName('');
     setNewStockQuantity('0');
     setNewStockUnit('pieces');
@@ -593,7 +634,7 @@ export function GuestDemo() {
 
           {tab === 'inventory' && (
             <section className="demo-panel">
-              <div className="demo-section-head"><div><h2><Boxes size={19}/> Inventory & supplies</h2><p>Add your own supplies to this fictional demo stockroom, then practice receiving them. Demo entries are not real company records.</p></div><span className="demo-property-pill">{stock.length} inventory items</span></div>
+              <div className="demo-section-head"><div><h2><Boxes size={19}/> Inventory & supplies</h2><p>Add your own supplies to this fictional demo stockroom, then practice receiving them. Saved on this device only, not in real company records. Reset Demo clears the saved list.</p></div><span className="demo-property-pill">{stock.length} inventory items</span></div>
               <form className="demo-work" onSubmit={(event) => {
                 event.preventDefault();
                 const name = newStockName.trim();
