@@ -87,6 +87,10 @@ export function GuestDemo() {
   const [plannerReset, setPlannerReset] = useState(0);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [stock, setStock] = useState<Stock[]>(initialStock);
+  const [newStockName, setNewStockName] = useState('');
+  const [newStockQuantity, setNewStockQuantity] = useState('0');
+  const [newStockUnit, setNewStockUnit] = useState('pieces');
+  const [stockSearch, setStockSearch] = useState('');
   const [readings, setReadings] = useState<Reading[]>([]);
   const [paidRentKeys, setPaidRentKeys] = useState<string[]>([]);
   const [noticeDrafts, setNoticeDrafts] = useState<DemoNoticeDraft[]>([]);
@@ -296,6 +300,10 @@ export function GuestDemo() {
     setPlannerReset((current) => current + 1);
     setJobs(initialJobs());
     setStock(initialStock());
+    setNewStockName('');
+    setNewStockQuantity('0');
+    setNewStockUnit('pieces');
+    setStockSearch('');
     setReadings([]);
     setPaidRentKeys([]);
     setNoticeDrafts([]);
@@ -572,8 +580,35 @@ export function GuestDemo() {
 
           {tab === 'inventory' && (
             <section className="demo-panel">
-              <div className="demo-section-head"><div><h2><Boxes size={19}/> Inventory & supplies</h2><p>Practice receiving an item into the fictional stockroom.</p></div><span className="demo-property-pill">Sample quantities</span></div>
-              <div className="demo-work-list">{stock.map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock</small></div><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: s.quantity + 1} : s)); setNotice('Added one fictional ' + item.unit + ' to the sample stockroom.');}}>Receive +1</button></article>)}</div>
+              <div className="demo-section-head"><div><h2><Boxes size={19}/> Inventory & supplies</h2><p>Add your own supplies to this fictional demo stockroom, then practice receiving them. Demo entries are not real company records.</p></div><span className="demo-property-pill">{stock.length} inventory items</span></div>
+              <form className="demo-work" onSubmit={(event) => {
+                event.preventDefault();
+                const name = newStockName.trim();
+                const quantity = Number(newStockQuantity);
+                const unit = newStockUnit.trim();
+                if (!name || !unit || !Number.isSafeInteger(quantity) || quantity < 0 || quantity > 1000000) {
+                  setNotice('Enter an item name, a unit, and a whole-number quantity from 0 to 1,000,000.');
+                  return;
+                }
+                if (stock.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                  setNotice('That item already exists. Use Receive +1 on its inventory row.');
+                  return;
+                }
+                setStock((items) => [...items, {name, quantity, unit}]);
+                setNewStockName('');
+                setNewStockQuantity('0');
+                setNotice('Added ' + name + ' to this fictional inventory list.');
+              }}>
+                <div><label htmlFor="demo-stock-name">Item name</label><input id="demo-stock-name" value={newStockName} onChange={(event) => setNewStockName(event.target.value)} placeholder="e.g. Sprinkler heads" maxLength={100} required/></div>
+                <div><label htmlFor="demo-stock-quantity">Starting quantity</label><input id="demo-stock-quantity" type="number" min="0" max="1000000" step="1" value={newStockQuantity} onChange={(event) => setNewStockQuantity(event.target.value)} required/></div>
+                <div><label htmlFor="demo-stock-unit">Unit</label><input id="demo-stock-unit" value={newStockUnit} onChange={(event) => setNewStockUnit(event.target.value)} placeholder="pieces, boxes, gallons" maxLength={40} required/></div>
+                <button type="submit"><Plus size={16}/> Add inventory item</button>
+              </form>
+              <label htmlFor="demo-stock-search">Find inventory item</label>
+              <input id="demo-stock-search" type="search" value={stockSearch} onChange={(event) => setStockSearch(event.target.value)} placeholder="Search your supply list"/>
+              <p className="demo-property-pill">Showing {stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length} of {stock.length} items</p>
+              <div className="demo-work-list">{stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock</small></div><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: s.quantity + 1} : s)); setNotice('Added one fictional ' + item.unit + ' to the sample stockroom.');}}>Receive +1</button></article>)}</div>
+              {stock.length>0&&stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length===0&&<p>No supplies match that search. Clear the search to see the whole inventory list.</p>}
             </section>
           )}
 
