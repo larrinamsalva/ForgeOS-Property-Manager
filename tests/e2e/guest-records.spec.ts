@@ -446,3 +446,35 @@ test('Assigned and Waiting List are separate customer choices and moving between
   await expect(overview.locator('[data-overview-site="RV-15"]')).toContainText('available');
   expect(apiWrites).toEqual([]);
 });
+
+
+test('guest customer directory sorting works with existing records', async ({ page }) => {
+  await page.goto('/demo');
+  const nav = page.getByRole('navigation', { name: 'Guest demo navigation' });
+  await nav.getByRole('button', { name: 'Customers' }).click();
+
+  const table = page.locator('.demo-table');
+  const sort = page.getByLabel('Sort customers');
+  const names = () => table.locator('tbody tr td:first-child').allTextContents();
+
+  await sort.selectOption('name-asc');
+  const ascending = await names();
+  expect(ascending.length).toBeGreaterThan(1);
+  expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+
+  await sort.selectOption('name-desc');
+  const descending = await names();
+  expect(descending).toEqual([...descending].sort((a, b) => b.localeCompare(a, undefined, { sensitivity: 'base' })));
+
+  await sort.selectOption('site-asc');
+  const sites = await table.locator('tbody tr td:nth-child(2)').allTextContents();
+  const assigned = sites.filter((site) => site !== 'Not assigned');
+  expect(assigned).toEqual([...assigned].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
+
+  await sort.selectOption('animals-desc');
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+  await sort.selectOption('extended-desc');
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+  await sort.selectOption('original');
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+});
