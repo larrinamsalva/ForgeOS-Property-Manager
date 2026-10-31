@@ -848,7 +848,13 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
     hasInvalidRequestedQuantity(request.quantity_milli)===(unlinkedQuantityFilter==='invalid'))&&
     (unlinkedDateFilter==='all'||(unlinkedDateFilter==='valid'&&deadline!=='no_valid_date')||
       (unlinkedDateFilter!=='valid'&&deadline===(unlinkedDateFilter==='overdue'?'overdue':unlinkedDateFilter==='today'?'due_today':unlinkedDateFilter==='upcoming'?'upcoming':'no_valid_date')))&&
-    (!unlinkedSearch.trim()||[item?.name,item?.sku,work?.number,request.id,request.needed_on].some(value=>value?.toLowerCase().includes(unlinkedSearch.trim().toLowerCase()))));
+    (!unlinkedSearch.trim()||[item?.name,item?.sku,work?.number,request.id,request.needed_on].some(value=>value?.toLowerCase().includes(unlinkedSearch.trim().toLowerCase()))))
+    .sort((a,b)=>{
+      const priority=(deadline:typeof a.deadline)=>deadline==='overdue'?0:deadline==='due_today'?1:deadline==='upcoming'?2:3;
+      return priority(a.deadline)-priority(b.deadline)||
+        (a.request.needed_on??'').localeCompare(b.request.needed_on??'')||
+        a.request.id.localeCompare(b.request.id);
+    });
   const visibleUnlinkedCancelledHistory=visibleUnlinked.filter(({request})=>
     linkedPurchaseReview(request,data.orders,data.lines,data.summary.purchase_lines,ui.propertyId).cancelledLinkedOrders>0).length;
   const visibleUnlinkedOverdue=visibleUnlinked.filter(({deadline})=>deadline==='overdue').length;
@@ -1023,6 +1029,7 @@ export function PurchasingPanel({ ui }: { ui: OpsUI }) {
               setUnlinkedUrgentOnly(false);
             }}>Clear awaiting-order filters</button>
           </div>}
+        {approvedUnlinked.length>0&&<p className="muted small">Requests are listed overdue first, then needed today, coming up, and missing valid dates. Sorting does not change the underlying records.</p>}
         {approvedUnlinked.length>0&&<p className="muted small" aria-label="Active awaiting-order filters">
           Active awaiting-order filters: {unlinkedQuantityFilter==='all'?'All quantities':unlinkedQuantityFilter==='valid'?'Valid quantities':'Needs quantity correction'}; {unlinkedDateFilter==='valid'?'Valid needed-by dates':unlinkedDateFilter==='overdue'?'Past needed date':unlinkedDateFilter==='today'?'Needed today':unlinkedDateFilter==='upcoming'?'Coming up':unlinkedDateFilter==='invalid'?'No valid needed-by date':'All needed-by dates'}{unlinkedSearch.length>0?'; Search text entered':''}{unlinkedCompleteOnly?'; Valid quantity and date only':''}{unlinkedCancelledOnly?'; Cancelled order history only':''}{unlinkedUrgentOnly?'; Urgent: overdue or needed today':''}.
         </p>}
