@@ -233,6 +233,7 @@ export function GuestCustomerForm({
   const [guestName, setGuestName] = useState('');
   const [guestArrival, setGuestArrival] = useState('');
   const [guestDeparture, setGuestDeparture] = useState('');
+  const [editingVisitIndex, setEditingVisitIndex] = useState<number | null>(null);
   const [error, setError] = useState('');
   // Assigned and Waiting List are separate choices, not an empty option
   // bundled inside the site dropdown.
@@ -490,14 +491,20 @@ export function GuestCustomerForm({
           if(!validName(guestName)||!guestArrival||!guestDeparture||!Number.isFinite(days)||days<0){
             setError('Enter a visitor name and valid arrival/departure dates.');return;
           }
-          edit({guestVisits:[...(draft.guestVisits??[]),{name:guestName.trim(),arrival:guestArrival,departure:guestDeparture}]});
-          setGuestName('');setGuestArrival('');setGuestDeparture('');setError('');
-        }}>Add visitor to customer record</button>
+          const visits=[...(draft.guestVisits??[])];
+          if(editingVisitIndex!==null && visits[editingVisitIndex]) visits[editingVisitIndex]={name:guestName.trim(),arrival:guestArrival,departure:guestDeparture};
+          else visits.push({name:guestName.trim(),arrival:guestArrival,departure:guestDeparture});
+          edit({guestVisits:visits});
+          setGuestName('');setGuestArrival('');setGuestDeparture('');setEditingVisitIndex(null);setError('');
+        }}>{editingVisitIndex===null?'Add visitor to customer record':'Save visitor changes'}</button>
+        {editingVisitIndex!==null&&<button type="button" className="demo-small-button" onClick={()=>{setEditingVisitIndex(null);setGuestName('');setGuestArrival('');setGuestDeparture('');setError('');}}>Cancel visitor edit</button>}
+        <small>Save the customer record below to keep visitor edits in this demo session.</small>
         {(draft.guestVisits??[]).map((visit,index)=>{
           const days=(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000;
           return <div key={index}><strong>{visit.name}</strong> · {visit.arrival} to {visit.departure} · {days} days
             {days>14&&<strong> · Extended stay: manager review</strong>}
-            <button type="button" className="demo-small-button" onClick={()=>edit({guestVisits:(draft.guestVisits??[]).filter((_,i)=>i!==index)})}>Remove visitor</button>
+            <button type="button" className="demo-small-button" onClick={()=>{setEditingVisitIndex(index);setGuestName(visit.name);setGuestArrival(visit.arrival);setGuestDeparture(visit.departure);setError('');}}>Edit visitor</button>
+            <button type="button" className="demo-small-button" onClick={()=>{edit({guestVisits:(draft.guestVisits??[]).filter((_,i)=>i!==index)});if(editingVisitIndex===index){setEditingVisitIndex(null);setGuestName('');setGuestArrival('');setGuestDeparture('');}else if(editingVisitIndex!==null&&editingVisitIndex>index)setEditingVisitIndex(editingVisitIndex-1);}}>Remove visitor</button>
           </div>;
         })}
       </fieldset>
