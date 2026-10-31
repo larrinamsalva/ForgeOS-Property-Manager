@@ -154,3 +154,87 @@
     display: none;
   }
 }
+
+/*
+ * Mobile extended-visitor review cards: avoid the wide horizontal table
+ * keeping links and pagination under adjacent content during scrollIntoView.
+ * Keep native table markup/row semantics for assistive tech and browser tests.
+ */
+@media (max-width: 650px) {
+  .demo-visitor-review-panel {
+    min-width: 0;
+    width: 100%;
+  }
+  .demo-visitor-review-panel .demo-table-wrap {
+    overflow: visible;
+    max-width: 100%;
+    width: 100%;
+    border: 0;
+  }
+  .demo-visitor-review-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+  .demo-visitor-review-table thead {
+    display: block;
+  }
+  .demo-visitor-review-table thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .demo-visitor-review-table thead th {
+    padding: 2px;
+    border: 0;
+  }
+  .demo-visitor-review-table tbody {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px 0;
+  }
+  .demo-visitor-review-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface-2);
+    min-width: 0;
+  }
+  .demo-visitor-review-table tbody tr td {
+    padding: 2px;
+    border: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .demo-visitor-review-table tbody tr td:first-child,
+  .demo-visitor-review-table tbody tr td:nth-child(4),
+  .demo-visitor-review-table tbody tr td:last-child {
+    grid-column: 1 / -1;
+  }
+  .demo-visitor-review-table tbody tr td:first-child {
+    font-weight: 800;
+  }
+  .demo-visitor-review-table tbody tr td:last-child button {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+  }
+  .demo-visitor-review-panel .demo-pagination {
+    position: relative;
+    z-index: 1;
+    margin-block: 10px;
+  }
+  .demo-visitor-review-panel .demo-pagination button,
+  .demo-visitor-review-panel > button {
+    min-height: 44px;
+  }
+}
