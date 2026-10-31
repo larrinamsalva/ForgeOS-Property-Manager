@@ -607,7 +607,7 @@ export function GuestDemo() {
                 <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerVisitFilter!=='all')&&
                   <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
-                {filteredCustomers.length===0&&<p role="status">No customers match these filters. Clear customer filters to show everyone.</p>}
+                {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
                 <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
                   return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
