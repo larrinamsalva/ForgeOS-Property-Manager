@@ -127,9 +127,13 @@ export function GuestSiteEditor({
       setError('Enter a space name and valid nonnegative rates, dimensions and electrical capacity.');
       return;
     }
+    if (customer && draft.status !== 'occupied') {
+      setError('This space has an assigned customer. Move the customer to Waiting List or another vacant space before changing its availability.');
+      return;
+    }
     onSave({
       ...draft, rent, lengthFt, widthFt, amperage,
-      id: site.id, status: site.status, resident: site.resident,
+      id: site.id, status: customer ? 'occupied' : draft.status, resident: customer ? customer.name : '',
       label: draft.label.trim(), section: draft.section.trim(), notes: draft.notes.trim(),
     });
   }
@@ -183,7 +187,15 @@ export function GuestSiteEditor({
         <label htmlFor="demo-space-amps">Electrical service (amps)
           <input id="demo-space-amps" type="number" min="0" max="100000" step="1" value={numberText.amperage} onChange={(e) => editNumber('amperage', e.target.value)}/>
         </label>
-        <label className="demo-record-meta">Current occupancy
+        <label htmlFor="demo-space-status">Space availability
+          <select id="demo-space-status" value={draft.status} onChange={(e) => edit({ status: e.target.value as DemoStatus })} disabled={!!customer}>
+            <option value="available">Available</option>
+            <option value="reserved">Reserved</option>
+            <option value="occupied">Occupied</option>
+          </select>
+        </label>
+        {customer && <p className="demo-record-meta">Assigned to {customer.name}. To make this space available, open the linked customer record and move the customer to Waiting List or another vacant space first.</p>}
+        <label className="demo-record-meta">Saved occupancy
           <output>{site.status} {site.resident ? '· ' + site.resident : ''}</output>
         </label>
       </div>
