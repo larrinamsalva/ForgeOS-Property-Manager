@@ -101,7 +101,10 @@ export function GuestDemo() {
   const [editingStockName, setEditingStockName] = useState<string | null>(null);
   const [stockEdit, setStockEdit] = useState({name:'',quantity:'0',unit:'',barcode:'',unitsPerCase:'1'});
   useEffect(() => {
-    try {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
       const stored = window.localStorage.getItem(GUEST_INVENTORY_STORAGE_KEY);
       if (stored) {
         const parsed: unknown = JSON.parse(stored);
@@ -125,10 +128,12 @@ export function GuestDemo() {
           }
         }
       }
-    } catch {
-      // Storage can be blocked or contain old data; retain fictional samples.
-    }
-    setStockLoaded(true);
+      } catch {
+        // Storage can be blocked or contain old data; retain fictional samples.
+      }
+      if (!cancelled) setStockLoaded(true);
+    });
+    return () => { cancelled = true; };
   }, []);
   useEffect(() => {
     if (!stockLoaded) return;
