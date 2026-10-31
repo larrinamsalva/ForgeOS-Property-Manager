@@ -643,7 +643,7 @@ export function GuestDemo() {
                         </tr>
                       )}</tbody>
                     </table>
-                  </div>
+                  </div>}
                   {filteredExtendedReviews.length>10&&<Pagination
                     page={pagedExtendedReviews.page}
                     pages={pagedExtendedReviews.pages}
