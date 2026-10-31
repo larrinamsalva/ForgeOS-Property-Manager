@@ -67,6 +67,7 @@ export function GuestDemo() {
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
   const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [customerAnimalType, setCustomerAnimalType] = useState<'all' | 'dogs' | 'cats' | 'horses' | 'cows'>('all');
   const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
   const [overviewQuery, setOverviewQuery] = useState('');
   const [overviewStatus, setOverviewStatus] = useState<'all' | Status>('all');
@@ -200,6 +201,7 @@ export function GuestDemo() {
       (Date.parse(visit.departure + 'T00:00:00Z') - Date.parse(visit.arrival + 'T00:00:00Z')) / 86400000 > 14
     ).length;
     return (customerPetFilter === 'all' || (customerPetFilter === 'with' ? petCount > 0 : petCount === 0)) &&
+      (customerAnimalType === 'all' || (c.pets?.[customerAnimalType] ?? 0) > 0) &&
       (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
   });
   const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
@@ -351,6 +353,7 @@ export function GuestDemo() {
     setSiteQuery('');
     setCustomerQuery('');
     setCustomerPetFilter('all');
+    setCustomerAnimalType('all');
     setCustomerVisitFilter('all');
     setOverviewQuery('');
     setOverviewStatus('all');
@@ -590,10 +593,24 @@ export function GuestDemo() {
                 </div>
                 <div className="demo-record-grid">
                   <label htmlFor="demo-customer-pet-filter">Registered animals
-                    <select id="demo-customer-pet-filter" value={customerPetFilter} onChange={(event)=>{setCustomerPetFilter(event.target.value as typeof customerPetFilter);setCustomerPage(0);}}>
+                    <select id="demo-customer-pet-filter" value={customerPetFilter} onChange={(event)=>{const next=event.target.value as typeof customerPetFilter;setCustomerPetFilter(next);if(next==='without')setCustomerAnimalType('all');setCustomerPage(0);}}>
                       <option value="all">All pet records</option>
                       <option value="with">Customers with animals</option>
                       <option value="without">Customers without animals</option>
+                    </select>
+                  </label>
+                  <label htmlFor="demo-customer-animal-type">Specific animal type
+                    <select id="demo-customer-animal-type" value={customerAnimalType} onChange={(event)=>{
+                      const next=event.target.value as typeof customerAnimalType;
+                      setCustomerAnimalType(next);
+                      if(next!=='all')setCustomerPetFilter('with');
+                      setCustomerPage(0);
+                    }}>
+                      <option value="all">All animal types</option>
+                      <option value="dogs">Has dogs</option>
+                      <option value="cats">Has cats</option>
+                      <option value="horses">Has horses</option>
+                      <option value="cows">Has cows</option>
                     </select>
                   </label>
                   <label htmlFor="demo-customer-visitor-filter">Extended visitor records
@@ -605,13 +622,17 @@ export function GuestDemo() {
                   </label>
                 </div>
                 <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
-                {(customerQuery.length>0||customerPetFilter!=='all'||customerVisitFilter!=='all')&&
-                  <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
+                {(customerQuery.length>0||customerPetFilter!=='all'||customerAnimalType!=='all'||customerVisitFilter!=='all')&&
+                  <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerAnimalType('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
                 {filteredCustomers.length===0&&<p>No customers match these filters. Clear customer filters to show everyone.</p>}
                 <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
                   return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
-                  <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)} animals</td><td>{(customer.guestVisits??[]).filter((visit)=>(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000>14).length} over 14 days</td><td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
+                  <td>{Object.values(customer.pets??{}).reduce((sum,count)=>sum+count,0)===0
+                    ? 'No registered animals'
+                    : (['dogs','cats','horses','cows'] as const)
+                      .filter((animal)=>(customer.pets?.[animal]??0)>0)
+                      .map((animal)=>(customer.pets?.[animal]??0)+' '+animal).join(' · ')}</td><td>{(customer.guestVisits??[]).filter((visit)=>(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000>14).length} over 14 days</td><td><button className="demo-small-button" type="button" aria-label={'Edit customer ' + customer.name} onClick={() => setSelectedCustomerId(customer.id)}>View / edit</button></td></tr>;
                 })}</tbody></table></div>
                 <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
               </section>
