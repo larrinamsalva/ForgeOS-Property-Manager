@@ -28,3 +28,20 @@ export function guestExtendedVisitReviewList(customers: readonly VisitorCustomer
       a.id - b.id
     );
 }
+
+export const GUEST_VISITOR_REVIEW_PAGE_SIZE = 10;
+
+export function paginateGuestVisitorReview<T>(
+  records: readonly T[],
+  requestedPage: number,
+) {
+  const pages = Math.max(1, Math.ceil(records.length / GUEST_VISITOR_REVIEW_PAGE_SIZE));
+  const page = Number.isSafeInteger(requestedPage)
+    ? Math.max(0, Math.min(requestedPage, pages - 1))
+    : 0;
+  return {
+    page,
+    pages,
+    rows: records.slice(page * GUEST_VISITOR_REVIEW_PAGE_SIZE, (page + 1) * GUEST_VISITOR_REVIEW_PAGE_SIZE),
+  };
+}

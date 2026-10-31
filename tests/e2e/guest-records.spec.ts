@@ -549,3 +549,34 @@ test('extended visitor review list opens flagged fictional customer records', as
   await expect(page.locator('#demo-customer-visitor-filter')).toHaveValue('extended');
   await expect(page.getByRole('row').filter({ hasText: 'Example Long Stay Customer' })).toHaveCount(2);
 });
+
+
+test('extended visitor review paginates all flagged customer records', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('navigation', { name: 'Guest demo navigation' }).getByRole('button', { name: 'Customers' }).click();
+  const editor = page.getByRole('region', { name: 'Add customer information' });
+  for (let i = 1; i <= 11; i++) {
+    await editor.getByLabel('Fictional customer name').fill('Review Example ' + String(i).padStart(2, '0'));
+    await editor.getByRole('radio', { name: 'Waiting List' }).check();
+    await editor.getByLabel('Visitor name').fill('Sample Visitor');
+    await editor.getByLabel('Visitor arrival').fill('2026-10-01');
+    await editor.getByLabel('Expected departure').fill('2026-10-16');
+    await editor.getByRole('button', { name: 'Add visitor to customer record' }).click();
+    await editor.getByRole('button', { name: 'Add example customer' }).click();
+  }
+
+  const review = page.getByRole('region', { name: 'Extended visitor review list' });
+  await expect(review).toContainText('11 fictional customer files');
+  await expect(review.getByRole('row')).toHaveCount(11); // header + first ten records
+  await expect(review.getByText('Review Example 11')).toHaveCount(0);
+  const pager = review.locator('.demo-pagination');
+  await expect(pager).toContainText('Page 1 of 2');
+  await pager.getByRole('button', { name: 'Next' }).click();
+  await expect(pager).toContainText('Page 2 of 2');
+  await expect(review.getByRole('row')).toHaveCount(2); // header + eleventh record
+  await expect(review.getByText('Review Example 11')).toBeVisible();
+  await review.getByRole('button', { name: /Open visitor review for Review Example 11/ }).click();
+  await expect(page.getByRole('region', { name: 'Edit customer Review Example 11' })).toBeVisible();
+  await pager.getByRole('button', { name: 'Previous' }).click();
+  await expect(pager).toContainText('Page 1 of 2');
+});
