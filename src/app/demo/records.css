@@ -133,25 +133,24 @@
   font-size:11px;line-height:1.45;color:var(--muted);
 }
 
-/* Keep the customer record action tappable when wide directory rows scroll on phones. */
+/* The name-column action stays in reach on narrow devices without side-scrolling. */
+.demo-mobile-customer-edit { display: none; }
 @media (max-width: 650px) {
+  .demo-customer-directory-table td:first-child {
+    min-width: 165px;
+    overflow-wrap: anywhere;
+  }
+  .demo-customer-directory-table .demo-mobile-customer-edit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 9px;
+    width: 100%;
+    white-space: normal;
+  }
   .demo-customer-directory-table th:last-child,
   .demo-customer-directory-table td:last-child {
-    position: sticky;
-    right: 0;
-    background: var(--surface);
-    box-shadow: -3px 0 7px #16233a1c;
-  }
-  .demo-customer-directory-table th:last-child {
-    background: var(--surface-2);
-    z-index: 2;
-  }
-  .demo-customer-directory-table td:last-child {
-    z-index: 1;
-  }
-  .demo-customer-directory-table td:last-child button {
-    min-height: 44px;
-    white-space: nowrap;
-    touch-action: manipulation;
+    display: none;
   }
 }
