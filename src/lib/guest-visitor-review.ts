@@ -57,3 +57,32 @@ export function searchGuestExtendedVisitorReviews<T extends { name: string; site
     (record.name + ' ' + (record.siteId ?? '')).toLocaleLowerCase().includes(normalized)
   );
 }
+
+/**
+ * Classify recorded extended-visit date windows in the property's calendar.
+ * These are expected date ranges, never proof of arrival, presence, or approval.
+ */
+export function extendedVisitorDateWindows(customer: VisitorCustomer, today: string) {
+  const counts = { upcoming: 0, within: 0, ended: 0 };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return counts;
+  const todayMs = Date.parse(today + 'T00:00:00Z');
+  if (!Number.isFinite(todayMs)) return counts;
+  for (const visit of customer.guestVisits ?? []) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(visit.arrival) || !/^\d{4}-\d{2}-\d{2}$/.test(visit.departure)) continue;
+    const start = Date.parse(visit.arrival + 'T00:00:00Z');
+    const end = Date.parse(visit.departure + 'T00:00:00Z');
+    if (!Number.isFinite(start) || !Number.isFinite(end) || (end - start) / 86400000 <= 14) continue;
+    if (todayMs < start) counts.upcoming++;
+    else if (todayMs > end) counts.ended++;
+    else counts.within++;
+  }
+  return counts;
+}
+
+export function guestExtendedVisitReviewWithWindows(customers: readonly VisitorCustomer[], today: string) {
+  const source = new Map(customers.map((customer) => [customer.id, customer]));
+  return guestExtendedVisitReviewList(customers).map((record) => ({
+    ...record,
+    dateWindows: extendedVisitorDateWindows(source.get(record.id)!, today),
+  }));
+}
