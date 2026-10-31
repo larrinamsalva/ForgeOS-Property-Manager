@@ -18,7 +18,7 @@ type Tab = 'overview' | 'sites' | 'layout' | 'tenants' | 'meters' | 'billing' | 
 type Status = 'occupied' | 'available' | 'reserved';
 type Site = DemoSite;
 type Job = { id: number; title: string; location: string; status: 'Open' | 'Done' };
-type Stock = { name: string; quantity: number; unit: string };
+type Stock = { name: string; quantity: number; unit: string; barcode?: string; unitsPerCase?: number };
 type Reading = DemoMeterRecord;
 
 const menu = [
@@ -91,6 +91,11 @@ export function GuestDemo() {
   const [newStockQuantity, setNewStockQuantity] = useState('0');
   const [newStockUnit, setNewStockUnit] = useState('pieces');
   const [stockSearch, setStockSearch] = useState('');
+  const [newStockBarcode, setNewStockBarcode] = useState('');
+  const [newStockCaseSize, setNewStockCaseSize] = useState('1');
+  const [scanBarcode, setScanBarcode] = useState('');
+  const [scanAction, setScanAction] = useState<'receive' | 'use'>('receive');
+  const [scanCases, setScanCases] = useState('1');
   const [readings, setReadings] = useState<Reading[]>([]);
   const [paidRentKeys, setPaidRentKeys] = useState<string[]>([]);
   const [noticeDrafts, setNoticeDrafts] = useState<DemoNoticeDraft[]>([]);
@@ -304,6 +309,11 @@ export function GuestDemo() {
     setNewStockQuantity('0');
     setNewStockUnit('pieces');
     setStockSearch('');
+    setNewStockBarcode('');
+    setNewStockCaseSize('1');
+    setScanBarcode('');
+    setScanAction('receive');
+    setScanCases('1');
     setReadings([]);
     setPaidRentKeys([]);
     setNoticeDrafts([]);
@@ -586,28 +596,56 @@ export function GuestDemo() {
                 const name = newStockName.trim();
                 const quantity = Number(newStockQuantity);
                 const unit = newStockUnit.trim();
-                if (!name || !unit || !Number.isSafeInteger(quantity) || quantity < 0 || quantity > 1000000) {
-                  setNotice('Enter an item name, a unit, and a whole-number quantity from 0 to 1,000,000.');
+                const barcode = newStockBarcode.trim();
+                const unitsPerCase = Number(newStockCaseSize);
+                if (!name || !unit || !Number.isSafeInteger(quantity) || quantity < 0 || quantity > 1000000 || !Number.isSafeInteger(unitsPerCase) || unitsPerCase < 1 || unitsPerCase > 1000000 || (barcode.length>0 && !/^[A-Za-z0-9-]{4,64}$/.test(barcode))) {
+                  setNotice('Enter a name, unit, quantity from 0 to 1,000,000, valid units per case, and an optional barcode of 4–64 letters, digits or hyphens.');
                   return;
                 }
                 if (stock.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
                   setNotice('That item already exists. Use Receive +1 on its inventory row.');
                   return;
                 }
-                setStock((items) => [...items, {name, quantity, unit}]);
+                if (barcode && stock.some((item) => item.barcode === barcode)) {setNotice('This barcode is already assigned to another inventory item.'); return;}
+                setStock((items) => [...items, {name, quantity, unit, barcode, unitsPerCase}]);
                 setNewStockName('');
                 setNewStockQuantity('0');
+                setNewStockBarcode('');
+                setNewStockCaseSize('1');
                 setNotice('Added ' + name + ' to this fictional inventory list.');
               }}>
                 <div><label htmlFor="demo-stock-name">Item name</label><input id="demo-stock-name" value={newStockName} onChange={(event) => setNewStockName(event.target.value)} placeholder="e.g. Sprinkler heads" maxLength={100} required/></div>
                 <div><label htmlFor="demo-stock-quantity">Starting quantity</label><input id="demo-stock-quantity" type="number" min="0" max="1000000" step="1" value={newStockQuantity} onChange={(event) => setNewStockQuantity(event.target.value)} required/></div>
                 <div><label htmlFor="demo-stock-unit">Unit</label><input id="demo-stock-unit" value={newStockUnit} onChange={(event) => setNewStockUnit(event.target.value)} placeholder="pieces, boxes, gallons" maxLength={40} required/></div>
+                <div><label htmlFor="demo-stock-barcode">Product barcode (optional)</label><input id="demo-stock-barcode" value={newStockBarcode} onChange={(event)=>setNewStockBarcode(event.target.value)} placeholder="Scan here or type barcode" maxLength={64}/></div>
+                <div><label htmlFor="demo-stock-case-size">Units per case</label><input id="demo-stock-case-size" type="number" min="1" max="1000000" step="1" value={newStockCaseSize} onChange={(event)=>setNewStockCaseSize(event.target.value)} required/></div>
                 <button type="submit"><Plus size={16}/> Add inventory item</button>
+              </form>
+              <form className="demo-work" onSubmit={(event)=>{
+                event.preventDefault();
+                const code=scanBarcode.trim();
+                const cases=Number(scanCases);
+                const item=stock.find((entry)=>entry.barcode===code && code.length>0);
+                if(!item){setNotice('Barcode not found. Add the product and barcode to inventory first.');return;}
+                const perCase=item.unitsPerCase??1;
+                const change=cases*perCase;
+                if(!Number.isSafeInteger(cases)||cases<1||cases>1000000||!Number.isSafeInteger(change)||change>1000000){setNotice('Enter a valid whole-number case count.');return;}
+                if(scanAction==='use'&&change>item.quantity){setNotice('Not enough stock for that many cases of '+item.name+'.');return;}
+                if(scanAction==='receive'&&item.quantity+change>1000000){setNotice('Receiving those cases exceeds the demo inventory limit.');return;}
+                setStock((items)=>items.map((entry)=>entry.name===item.name?{...entry,quantity:entry.quantity+(scanAction==='receive'?change:-change)}:entry));
+                setNotice((scanAction==='receive'?'Received ':'Used ')+cases+' case(s) of '+item.name+' ('+change+' '+item.unit+').');
+                setScanBarcode('');
+              }}>
+                <div><strong>Barcode scanner — receive or use stock</strong><p>Scan with a USB/Bluetooth scanner or type the barcode, then press Enter. Each case changes stock by its saved units-per-case value.</p></div>
+                <div><label htmlFor="demo-scan-code">Scan product barcode</label><input id="demo-scan-code" value={scanBarcode} onChange={(event)=>setScanBarcode(event.target.value)} placeholder="Scan or type barcode" required/></div>
+                <div><label htmlFor="demo-scan-action">Stock movement</label><select id="demo-scan-action" value={scanAction} onChange={(event)=>setScanAction(event.target.value as 'receive'|'use')}><option value="receive">Receive cases (+)</option><option value="use">Use cases (−)</option></select></div>
+                <div><label htmlFor="demo-scan-cases">Number of cases</label><input id="demo-scan-cases" type="number" min="1" step="1" max="1000000" value={scanCases} onChange={(event)=>setScanCases(event.target.value)} required/></div>
+                <button type="submit">Update inventory by barcode</button>
               </form>
               <label htmlFor="demo-stock-search">Find inventory item</label>
               <input id="demo-stock-search" type="search" value={stockSearch} onChange={(event) => setStockSearch(event.target.value)} placeholder="Search your supply list"/>
               <p className="demo-property-pill">Showing {stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length} of {stock.length} items</p>
-              <div className="demo-work-list">{stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock</small></div><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.min(1000000, s.quantity + 1)} : s)); setNotice('Received one fictional ' + item.unit + ' into the sample stockroom.');}} disabled={item.quantity>=1000000}>Receive +1</button><button type="button" disabled={item.quantity===0} onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.max(0, s.quantity - 1)} : s)); setNotice('Used one fictional ' + item.unit + ' from the sample stockroom.');}}>Use −1</button>{!initialStock().some((sample) => sample.name === item.name) && <button type="button" aria-label={'Remove custom inventory item ' + item.name} onClick={() => {setStock((items) => items.filter((entry) => entry.name !== item.name)); setNotice('Removed the fictional inventory item ' + item.name + '.');}}>Remove item</button>}</article>)}</div>
+              <div className="demo-work-list">{stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock · {Math.floor(item.quantity/(item.unitsPerCase??1))} full cases ({item.unitsPerCase??1} {item.unit}/case){item.barcode?' · Barcode: '+item.barcode:''}</small></div><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.min(1000000, s.quantity + 1)} : s)); setNotice('Received one fictional ' + item.unit + ' into the sample stockroom.');}} disabled={item.quantity>=1000000}>Receive +1</button><button type="button" disabled={item.quantity===0} onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.max(0, s.quantity - 1)} : s)); setNotice('Used one fictional ' + item.unit + ' from the sample stockroom.');}}>Use −1</button>{!initialStock().some((sample) => sample.name === item.name) && <button type="button" aria-label={'Remove custom inventory item ' + item.name} onClick={() => {setStock((items) => items.filter((entry) => entry.name !== item.name)); setNotice('Removed the fictional inventory item ' + item.name + '.');}}>Remove item</button>}</article>)}</div>
               {stock.length>0&&stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length===0&&<p>No supplies match that search. Clear the search to see the whole inventory list.</p>}
             </section>
           )}
