@@ -548,7 +548,7 @@ test('extended visitor review list opens flagged fictional customer records', as
   const reviewSearch = review.getByLabel('Find visitor review by customer or space');
   await reviewSearch.fill('no-such-customer');
   await expect(review).toContainText('Showing 0 of 1 extended-visit customer files.');
-  await expect(review).toContainText('No customer or space matches this visitor-review search.');
+  await expect(review).toContainText('No visitor-review records match the current search and date-window filter.');
   await expect(review.getByRole('row')).toHaveCount(0);
   await review.getByRole('button', { name: 'Clear review search' }).click();
   await expect(reviewSearch).toHaveValue('');
@@ -590,4 +590,32 @@ test('extended visitor review paginates all flagged customer records', async ({ 
   await expect(page.getByRole('region', { name: 'Edit customer Review Example 11' })).toBeVisible();
   await pager.getByRole('button', { name: 'Previous' }).click();
   await expect(pager).toContainText('Page 1 of 2');
+});
+
+
+test('extended visitor review filters recorded visitor date windows', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('navigation', { name: 'Guest demo navigation' }).getByRole('button', { name: 'Customers' }).click();
+  const review = page.getByRole('region', { name: 'Extended visitor review list' });
+  const editor = page.getByRole('region', { name: 'Add customer information' });
+  // Dates comfortably in the future to avoid timezone-edge test flakiness.
+  const arrival = new Date(Date.now() + 30 * 86400000);
+  const departure = new Date(Date.now() + 46 * 86400000);
+  await editor.getByLabel('Fictional customer name').fill('Example Upcoming Guest');
+  await editor.getByRole('radio', { name: 'Waiting List' }).check();
+  await editor.getByLabel('Visitor name').fill('Example Future Visitor');
+  await editor.getByLabel('Visitor arrival').fill(arrival.toISOString().slice(0, 10));
+  await editor.getByLabel('Expected departure').fill(departure.toISOString().slice(0, 10));
+  await editor.getByRole('button', { name: 'Add visitor to customer record' }).click();
+  await editor.getByRole('button', { name: 'Add example customer' }).click();
+
+  await expect(review).toContainText('Upcoming: 1');
+  const filter = review.locator('#demo-extended-review-date-filter');
+  await filter.selectOption('upcoming');
+  await expect(review.getByRole('row').filter({ hasText: 'Example Upcoming Guest' })).toHaveCount(1);
+  await filter.selectOption('ended');
+  await expect(review.getByText('No visitor-review records match the current search and date-window filter.')).toBeVisible();
+  await review.getByRole('button', { name: 'Clear date-window filter' }).click();
+  await expect(filter).toHaveValue('all');
+  await expect(review.getByRole('row').filter({ hasText: 'Example Upcoming Guest' })).toHaveCount(1);
 });
