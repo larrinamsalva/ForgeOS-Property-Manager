@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extendedVisitCount, guestExtendedVisitReviewList } from '../../src/lib/guest-visitor-review';
+import { extendedVisitCount, guestExtendedVisitReviewList, paginateGuestVisitorReview } from '../../src/lib/guest-visitor-review';
 
 describe('fictional extended visitor review list', () => {
   const longStay = { name: 'Fictional visitor', arrival: '2026-10-01', departure: '2026-10-16' };
@@ -33,4 +33,20 @@ describe('fictional extended visitor review list', () => {
     expect(guestExtendedVisitReviewList([])).toEqual([]);
     expect(guestExtendedVisitReviewList([{ id: 1, name: 'Example', siteId: null }])).toEqual([]);
   });
+
+  it('paginates every flagged customer including the 11th record and clamps stale pages', () => {
+    const entries = Array.from({ length: 23 }, (_, i) => ({ id: i + 1 }));
+    const first = paginateGuestVisitorReview(entries, 0);
+    expect(first.pages).toBe(3);
+    expect(first.page).toBe(0);
+    expect(first.rows.map((entry) => entry.id)).toEqual([1,2,3,4,5,6,7,8,9,10]);
+    const second = paginateGuestVisitorReview(entries, 1);
+    expect(second.rows.map((entry) => entry.id)).toEqual([11,12,13,14,15,16,17,18,19,20]);
+    const last = paginateGuestVisitorReview(entries, 200);
+    expect(last.page).toBe(2);
+    expect(last.rows.map((entry) => entry.id)).toEqual([21,22,23]);
+    expect(paginateGuestVisitorReview(entries.slice(0, 1), 2)).toMatchObject({ page: 0, pages: 1 });
+    expect(paginateGuestVisitorReview([], 15)).toMatchObject({ page: 0, pages: 1, rows: [] });
+  });
+
 });
