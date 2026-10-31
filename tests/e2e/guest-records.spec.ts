@@ -504,3 +504,21 @@ test('guest directory CSV downloads only matching fictional customers in selecte
   await page.getByLabel('Search', { exact: true }).fill('no-such-customer');
   await expect(button).toBeDisabled();
 });
+
+
+test('guest customer snapshot follows directory search and shows an empty result safely', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('navigation', { name: 'Guest demo navigation' }).getByRole('button', { name: 'Customers' }).click();
+  const snapshot = page.getByRole('region', { name: 'Filtered customer snapshot' });
+  await expect(snapshot).toContainText('0 of 14 matching customers');
+  await expect(snapshot).toContainText('0 stays over 14 days across 0 matching customers');
+
+  await page.getByLabel('Search', { exact: true }).fill('Example Resident 01');
+  await expect(snapshot).toContainText('0 of 1 matching customers');
+
+  await page.getByLabel('Search', { exact: true }).fill('no-matching-customer');
+  await expect(snapshot).toContainText('0 of 0 matching customers');
+  await expect(page.getByText('No customers match these filters. Clear customer filters to show everyone.')).toBeVisible();
+  // Summary and empty message must not compete with customer save announcements.
+  await expect(page.getByRole('status')).toHaveCount(0);
+});

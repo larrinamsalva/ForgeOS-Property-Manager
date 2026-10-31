@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createGuestCustomerDirectoryCsv } from '@/lib/guest-customer-directory-csv';
+import { summarizeGuestCustomers } from '@/lib/guest-customer-summary';
 import { GuestPropertyPlanner } from '@/components/guest-property-planner';
 import { GuestSiteEditor, GuestCustomerForm, makeDemoSite, makeDemoCustomer, designationLabel, type DemoSite, type DemoCustomer } from '@/components/guest-record-editors';
 import { GuestSiteMedia, validateDemoPhotos, type DemoSitePhoto, type DemoVehicle, type PhotoCategory } from '@/components/guest-site-media';
@@ -206,6 +207,7 @@ export function GuestDemo() {
       (customerAnimalType === 'all' || (c.pets?.[customerAnimalType] ?? 0) > 0) &&
       (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
   });
+  const customerSummary = summarizeGuestCustomers(filteredCustomers);
   const sortedCustomers = customerSort === 'original' ? filteredCustomers : [...filteredCustomers].sort((a, b) => {
     const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) || a.id - b.id;
     if (customerSort === 'name-asc') return byName;
@@ -665,6 +667,12 @@ export function GuestDemo() {
                   </label>
                 </div>
                 <p className="demo-record-meta">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
+                <section aria-label="Filtered customer snapshot" className="demo-record-grid">
+                  <div><strong>Customers with animals</strong><p>{customerSummary.customersWithAnimals} of {customerSummary.customers} matching customers</p></div>
+                  <div><strong>Registered animal totals</strong><p>Dogs: {customerSummary.dogs} · Cats: {customerSummary.cats} · Horses: {customerSummary.horses} · Cows: {customerSummary.cows}</p></div>
+                  <div><strong>Extended visitor records</strong><p>{customerSummary.extendedVisitorRecords} stays over 14 days across {customerSummary.customersWithExtendedVisits} matching customers</p></div>
+                </section>
+                <small>Snapshot covers all matching fictional customers, not just the current page. Visit counts reflect recorded stays, not approvals or current on-site presence.</small>
                 <button type="button" className="demo-small-button" disabled={sortedCustomers.length===0} onClick={downloadCustomerDirectoryCsv}>Download filtered customers CSV</button>
                 <small>Fictional demo records only · exports all matching customers in the selected sort order, not only this page. Includes animal and visitor counts; excludes contacts and private notes.</small>
                 {(customerQuery.length>0||customerPetFilter!=='all'||customerAnimalType!=='all'||customerVisitFilter!=='all')&&
