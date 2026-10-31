@@ -700,7 +700,7 @@ export function GuestDemo() {
                 })}</tbody></table></div>
                 <Pagination page={visibleCustomerPage} pages={customerPages} total={filteredCustomers.length} label="customers" onChange={setCustomerPage}/>
               </section>
-              <section className="demo-panel" aria-label="Extended visitor review list">
+              <section className="demo-panel demo-visitor-review-panel" aria-label="Extended visitor review list">
                 <div className="demo-section-head"><div>
                   <h2>Extended visitor review</h2>
                   <p>{extendedReviewList.length} fictional customer files with visits recorded for more than 14 days. Open the customer record to check details.</p>
@@ -722,7 +722,7 @@ export function GuestDemo() {
                   <p>Showing {filteredExtendedReviews.length} of {extendedReviewList.length} extended-visit customer files.</p>
                   {extendedReviewQuery.trim()&&<button type="button" className="demo-small-button" onClick={()=>{setExtendedReviewQuery('');setExtendedReviewPage(0);}}>Clear review search</button>}
                   {filteredExtendedReviews.length===0 ? <p>No visitor-review records match the current search and date-window filter.</p> : <div className="demo-table-wrap">
-                    <table className="demo-table">
+                    <table className="demo-table demo-visitor-review-table">
                       <thead><tr><th>Customer</th><th>Space</th><th>Extended visits</th><th>Recorded date windows</th><th>Review</th></tr></thead>
                       <tbody>{pagedExtendedReviews.rows.map((record) =>
                         <tr key={record.id}>
