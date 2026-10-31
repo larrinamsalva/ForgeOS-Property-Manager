@@ -66,6 +66,8 @@ export function GuestDemo() {
   const [customerPage, setCustomerPage] = useState(0);
   const [siteQuery, setSiteQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
+  const [customerPetFilter, setCustomerPetFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [customerVisitFilter, setCustomerVisitFilter] = useState<'all' | 'extended' | 'none'>('all');
   const [overviewQuery, setOverviewQuery] = useState('');
   const [overviewStatus, setOverviewStatus] = useState<'all' | Status>('all');
   const [overviewPage, setOverviewPage] = useState(0);
@@ -191,7 +193,15 @@ export function GuestDemo() {
   });
   const overviewPages = Math.max(1, Math.ceil(overviewRows.length / 25));
   const visibleOverviewPage = Math.min(overviewPage, overviewPages - 1);
-  const filteredCustomers = customers.filter((c) => (c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim()));
+  const filteredCustomers = customers.filter((c) => {
+    if (!(c.name + ' ' + (c.siteId ?? '')).toLowerCase().includes(customerQuery.toLowerCase().trim())) return false;
+    const petCount = Object.values(c.pets ?? {}).reduce((total, count) => total + count, 0);
+    const extendedVisits = (c.guestVisits ?? []).filter((visit) =>
+      (Date.parse(visit.departure + 'T00:00:00Z') - Date.parse(visit.arrival + 'T00:00:00Z')) / 86400000 > 14
+    ).length;
+    return (customerPetFilter === 'all' || (customerPetFilter === 'with' ? petCount > 0 : petCount === 0)) &&
+      (customerVisitFilter === 'all' || (customerVisitFilter === 'extended' ? extendedVisits > 0 : extendedVisits === 0));
+  });
   const customerPages = Math.max(1, Math.ceil(filteredCustomers.length / 50));
   const visibleCustomerPage = Math.min(customerPage, customerPages - 1);
   function openSpaceRecord(siteId: string) {
@@ -340,6 +350,8 @@ export function GuestDemo() {
     setCustomerPage(0);
     setSiteQuery('');
     setCustomerQuery('');
+    setCustomerPetFilter('all');
+    setCustomerVisitFilter('all');
     setOverviewQuery('');
     setOverviewStatus('all');
     setOverviewPage(0);
@@ -576,6 +588,26 @@ export function GuestDemo() {
                     <input id="demo-customer-search" placeholder="Name or site" value={customerQuery} onChange={(e) => {setCustomerQuery(e.target.value); setCustomerPage(0);}}/>
                   </label>
                 </div>
+                <div className="demo-record-grid">
+                  <label htmlFor="demo-customer-pet-filter">Registered animals
+                    <select id="demo-customer-pet-filter" value={customerPetFilter} onChange={(event)=>{setCustomerPetFilter(event.target.value as typeof customerPetFilter);setCustomerPage(0);}}>
+                      <option value="all">All pet records</option>
+                      <option value="with">Customers with animals</option>
+                      <option value="without">Customers without animals</option>
+                    </select>
+                  </label>
+                  <label htmlFor="demo-customer-visitor-filter">Extended visitor records
+                    <select id="demo-customer-visitor-filter" value={customerVisitFilter} onChange={(event)=>{setCustomerVisitFilter(event.target.value as typeof customerVisitFilter);setCustomerPage(0);}}>
+                      <option value="all">All visitor records</option>
+                      <option value="extended">With visits over 14 days</option>
+                      <option value="none">No visits over 14 days</option>
+                    </select>
+                  </label>
+                </div>
+                <p className="demo-record-meta" role="status">Showing {filteredCustomers.length} of {customers.length} customer records.</p>
+                {(customerQuery.length>0||customerPetFilter!=='all'||customerVisitFilter!=='all')&&
+                  <button type="button" className="demo-small-button" onClick={()=>{setCustomerQuery('');setCustomerPetFilter('all');setCustomerVisitFilter('all');setCustomerPage(0);}}>Clear customer filters</button>}
+                {filteredCustomers.length===0&&<p role="status">No customers match these filters. Clear customer filters to show everyone.</p>}
                 <div className="demo-table-wrap"><table className="demo-table"><thead><tr><th>Customer</th><th>Site</th><th>Monthly rent</th><th>Occupancy</th><th>Pets</th><th>Extended visitors</th><th>Record</th></tr></thead><tbody>{filteredCustomers.slice(visibleCustomerPage * 50, visibleCustomerPage * 50 + 50).map((customer) => {
                   const site = sites.find((s) => s.id === customer.siteId);
                   return <tr key={customer.id}><td>{customer.name}</td><td>{customer.siteId ?? 'Not assigned'}</td><td>{site ? money(site.rent) : '—'}</td><td><span className={'demo-status ' + (site ? 'occupied' : 'reserved')}>{site ? 'Current resident' : 'Waiting / past guest'}</span></td>
