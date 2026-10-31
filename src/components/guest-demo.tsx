@@ -96,6 +96,8 @@ export function GuestDemo() {
   const [scanBarcode, setScanBarcode] = useState('');
   const [scanAction, setScanAction] = useState<'receive' | 'use'>('receive');
   const [scanCases, setScanCases] = useState('1');
+  const [editingStockName, setEditingStockName] = useState<string | null>(null);
+  const [stockEdit, setStockEdit] = useState({name:'',quantity:'0',unit:'',barcode:'',unitsPerCase:'1'});
   const [readings, setReadings] = useState<Reading[]>([]);
   const [paidRentKeys, setPaidRentKeys] = useState<string[]>([]);
   const [noticeDrafts, setNoticeDrafts] = useState<DemoNoticeDraft[]>([]);
@@ -314,6 +316,7 @@ export function GuestDemo() {
     setScanBarcode('');
     setScanAction('receive');
     setScanCases('1');
+    setEditingStockName(null);
     setReadings([]);
     setPaidRentKeys([]);
     setNoticeDrafts([]);
@@ -642,10 +645,43 @@ export function GuestDemo() {
                 <div><label htmlFor="demo-scan-cases">Number of cases</label><input id="demo-scan-cases" type="number" min="1" step="1" max="1000000" value={scanCases} onChange={(event)=>setScanCases(event.target.value)} required/></div>
                 <button type="submit">Update inventory by barcode</button>
               </form>
+              {editingStockName!==null && <form className="demo-work" aria-label="Edit inventory item" onSubmit={(event)=>{
+                event.preventDefault();
+                const current=stock.find((entry)=>entry.name===editingStockName);
+                const name=stockEdit.name.trim();
+                const unit=stockEdit.unit.trim();
+                const barcode=stockEdit.barcode.trim();
+                const quantity=Number(stockEdit.quantity);
+                const unitsPerCase=Number(stockEdit.unitsPerCase);
+                if(!current){setEditingStockName(null);return;}
+                if(!name||!unit||!Number.isSafeInteger(quantity)||quantity<0||quantity>1000000||
+                  !Number.isSafeInteger(unitsPerCase)||unitsPerCase<1||unitsPerCase>1000000||
+                  (barcode.length>0&&!/^[A-Za-z0-9-]{4,64}$/.test(barcode))){
+                  setNotice('Enter a valid name, unit, barcode, quantity, and case size.');return;
+                }
+                if(stock.some((entry)=>entry.name!==editingStockName&&entry.name.toLocaleLowerCase()===name.toLocaleLowerCase())){
+                  setNotice('Another inventory item already has that name.');return;
+                }
+                if(barcode&&stock.some((entry)=>entry.name!==editingStockName&&entry.barcode===barcode)){
+                  setNotice('That barcode is already assigned to another item.');return;
+                }
+                setStock((items)=>items.map((entry)=>entry.name===editingStockName?{name,quantity,unit,barcode,unitsPerCase}:entry));
+                setEditingStockName(null);
+                setNotice('Updated fictional inventory item '+name+'.');
+              }}>
+                <strong>Edit {editingStockName}</strong>
+                <div><label htmlFor="demo-edit-stock-name">Item name</label><input id="demo-edit-stock-name" value={stockEdit.name} maxLength={100} required onChange={(event)=>setStockEdit((old)=>({...old,name:event.target.value}))}/></div>
+                <div><label htmlFor="demo-edit-stock-quantity">Quantity in individual units</label><input id="demo-edit-stock-quantity" type="number" min="0" max="1000000" step="1" required value={stockEdit.quantity} onChange={(event)=>setStockEdit((old)=>({...old,quantity:event.target.value}))}/></div>
+                <div><label htmlFor="demo-edit-stock-unit">Unit</label><input id="demo-edit-stock-unit" maxLength={40} required value={stockEdit.unit} onChange={(event)=>setStockEdit((old)=>({...old,unit:event.target.value}))}/></div>
+                <div><label htmlFor="demo-edit-stock-barcode">Barcode</label><input id="demo-edit-stock-barcode" maxLength={64} value={stockEdit.barcode} onChange={(event)=>setStockEdit((old)=>({...old,barcode:event.target.value}))}/></div>
+                <div><label htmlFor="demo-edit-stock-case-size">Units per case</label><input id="demo-edit-stock-case-size" type="number" min="1" max="1000000" step="1" required value={stockEdit.unitsPerCase} onChange={(event)=>setStockEdit((old)=>({...old,unitsPerCase:event.target.value}))}/></div>
+                <button type="submit">Save inventory changes</button>
+                <button type="button" onClick={()=>setEditingStockName(null)}>Cancel edit</button>
+              </form>}
               <label htmlFor="demo-stock-search">Find inventory item</label>
               <input id="demo-stock-search" type="search" value={stockSearch} onChange={(event) => setStockSearch(event.target.value)} placeholder="Search your supply list"/>
               <p className="demo-property-pill">Showing {stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length} of {stock.length} items</p>
-              <div className="demo-work-list">{stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock · {Math.floor(item.quantity/(item.unitsPerCase??1))} full cases ({item.unitsPerCase??1} {item.unit}/case){item.barcode?' · Barcode: '+item.barcode:''}</small></div><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.min(1000000, s.quantity + 1)} : s)); setNotice('Received one fictional ' + item.unit + ' into the sample stockroom.');}} disabled={item.quantity>=1000000}>Receive +1</button><button type="button" disabled={item.quantity===0} onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.max(0, s.quantity - 1)} : s)); setNotice('Used one fictional ' + item.unit + ' from the sample stockroom.');}}>Use −1</button>{!initialStock().some((sample) => sample.name === item.name) && <button type="button" aria-label={'Remove custom inventory item ' + item.name} onClick={() => {setStock((items) => items.filter((entry) => entry.name !== item.name)); setNotice('Removed the fictional inventory item ' + item.name + '.');}}>Remove item</button>}</article>)}</div>
+              <div className="demo-work-list">{stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).map((item) => <article key={item.name} className="demo-work"><span className="demo-task-icon"><Boxes size={20}/></span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} in stock · {Math.floor(item.quantity/(item.unitsPerCase??1))} full cases ({item.unitsPerCase??1} {item.unit}/case){item.barcode?' · Barcode: '+item.barcode:''}</small></div><button type="button" onClick={()=>{setEditingStockName(item.name);setStockEdit({name:item.name,quantity:String(item.quantity),unit:item.unit,barcode:item.barcode??'',unitsPerCase:String(item.unitsPerCase??1)});}}>Edit item</button><button type="button" onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.min(1000000, s.quantity + 1)} : s)); setNotice('Received one fictional ' + item.unit + ' into the sample stockroom.');}} disabled={item.quantity>=1000000}>Receive +1</button><button type="button" disabled={item.quantity===0} onClick={() => {setStock((old) => old.map((s) => s.name === item.name ? {...s, quantity: Math.max(0, s.quantity - 1)} : s)); setNotice('Used one fictional ' + item.unit + ' from the sample stockroom.');}}>Use −1</button>{!initialStock().some((sample) => sample.name === item.name) && <button type="button" aria-label={'Remove custom inventory item ' + item.name} onClick={() => {setStock((items) => items.filter((entry) => entry.name !== item.name)); if(editingStockName===item.name)setEditingStockName(null); setNotice('Removed the fictional inventory item ' + item.name + '.');}}>Remove item</button>}</article>)}</div>
               {stock.length>0&&stock.filter((item) => item.name.toLocaleLowerCase().includes(stockSearch.trim().toLocaleLowerCase())).length===0&&<p>No supplies match that search. Clear the search to see the whole inventory list.</p>}
             </section>
           )}
