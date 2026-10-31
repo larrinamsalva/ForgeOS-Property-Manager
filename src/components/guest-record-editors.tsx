@@ -42,6 +42,8 @@ export type DemoCustomer = {
   email: string;
   emergencyContact: string;
   vehicle: string;
+  pets?: { dogs: number; cats: number; horses: number; cows: number };
+  guestVisits?: { name: string; arrival: string; departure: string }[];
   arrivalDate: string;
   deposit: number;
   notes: string;
@@ -70,7 +72,7 @@ export function makeDemoSite(id: string, kind: DemoKind = 'rv', status: DemoStat
 export function makeDemoCustomer(id: number, name: string, siteId: string | null = null): DemoCustomer {
   return {
     id, name, siteId, phone: '', email: '', emergencyContact: '',
-    vehicle: '', arrivalDate: '', deposit: 0, notes: '',
+    vehicle: '', pets: {dogs:0,cats:0,horses:0,cows:0}, guestVisits: [], arrivalDate: '', deposit: 0, notes: '',
   };
 }
 
@@ -226,6 +228,9 @@ export function GuestCustomerForm({
 }) {
   const [draft, setDraft] = useState<DemoCustomer>(customer ?? makeDemoCustomer(0, ''));
   const [depositText, setDepositText] = useState(customer?.deposit ? String(customer.deposit) : '');
+  const [guestName, setGuestName] = useState('');
+  const [guestArrival, setGuestArrival] = useState('');
+  const [guestDeparture, setGuestDeparture] = useState('');
   const [error, setError] = useState('');
   // Assigned and Waiting List are separate choices, not an empty option
   // bundled inside the site dropdown.
@@ -315,6 +320,9 @@ export function GuestCustomerForm({
       setError('Space or unit number not found among currently available units. Choose a matching unit from Assigned / Available, or add that unit first in Property layout.');
       return;
     }
+    if (Object.values(draft.pets ?? {}).some((count) => !Number.isSafeInteger(count) || count < 0 || count > 100)) {
+      setError('Pet counts must be whole numbers between 0 and 100.');return;
+    }
     if (!validName(draft.name) || !moneyOkay(deposit) ||
       (placement === 'assigned' && draft.siteId && !readySites.some((s) => s.id === draft.siteId))) {
       setError('Enter a sample name, a valid deposit, and a space that is available.');
@@ -330,6 +338,8 @@ export function GuestCustomerForm({
       email: draft.email.trim(),
       emergencyContact: draft.emergencyContact.trim(),
       vehicle: draft.vehicle.trim(),
+      guestVisits: draft.guestVisits ?? [],
+      pets: draft.pets ?? {dogs:0,cats:0,horses:0,cows:0},
       notes: draft.notes.trim(),
     });
     if (!editing) {
@@ -453,6 +463,42 @@ export function GuestCustomerForm({
           <input id={fieldId('deposit')} type="number" min="0" max="10000000" step="0.01" value={depositText} onChange={(e) => setDepositText(e.target.value)}/>
         </label>
       </div>
+      <fieldset className="demo-utility-set">
+        <legend>Animals registered with this customer</legend>
+        {(['dogs','cats','horses','cows'] as const).map((animal)=><label key={animal} htmlFor={fieldId('pet-'+animal)}>
+          {animal.charAt(0).toUpperCase()+animal.slice(1)}
+          <input id={fieldId('pet-'+animal)} type="number" min="0" max="100" step="1" value={(draft.pets??{dogs:0,cats:0,horses:0,cows:0})[animal]}
+            onChange={(event)=>edit({pets:{...({dogs:0,cats:0,horses:0,cows:0}),...draft.pets,[animal]:Number(event.target.value)}})}/>
+        </label>)}
+      </fieldset>
+      <fieldset className="demo-utility-set">
+        <legend>Overnight and extended visitors</legend>
+        <p>Record expected visitor dates. Visits longer than 14 days are flagged for manager review; property policies may differ.</p>
+        <label htmlFor={fieldId('guest-name')}>Visitor name
+          <input id={fieldId('guest-name')} value={guestName} maxLength={100} onChange={(event)=>setGuestName(event.target.value)} placeholder="Example: Visiting family member"/>
+        </label>
+        <label htmlFor={fieldId('guest-arrival')}>Visitor arrival
+          <input id={fieldId('guest-arrival')} type="date" value={guestArrival} onChange={(event)=>setGuestArrival(event.target.value)}/>
+        </label>
+        <label htmlFor={fieldId('guest-departure')}>Expected departure
+          <input id={fieldId('guest-departure')} type="date" value={guestDeparture} onChange={(event)=>setGuestDeparture(event.target.value)}/>
+        </label>
+        <button type="button" className="demo-small-button" onClick={()=>{
+          const days=(Date.parse(guestDeparture+'T00:00:00Z')-Date.parse(guestArrival+'T00:00:00Z'))/86400000;
+          if(!validName(guestName)||!guestArrival||!guestDeparture||!Number.isFinite(days)||days<0){
+            setError('Enter a visitor name and valid arrival/departure dates.');return;
+          }
+          edit({guestVisits:[...(draft.guestVisits??[]),{name:guestName.trim(),arrival:guestArrival,departure:guestDeparture}]});
+          setGuestName('');setGuestArrival('');setGuestDeparture('');setError('');
+        }}>Add visitor to customer record</button>
+        {(draft.guestVisits??[]).map((visit,index)=>{
+          const days=(Date.parse(visit.departure+'T00:00:00Z')-Date.parse(visit.arrival+'T00:00:00Z'))/86400000;
+          return <div key={index}><strong>{visit.name}</strong> · {visit.arrival} to {visit.departure} · {days} days
+            {days>14&&<strong> · Extended stay: manager review</strong>}
+            <button type="button" className="demo-small-button" onClick={()=>edit({guestVisits:(draft.guestVisits??[]).filter((_,i)=>i!==index)})}>Remove visitor</button>
+          </div>;
+        })}
+      </fieldset>
       <label className="demo-record-full" htmlFor={fieldId('notes')}>Additional notes / special requests
         <textarea id={fieldId('notes')} maxLength={2000} rows={3} value={draft.notes} onChange={(e) => edit({ notes: e.target.value })} placeholder="Example: Needs a pull-through space"/>
       </label>
