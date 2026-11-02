@@ -31,6 +31,7 @@ export function OverviewMaintenanceSpending({snapshot,propertyId,href}:{
  const start=(fromMonth || '2000-01')+'-01';
  const end=(toMonth || '9999-12')+'-31';
  const totals=active?.data&&!invalidRange?maintenanceSpendingTrends(active.data.work,active.data.costs,properties.map(p=>p.id),start,end):null;
+ const grandTotal=totals?.properties.reduce((sum,row)=>sum+BigInt(row.amountCents),0n)??0n;
  const propertyName=(id:string)=>properties.find(p=>p.id===id)?.name??'Property';
  const show=(entries:{key:string;amountCents:string}[],type:'month'|'category'|'site')=>
   entries.slice(0,8).map(item=>{
@@ -51,6 +52,12 @@ export function OverviewMaintenanceSpending({snapshot,propertyId,href}:{
   {!active?<p role="status">Loading expense records…</p>:
    active.error?<p role="status">Expense records unavailable; no totals assumed.</p>:
    totals&&<>
+    <div className="stat-grid" aria-label="Maintenance expense totals for selected period">
+     <div className="stat-card"><span>Total recorded maintenance expenses</span><strong>{cents(grandTotal)}</strong></div>
+     <div className="stat-card"><span>Properties with expense entries</span><strong>{totals.properties.length}</strong></div>
+    </div>
+    <h3>Spending by property</h3>
+    {totals.properties.length?<ul>{totals.properties.map(row=><li key={row.key}>{propertyName(row.key)}: <strong>{cents(row.amountCents)}</strong> · <Link href={href('maintenance',row.key)}>Review work orders</Link></li>)}</ul>:<p>No property maintenance expenses recorded in this period.</p>}
     <h3>Monthly expenses</h3>{totals.monthly.length?<ul>{show(totals.monthly,'month')}</ul>:<p>No expense entries found.</p>}
     <h3>Expenses by work category</h3>{totals.categories.length?<ul>{show(totals.categories,'category')}</ul>:<p>No recorded category expenses.</p>}
     <h3>Sites with recorded expenses</h3>{totals.sites.length?<ul>{show(totals.sites,'site')}</ul>:<p>No site-linked expenses.</p>}
